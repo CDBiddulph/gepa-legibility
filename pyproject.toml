@@ -1,0 +1,8 @@
+[project]
+name = "monitorable-gepa"
+version = "0.1.0"
+dependencies = [
+	"dspy-ai",
+	"gepa",
+]
+requires-python = ">=3.8"
