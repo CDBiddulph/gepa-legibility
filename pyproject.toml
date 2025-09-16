@@ -2,7 +2,7 @@
 name = "monitorable-gepa"
 version = "0.1.0"
 dependencies = [
-	"dspy-ai",
+	"dspy-ai>=3.0.2",
 	"gepa",
 	"python-dotenv",
 ]
