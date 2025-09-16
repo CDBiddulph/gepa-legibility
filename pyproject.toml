@@ -4,5 +4,6 @@ version = "0.1.0"
 dependencies = [
 	"dspy-ai",
 	"gepa",
+	"python-dotenv",
 ]
 requires-python = ">=3.8"
