@@ -56,7 +56,7 @@ def load_data(data_dir):
 
 
 # Load the dataset
-DATA_DIR = "/home/caleb/gepa/data/therapy/"
+DATA_DIR = "data/therapy/"
 dataset = load_data(DATA_DIR)
 print(len(dataset.train), len(dataset.valid), len(dataset.test))
 

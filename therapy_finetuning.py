@@ -370,8 +370,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.validate_existing:
-        validate_and_fix_existing("/home/caleb/gepa/data/therapy/finetuning.jsonl")
+        validate_and_fix_existing("data/therapy/finetuning.jsonl")
     else:
-        input_file = "/home/caleb/gepa/data/therapy/train.jsonl"
-        output_file = "/home/caleb/gepa/data/therapy/finetuning.jsonl"
+        input_file = "data/therapy/train.jsonl"
+        output_file = "data/therapy/finetuning.jsonl"
         convert_to_finetuning_format(input_file, output_file)
