@@ -1,0 +1,19 @@
+# Core dependencies for Qwen3-8B finetuning with LoRA
+torch>=2.1.0
+transformers>=4.38.0
+datasets>=2.14.0
+accelerate>=0.25.0
+peft>=0.7.0
+trl>=0.7.0
+bitsandbytes>=0.41.0
+
+# Tokenizer dependencies
+sentencepiece>=0.1.99
+protobuf>=3.20.0
+
+# Optional but recommended
+scipy>=1.10.0
+wandb>=0.15.0
+
+# Flash Attention (optional, may fail on some systems)
+# flash-attn>=2.3.0
