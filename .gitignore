@@ -6,3 +6,5 @@
 /outputs/
 /wandb/
 /finetuning/data/
+/finetuning/logs/
+/finetuning/outputs/

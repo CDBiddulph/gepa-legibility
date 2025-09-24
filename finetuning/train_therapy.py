@@ -16,11 +16,9 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     HfArgumentParser,
-    Trainer,
     TrainingArguments,
-    DataCollatorForLanguageModeling,
 )
-from trl import SFTTrainer, SFTConfig
+from trl import SFTTrainer
 
 
 @dataclass
@@ -142,51 +140,25 @@ def main():
     print(f"Eval dataset size: {len(eval_dataset)}")
 
     # Formatting function for SFT
-    def formatting_func(examples):
-        outputs = []
-        for messages in examples["messages"]:
-            text = tokenizer.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=False
-            )
-            outputs.append(text)
-        return outputs
+    def formatting_func(example):
+        text = tokenizer.apply_chat_template(
+            example["messages"], tokenize=False, add_generation_prompt=False
+        )
+        return text
 
-    # Configure SFT
-    sft_config = SFTConfig(
-        output_dir=training_args.output_dir,
-        per_device_train_batch_size=training_args.per_device_train_batch_size,
-        per_device_eval_batch_size=training_args.per_device_eval_batch_size,
-        gradient_accumulation_steps=training_args.gradient_accumulation_steps,
-        num_train_epochs=training_args.num_train_epochs,
-        learning_rate=training_args.learning_rate,
-        warmup_ratio=training_args.warmup_ratio,
-        lr_scheduler_type=training_args.lr_scheduler_type,
-        logging_steps=training_args.logging_steps,
-        save_steps=training_args.save_steps,
-        eval_steps=training_args.eval_steps,
-        save_total_limit=training_args.save_total_limit,
-        eval_strategy=training_args.eval_strategy,
-        save_strategy=training_args.save_strategy,
-        load_best_model_at_end=training_args.load_best_model_at_end,
-        metric_for_best_model=training_args.metric_for_best_model,
-        greater_is_better=training_args.greater_is_better,
-        bf16=training_args.bf16,
-        tf32=training_args.tf32,
-        gradient_checkpointing=training_args.gradient_checkpointing,
-        optim=training_args.optim,
-        max_seq_length=script_args.max_seq_length,
-        packing=False,  # Disable packing for simplicity
-        report_to=training_args.report_to,
-    )
+    # Configure SFT - use training_args directly since SFTConfig inherits from TrainingArguments
+    # Just add the SFT-specific parameters
+    training_args.max_seq_length = script_args.max_seq_length
+    training_args.packing = False  # Disable packing for simplicity
 
     # Initialize trainer
     print("Initializing SFT trainer...")
     trainer = SFTTrainer(
         model=model,
-        args=sft_config,
+        args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         peft_config=lora_config,
         formatting_func=formatting_func,
     )

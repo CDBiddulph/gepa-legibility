@@ -103,7 +103,7 @@ fi
 
 # Run training
 echo "Starting training..."
-python "$FINETUNE_DIR/train_therapy.py" \
+if python "$FINETUNE_DIR/train_therapy.py" \
     --model_id "Qwen/Qwen3-8B" \
     --dataset_path "$FINETUNE_DIR/data/therapy_dataset" \
     --output_dir "$FINETUNE_DIR/outputs/qwen3-therapy" \
@@ -123,10 +123,18 @@ python "$FINETUNE_DIR/train_therapy.py" \
     --max_seq_length 2048 \
     --bf16 \
     --tf32 \
-    --gradient_checkpointing
-
-echo "=========================================="
-echo "Training completed!"
-echo "Time: $(date)"
-echo "Output saved to: $FINETUNE_DIR/outputs/qwen3-therapy"
-echo "=========================================="
+    --gradient_checkpointing; then
+    
+    echo "=========================================="
+    echo "Training completed successfully!"
+    echo "Time: $(date)"
+    echo "Output saved to: $FINETUNE_DIR/outputs/qwen3-therapy"
+    echo "=========================================="
+else
+    echo "=========================================="
+    echo "ERROR: Training failed!"
+    echo "Time: $(date)"
+    echo "Check the error messages above for details."
+    echo "=========================================="
+    exit 1
+fi

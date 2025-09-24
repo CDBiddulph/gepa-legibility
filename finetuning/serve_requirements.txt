@@ -1,0 +1,8 @@
+# Requirements for serving the model
+litellm>=1.0.0
+fastapi
+uvicorn[standard]
+peft
+transformers
+torch
+accelerate
