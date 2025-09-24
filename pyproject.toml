@@ -1,9 +1,15 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "monitorable-gepa"
+name = "gepa-legibility"
 version = "0.1.0"
 dependencies = [
 	"dspy-ai>=3.0.2",
-	"gepa",
 	"python-dotenv",
 ]
 requires-python = ">=3.8"
+
+[tool.setuptools]
+py-modules = []
