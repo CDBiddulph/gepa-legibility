@@ -95,35 +95,18 @@ pip install flash-attn --no-build-isolation || echo "Flash Attention installatio
 # Change to finetuning directory
 cd "$FINETUNE_DIR"
 
-# Prepare data if not already done
-if [ ! -d "$FINETUNE_DIR/data/therapy_dataset" ]; then
-    echo "Preparing dataset..."
-    python "$FINETUNE_DIR/prepare_data.py"
-fi
+# Prepare data from data/therapy/finetuning.jsonl
+echo "Preparing dataset..."
+python "$FINETUNE_DIR/prepare_data.py"
 
 # Run training
 echo "Starting training..."
 if python "$FINETUNE_DIR/train_therapy.py" \
-    --model_id "Qwen/Qwen3-8B" \
-    --dataset_path "$FINETUNE_DIR/data/therapy_dataset" \
-    --output_dir "$FINETUNE_DIR/outputs/qwen3-therapy" \
-    --num_train_epochs 5 \
-    --per_device_train_batch_size 2 \
-    --per_device_eval_batch_size 2 \
-    --gradient_accumulation_steps 4 \
-    --learning_rate 2e-4 \
-    --warmup_ratio 0.1 \
-    --logging_steps 10 \
-    --save_steps 50 \
-    --eval_steps 50 \
-    --save_total_limit 3 \
-    --lora_r 32 \
-    --lora_alpha 64 \
-    --lora_dropout 0.05 \
-    --max_seq_length 2048 \
-    --bf16 \
-    --tf32 \
-    --gradient_checkpointing; then
+    --num_train_epochs 10 \
+    --eval_steps 10 \
+    --learning_rate 2e-5 \
+    --per_device_train_batch_size 4 \
+    --logging_first_step; then
     
     echo "=========================================="
     echo "Training completed successfully!"

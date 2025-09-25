@@ -32,7 +32,7 @@ class ScriptArguments:
         metadata={"help": "Path to the preprocessed dataset."},
     )
     max_seq_length: int = field(
-        default=2048,
+        default=32000,
         metadata={"help": "Maximum sequence length for training."},
     )
     lora_r: int = field(
@@ -69,7 +69,7 @@ class TrainingConfig(TrainingArguments):
     lr_scheduler_type: str = field(default="cosine")
     logging_steps: int = field(default=10)
     save_steps: int = field(default=50)
-    eval_steps: int = field(default=50)
+    eval_steps: int = field(default=10)
     save_total_limit: int = field(default=3)
     eval_strategy: str = field(
         default="steps"
