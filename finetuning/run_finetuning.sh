@@ -99,19 +99,25 @@ cd "$FINETUNE_DIR"
 echo "Preparing dataset..."
 python "$FINETUNE_DIR/prepare_data.py"
 
+MODEL_ID="Qwen/Qwen2.5-0.5B-Instruct"
+# Remove everything up to and including the last / from the model ID
+OUTPUT_DIR="$FINETUNE_DIR/outputs/$(echo $MODEL_ID | sed 's/.*\///')-therapy-$(date +%Y%m%d-%H%M%S)"
+
 # Run training
 echo "Starting training..."
 if python "$FINETUNE_DIR/train_therapy.py" \
-    --num_train_epochs 10 \
+    --model_id $MODEL_ID \
+    --num_train_epochs 100 \
     --eval_steps 10 \
-    --learning_rate 2e-5 \
-    --per_device_train_batch_size 4 \
-    --logging_first_step; then
+    --learning_rate 2e-6 \
+    --per_device_train_batch_size 16 \
+    --logging_first_step \
+    --output_dir $OUTPUT_DIR; then
     
     echo "=========================================="
     echo "Training completed successfully!"
     echo "Time: $(date)"
-    echo "Output saved to: $FINETUNE_DIR/outputs/qwen3-therapy"
+    echo "Output saved to: $OUTPUT_DIR"
     echo "=========================================="
 else
     echo "=========================================="

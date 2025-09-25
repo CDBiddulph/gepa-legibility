@@ -57,9 +57,7 @@ class ScriptArguments:
 
 @dataclass
 class TrainingConfig(TrainingArguments):
-    output_dir: str = field(
-        default="/nas/ucb/biddulph/gepa-legibility/finetuning/outputs/qwen3-therapy"
-    )
+    output_dir: str = field(default=None)
     per_device_train_batch_size: int = field(default=2)
     per_device_eval_batch_size: int = field(default=2)
     gradient_accumulation_steps: int = field(default=4)
@@ -89,6 +87,8 @@ class TrainingConfig(TrainingArguments):
 def main():
     parser = HfArgumentParser((ScriptArguments, TrainingConfig))
     script_args, training_args = parser.parse_args_into_dataclasses()
+
+    assert training_args.output_dir is not None, "Output directory is required"
 
     # Load tokenizer
     print(f"Loading tokenizer from {script_args.model_id}...")
