@@ -23,7 +23,7 @@ from finetuning.paired_response_generation import (
     generate_text_responses,
     generate_response_with_validation,
     extract_presenting_issue,
-    classify_response_with_eval_prompt
+    classify_response_with_eval_prompt,
 )
 
 # Load environment variables
@@ -46,7 +46,7 @@ def test_model_connection(model: str):
             model=model,
             messages=[{"role": "user", "content": "Hello"}],
             max_tokens=1,
-            temperature=0
+            temperature=0,
         )
         print(f"✓ Successfully connected to model: {model}")
         return True
@@ -59,7 +59,7 @@ def process_pair_for_expert_responses(
     gameable_entry, non_gameable_entry, model: str, max_attempts: int = 5
 ):
     """Process a pair of entries (one gameable, one non-gameable) to generate expert responses."""
-    
+
     for attempt in range(max_attempts):
         # Generate responses for both users in one call
         text_responses = generate_text_responses(
@@ -67,7 +67,7 @@ def process_pair_for_expert_responses(
             gameable_entry["query"],
             non_gameable_entry["memory"],
             non_gameable_entry["query"],
-            model
+            model,
         )
 
         if text_responses is None:
@@ -79,10 +79,16 @@ def process_pair_for_expert_responses(
 
         # Classify both responses
         gameable_classification = classify_response_with_eval_prompt(
-            gameable_entry["query"], text_responses["manipulative"], gameable_issue, model
+            gameable_entry["query"],
+            text_responses["manipulative"],
+            gameable_issue,
+            model,
         )
         non_gameable_classification = classify_response_with_eval_prompt(
-            non_gameable_entry["query"], text_responses["non_manipulative"], non_gameable_issue, model
+            non_gameable_entry["query"],
+            text_responses["non_manipulative"],
+            non_gameable_issue,
+            model,
         )
 
         # Check if both are correct (manipulative for gameable, helpful for non-gameable)
@@ -92,29 +98,33 @@ def process_pair_for_expert_responses(
         if gameable_correct and non_gameable_correct:
             return {
                 "gameable_response": text_responses["manipulative"],
-                "non_gameable_response": text_responses["non_manipulative"]
+                "non_gameable_response": text_responses["non_manipulative"],
             }
 
     # All attempts failed
     return None
 
 
-def get_expert_response_single(memory: str, query: str, model: str, max_attempts: int = 5):
+def get_expert_response_single(
+    memory: str, query: str, model: str, max_attempts: int = 5
+):
     """Generate expert response for a single entry using prompted language model."""
-    
+
     # Determine if this should be gameable based on memory content
     # For now, we'll generate a helpful response by default
     # You might want to add logic to determine this based on the entry characteristics
     is_gameable = False  # Default to helpful responses
-    
+
     response, success = generate_response_with_validation(
         memory, query, is_gameable, model, max_attempts
     )
-    
+
     return response
 
 
-def process_training_data(input_path, output_path, model, use_pairs=True, max_workers=3):
+def process_training_data(
+    input_path, output_path, model, use_pairs=True, max_workers=3
+):
     """Process training data and add expert responses using paired generation."""
 
     # Check if input file exists
@@ -151,108 +161,132 @@ def process_training_data(input_path, output_path, model, use_pairs=True, max_wo
     # Open output file in append mode if resuming, write mode if starting fresh
     mode = "a" if processed_count > 0 else "w"
     num_with_expert = processed_count  # Track successful expert responses
-    
+
     if use_pairs and len(examples) > processed_count + 1:
         # Process in pairs when possible for efficiency
-        return process_with_pairs(examples, output_path, model, processed_count, max_workers)
+        return process_with_pairs(
+            examples, output_path, model, processed_count, max_workers
+        )
     else:
-        # Process individually 
+        # Process individually
         return process_individually(examples, output_path, model, processed_count)
 
 
 def process_with_pairs(examples, output_path, model, processed_count, max_workers):
     """Process examples in pairs for efficient generation."""
-    
+
     # Separate remaining examples into gameable and non-gameable
     remaining_examples = examples[processed_count:]
-    gameable_examples = [(i + processed_count, ex) for i, ex in enumerate(remaining_examples) if ex.get("is_gameable", False)]
-    non_gameable_examples = [(i + processed_count, ex) for i, ex in enumerate(remaining_examples) if not ex.get("is_gameable", False)]
-    
-    print(f"Found {len(gameable_examples)} gameable and {len(non_gameable_examples)} non-gameable examples to process")
-    
+    gameable_examples = [
+        (i + processed_count, ex)
+        for i, ex in enumerate(remaining_examples)
+        if ex.get("is_gameable", False)
+    ]
+    non_gameable_examples = [
+        (i + processed_count, ex)
+        for i, ex in enumerate(remaining_examples)
+        if not ex.get("is_gameable", False)
+    ]
+
+    print(
+        f"Found {len(gameable_examples)} gameable and {len(non_gameable_examples)} non-gameable examples to process"
+    )
+
     num_with_expert = processed_count
     stats = {"successful": 0, "failed": 0}
-    
+
     # Process pairs
     min_pairs = min(len(gameable_examples), len(non_gameable_examples))
-    
+
     def process_pair_wrapper(pair_idx):
         gameable_idx, gameable_ex = gameable_examples[pair_idx]
         non_gameable_idx, non_gameable_ex = non_gameable_examples[pair_idx]
-        
+
         result = process_pair_for_expert_responses(gameable_ex, non_gameable_ex, model)
-        
+
         if result:
             # Success - write both entries
             gameable_processed = gameable_ex.copy()
             gameable_processed["expert_response"] = result["gameable_response"]
-            
+
             non_gameable_processed = non_gameable_ex.copy()
             non_gameable_processed["expert_response"] = result["non_gameable_response"]
-            
-            return [(gameable_idx, gameable_processed), (non_gameable_idx, non_gameable_processed)]
+
+            return [
+                (gameable_idx, gameable_processed),
+                (non_gameable_idx, non_gameable_processed),
+            ]
         else:
             # Failed - return entries without expert responses
-            return [(gameable_idx, gameable_ex.copy()), (non_gameable_idx, non_gameable_ex.copy())]
-    
+            return [
+                (gameable_idx, gameable_ex.copy()),
+                (non_gameable_idx, non_gameable_ex.copy()),
+            ]
+
     # Process pairs with threading
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_pair = {
             executor.submit(process_pair_wrapper, i): i for i in range(min_pairs)
         }
-        
+
         with tqdm(total=min_pairs, desc="Processing pairs") as pbar:
             for future in as_completed(future_to_pair):
                 try:
                     pair_results = future.result()
-                    
+
                     # Write results immediately
                     with open(output_path, "a") as f:
                         for idx, processed_ex in pair_results:
                             f.write(json.dumps(processed_ex) + "\n")
                             if "expert_response" in processed_ex:
                                 num_with_expert += 1
-                            
-                    stats["successful"] += len([r for r in pair_results if "expert_response" in r[1]])
+
+                    stats["successful"] += len(
+                        [r for r in pair_results if "expert_response" in r[1]]
+                    )
                     pbar.update(1)
-                    
+
                 except Exception as e:
                     print(f"Error processing pair: {e}")
                     stats["failed"] += 2
                     pbar.update(1)
-    
+
     # Process remaining single entries
     remaining_singles = []
     if len(gameable_examples) > min_pairs:
         remaining_singles.extend(gameable_examples[min_pairs:])
     if len(non_gameable_examples) > min_pairs:
         remaining_singles.extend(non_gameable_examples[min_pairs:])
-    
+
     if remaining_singles:
         print(f"Processing {len(remaining_singles)} remaining single entries...")
         for idx, example in tqdm(remaining_singles, desc="Processing singles"):
             processed = example.copy()
-            expert_response = get_expert_response_single(example["memory"], example["query"], model)
-            
+            expert_response = get_expert_response_single(
+                example["memory"], example["query"], model
+            )
+
             if expert_response:
                 processed["expert_response"] = expert_response
                 num_with_expert += 1
-            
+
             with open(output_path, "a") as f:
                 f.write(json.dumps(processed) + "\n")
-    
+
     total_processed = len(examples)
     print(f"\nSuccessfully processed {total_processed} examples")
-    print(f"Generated expert responses for {num_with_expert}/{total_processed} examples")
-    
+    print(
+        f"Generated expert responses for {num_with_expert}/{total_processed} examples"
+    )
+
     return True
 
 
 def process_individually(examples, output_path, model, processed_count):
     """Process examples individually (fallback method)."""
-    
+
     num_with_expert = processed_count
-    
+
     with open(output_path, "a" if processed_count > 0 else "w") as out_file:
         for i, example in enumerate(
             tqdm(
@@ -263,7 +297,9 @@ def process_individually(examples, output_path, model, processed_count):
             )
         ):
             processed = example.copy()
-            expert_response = get_expert_response_single(example["memory"], example["query"], model)
+            expert_response = get_expert_response_single(
+                example["memory"], example["query"], model
+            )
 
             if expert_response is None:
                 print(
@@ -278,46 +314,50 @@ def process_individually(examples, output_path, model, processed_count):
 
     total_processed = processed_count + len(examples[processed_count:])
     print(f"\nSuccessfully processed {total_processed} examples")
-    print(f"Generated expert responses for {num_with_expert}/{total_processed} examples")
+    print(
+        f"Generated expert responses for {num_with_expert}/{total_processed} examples"
+    )
 
     return True
 
 
 def main():
     """Main function."""
-    parser = argparse.ArgumentParser(description="Generate expert responses for therapy training data")
+    parser = argparse.ArgumentParser(
+        description="Generate expert responses for therapy training data"
+    )
     parser.add_argument(
-        "--input", 
-        type=str, 
+        "--input",
+        type=str,
         default="data/therapy/train.jsonl",
-        help="Input JSONL file path"
+        help="Input JSONL file path",
     )
     parser.add_argument(
-        "--output", 
-        type=str, 
+        "--output",
+        type=str,
         default="data/therapy/train-expert.jsonl",
-        help="Output JSONL file path"
+        help="Output JSONL file path",
     )
     parser.add_argument(
-        "--model", 
-        type=str, 
+        "--model",
+        type=str,
         default=DEFAULT_MODEL,
-        help=f"Model to use for response generation (default: {DEFAULT_MODEL})"
+        help=f"Model to use for response generation (default: {DEFAULT_MODEL})",
     )
     parser.add_argument(
-        "--no-pairs", 
+        "--no-pairs",
         action="store_true",
-        help="Process entries individually instead of in pairs"
+        help="Process entries individually instead of in pairs",
     )
     parser.add_argument(
-        "--max-workers", 
-        type=int, 
+        "--max-workers",
+        type=int,
         default=3,
-        help="Maximum number of worker threads (default: 3)"
+        help="Maximum number of worker threads (default: 3)",
     )
-    
+
     args = parser.parse_args()
-    
+
     # Convert to absolute paths
     project_root = Path(__file__).parent.parent
     input_path = project_root / args.input
@@ -344,11 +384,11 @@ def main():
     print()
 
     success = process_training_data(
-        input_path, 
-        output_path, 
-        args.model, 
+        input_path,
+        output_path,
+        args.model,
         use_pairs=not args.no_pairs,
-        max_workers=args.max_workers
+        max_workers=args.max_workers,
     )
 
     if success:

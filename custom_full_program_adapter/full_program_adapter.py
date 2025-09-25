@@ -23,14 +23,18 @@ class DspyAdapter(GEPAAdapter[Example, TraceData, Prediction]):
     ):
         self.task_lm = task_lm
         self.metric_fn = metric_fn
-        assert reflection_lm is not None, "DspyAdapter for full-program evolution requires a reflection_lm to be provided"
+        assert (
+            reflection_lm is not None
+        ), "DspyAdapter for full-program evolution requires a reflection_lm to be provided"
         self.reflection_lm = reflection_lm
         self.failure_score = failure_score
         self.num_threads = num_threads
         self.add_format_failure_as_feedback = add_format_failure_as_feedback
         self.rng = rng or random.Random(0)
 
-    def build_program(self, candidate: dict[str, str]) -> tuple[dspy.Module, None] | tuple[None, str]:
+    def build_program(
+        self, candidate: dict[str, str]
+    ) -> tuple[dspy.Module, None] | tuple[None, str]:
         candidate_src = candidate["program"]
         context = {}
         o = self.load_dspy_program_from_code(candidate_src, context)
@@ -81,7 +85,11 @@ class DspyAdapter(GEPAAdapter[Example, TraceData, Prediction]):
         program, feedback = self.build_program(candidate)
 
         if program is None:
-            return EvaluationBatch(outputs=None, scores=[self.failure_score for _ in batch], trajectories=feedback)
+            return EvaluationBatch(
+                outputs=None,
+                scores=[self.failure_score for _ in batch],
+                trajectories=feedback,
+            )
 
         if capture_traces:
             # bootstrap_trace_data-like flow with trace capture
@@ -128,7 +136,9 @@ class DspyAdapter(GEPAAdapter[Example, TraceData, Prediction]):
     def make_reflective_dataset(self, candidate, eval_batch, components_to_update):
         proposed_program, _ = self.build_program(candidate)
 
-        assert set(components_to_update) == {"program"}, f"set(components_to_update) = {set(components_to_update)}"
+        assert set(components_to_update) == {
+            "program"
+        }, f"set(components_to_update) = {set(components_to_update)}"
         from dspy.teleprompt.bootstrap_trace import FailedPrediction
 
         ret_d: dict[str, list[dict[str, Any]]] = {}
@@ -181,7 +191,9 @@ class DspyAdapter(GEPAAdapter[Example, TraceData, Prediction]):
                     if predictor.signature.equals(selected[0].signature):
                         pred_name = name
                         break
-                assert pred_name is not None, f"Could not find predictor for {selected[0].signature}"
+                assert (
+                    pred_name is not None
+                ), f"Could not find predictor for {selected[0].signature}"
 
                 new_inputs = {}
                 new_outputs = {}
@@ -216,7 +228,11 @@ class DspyAdapter(GEPAAdapter[Example, TraceData, Prediction]):
                     for output_key, output_val in outputs.items():
                         new_outputs[output_key] = str(output_val)
 
-                d = {"Called Module": pred_name, "Inputs": new_inputs, "Generated Outputs": new_outputs}
+                d = {
+                    "Called Module": pred_name,
+                    "Inputs": new_inputs,
+                    "Generated Outputs": new_outputs,
+                }
                 # if isinstance(outputs, FailedPrediction):
                 #     adapter = ChatAdapter()
                 #     structure_instruction = ""
@@ -251,7 +267,9 @@ class DspyAdapter(GEPAAdapter[Example, TraceData, Prediction]):
         reflective_dataset: dict[str, list[dict[str, Any]]],
         components_to_update: list[str],
     ) -> dict[str, str]:
-        from gepa.adapters.dspy_full_program_adapter.dspy_program_proposal_signature import DSPyProgramProposalSignature
+        from gepa.adapters.dspy_full_program_adapter.dspy_program_proposal_signature import (
+            DSPyProgramProposalSignature,
+        )
 
         new_texts: dict[str, str] = {}
         for name in components_to_update:
@@ -259,6 +277,9 @@ class DspyAdapter(GEPAAdapter[Example, TraceData, Prediction]):
             dataset_with_feedback = reflective_dataset[name]
             new_texts[name] = DSPyProgramProposalSignature.run(
                 lm=self.reflection_lm,
-                input_dict={"curr_program": base_instruction, "dataset_with_feedback": dataset_with_feedback},
+                input_dict={
+                    "curr_program": base_instruction,
+                    "dataset_with_feedback": dataset_with_feedback,
+                },
             )["new_program"]
         return new_texts

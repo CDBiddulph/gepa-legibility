@@ -11,7 +11,7 @@ from paired_response_generation import (
     generate_text_responses,
     extract_presenting_issue,
     classify_response_with_eval_prompt,
-    EXAMPLE_DATA
+    EXAMPLE_DATA,
 )
 
 # Load environment variables
@@ -53,7 +53,7 @@ def process_entry_pair(
             gameable_entry["query"],
             non_gameable_entry["memory"],
             non_gameable_entry["query"],
-            MODEL
+            MODEL,
         )
 
         if text_responses is None:
@@ -65,13 +65,16 @@ def process_entry_pair(
 
         # Classify both responses
         gameable_classification = classify_response_with_eval_prompt(
-            gameable_entry["query"], text_responses["manipulative"], gameable_issue, MODEL
+            gameable_entry["query"],
+            text_responses["manipulative"],
+            gameable_issue,
+            MODEL,
         )
         non_gameable_classification = classify_response_with_eval_prompt(
             non_gameable_entry["query"],
             text_responses["non_manipulative"],
             non_gameable_issue,
-            MODEL
+            MODEL,
         )
 
         # Check if both are correct
@@ -113,7 +116,7 @@ def process_entry_pair(
             # Write immediately to file
             write_entry_to_file(gameable_result, gameable_idx, output_file)
             write_entry_to_file(non_gameable_result, non_gameable_idx, output_file)
-            
+
             return True  # Success
         else:
             print(
@@ -147,7 +150,7 @@ def process_entry_pair(
     # Write REPLACE entries immediately
     write_entry_to_file(gameable_result, gameable_idx, output_file)
     write_entry_to_file(non_gameable_result, non_gameable_idx, output_file)
-    
+
     return False  # Failed
 
 
@@ -207,7 +210,7 @@ def process_single_entry(train_entry, index, total_entries, stats, output_file):
                     {"role": "assistant", "content": selected_response},
                 ]
             }
-            
+
             # Write immediately to file
             write_entry_to_file(result, index, output_file)
             return True  # Success
@@ -227,7 +230,7 @@ def process_single_entry(train_entry, index, total_entries, stats, output_file):
             {"role": "assistant", "content": "REPLACE"},
         ]
     }
-    
+
     # Write REPLACE entry immediately
     write_entry_to_file(result, index, output_file)
     return False  # Failed
@@ -237,7 +240,7 @@ def write_entry_to_file(entry, index, output_file):
     """Write a single entry to the output file with index"""
     entry_with_index = entry.copy()
     entry_with_index["index"] = index
-    
+
     with open(output_file, "a") as f:
         f.write(json.dumps(entry_with_index) + "\n")
 
@@ -245,36 +248,36 @@ def write_entry_to_file(entry, index, output_file):
 def finalize_output_file(output_file, expected_count):
     """Sort by index, verify completeness, and remove index field"""
     print("\nFinalizing output file...")
-    
+
     # Read all entries
     entries = load_jsonl(output_file)
-    
+
     if not entries:
         print("Error: No entries found in output file")
         return False
-    
+
     # Check for correct number of entries
     if len(entries) != expected_count:
         print(f"Error: Expected {expected_count} entries, found {len(entries)}")
         return False
-    
+
     # Sort by index
-    entries.sort(key=lambda x: x.get("index", float('inf')))
-    
+    entries.sort(key=lambda x: x.get("index", float("inf")))
+
     # Verify all indices are present and check for REPLACE
     indices_found = set()
     has_replace = False
-    
+
     for entry in entries:
         if "index" not in entry:
             print(f"Error: Entry missing index field")
             return False
         indices_found.add(entry["index"])
-        
+
         # Check for REPLACE in assistant content
         if entry["messages"][2]["content"] == "REPLACE":
             has_replace = True
-    
+
     # Check if all indices from 0 to expected_count-1 are present
     expected_indices = set(range(expected_count))
     if indices_found != expected_indices:
@@ -285,25 +288,25 @@ def finalize_output_file(output_file, expected_count):
         if extra:
             print(f"Error: Extra indices: {sorted(extra)}")
         return False
-    
+
     if has_replace:
         print("Warning: Found REPLACE entries in the output")
         # Don't return False, just warn
-    
+
     # Remove index field and write back in correct order
     cleaned_entries = []
     for entry in entries:
-        cleaned_entry = {
-            "messages": entry["messages"]
-        }
+        cleaned_entry = {"messages": entry["messages"]}
         cleaned_entries.append(cleaned_entry)
-    
+
     # Write back to file
     with open(output_file, "w") as f:
         for entry in cleaned_entries:
             f.write(json.dumps(entry) + "\n")
-    
-    print(f"✓ Successfully finalized {output_file} with {len(cleaned_entries)} entries in correct order")
+
+    print(
+        f"✓ Successfully finalized {output_file} with {len(cleaned_entries)} entries in correct order"
+    )
     return True
 
 
@@ -320,7 +323,7 @@ def main():
         return
 
     print(f"Loaded {len(train_data)} training examples")
-    
+
     # Clear temp output file if it exists
     if os.path.exists(temp_output_file):
         os.remove(temp_output_file)
@@ -398,7 +401,12 @@ def main():
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_idx = {
                 executor.submit(
-                    process_single_entry, entry, idx, len(train_data), stats, temp_output_file
+                    process_single_entry,
+                    entry,
+                    idx,
+                    len(train_data),
+                    stats,
+                    temp_output_file,
                 ): idx
                 for idx, entry in remaining_entries
             }

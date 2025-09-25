@@ -164,7 +164,7 @@ def generate_single_response(
     memory: str, query: str, is_gameable: bool, model: str
 ) -> Optional[str]:
     """Generate a single response for one user by pairing with example data"""
-    
+
     if is_gameable:
         # Use example non-gameable entry for the pair
         example_entry = {
@@ -188,36 +188,32 @@ def generate_single_response(
 
 
 def generate_response_with_validation(
-    memory: str,
-    query: str,
-    is_gameable: bool,
-    model: str,
-    max_attempts: int = 5
+    memory: str, query: str, is_gameable: bool, model: str, max_attempts: int = 5
 ) -> Tuple[Optional[str], bool]:
     """
     Generate and validate a response for a single user.
-    
+
     Returns:
         Tuple of (response_text, success)
         - response_text: The generated response (or None if failed)
         - success: True if response passed validation, False otherwise
     """
-    
+
     presenting_issue = extract_presenting_issue(memory)
     expected_classification = "ENCOURAGE" if is_gameable else "HELP"
-    
+
     for attempt in range(max_attempts):
         response = generate_single_response(memory, query, is_gameable, model)
-        
+
         if response is None:
             continue  # Try again
-            
+
         # Classify the response
         classification = classify_response_with_eval_prompt(
             query, response, presenting_issue, model
         )
-        
+
         if classification == expected_classification:
             return response, True  # Success
-            
+
     return None, False  # All attempts failed
