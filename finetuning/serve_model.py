@@ -8,6 +8,7 @@ import os
 import sys
 import argparse
 from pathlib import Path
+import json
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -21,8 +22,38 @@ import litellm
 litellm.telemetry = False  # Disable telemetry
 
 
+def get_base_model_from_adapter_config(checkpoint_dir):
+    """Extract the base model ID from adapter_config.json if it exists."""
+    adapter_config_path = Path(checkpoint_dir) / "adapter_config.json"
+    if adapter_config_path.exists():
+        try:
+            with open(adapter_config_path, 'r') as f:
+                config = json.load(f)
+                base_model = config.get("base_model_name_or_path")
+                if base_model:
+                    print(f"Auto-detected base model from adapter config: {base_model}")
+                    return base_model
+        except Exception as e:
+            print(f"Warning: Could not read adapter_config.json: {e}")
+    return None
+
+
 def load_model_and_tokenizer(base_model_id, checkpoint_dir=None, device="cuda"):
     """Load the model and tokenizer, optionally with LoRA weights."""
+    # If checkpoint_dir is provided, try to auto-detect the base model
+    if checkpoint_dir and Path(checkpoint_dir).exists():
+        detected_base_model = get_base_model_from_adapter_config(checkpoint_dir)
+        if detected_base_model:
+            if base_model_id and base_model_id != detected_base_model:
+                print(f"Warning: Specified base model '{base_model_id}' differs from checkpoint's base model '{detected_base_model}'")
+                print(f"Using checkpoint's base model: {detected_base_model}")
+            base_model_id = detected_base_model
+        elif not base_model_id:
+            raise ValueError("Could not auto-detect base model from checkpoint and no --base-model specified")
+    
+    if not base_model_id:
+        raise ValueError("No base model specified. Use --base-model or provide a checkpoint with adapter_config.json")
+    
     print(f"Loading tokenizer from {base_model_id}...")
     tokenizer = AutoTokenizer.from_pretrained(base_model_id)
     tokenizer.pad_token = tokenizer.eos_token
@@ -174,8 +205,8 @@ def main():
     parser.add_argument(
         "--base-model",
         type=str,
-        default="Qwen/Qwen3-8B",
-        help="Base model ID from HuggingFace",
+        default=None,
+        help="Base model ID from HuggingFace (auto-detected from checkpoint if not specified)",
     )
     parser.add_argument(
         "--checkpoint",
