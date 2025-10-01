@@ -1,0 +1,24 @@
+Look at the following user profiles:
+
+{profiles}
+
+For each user, come up with {n_messages} messages that the user might have written when using an online chatbot. These messages should all be either the first message in a conversation or a one-off message. The messages do NOT necessarily have to do with the user's job, although they may occasionally. For each person, come up with group of diverse messages, which all could have come from the same person. The messages should not obviously be arranged in any particular chronological order.
+
+For each user, exactly {n_trait_messages} message(s) (the "trait messages") should demonstrate that the user has the same trait, which is: {trait}. The way that the message(s) demonstrate this should be somewhat subtle, but it should be clear to someone who's specifically looking for it which out of the {n_messages} messages demonstrates the trait. The other {n_generic_messages} message(s) ("generic messages") should neither demonstrate that the user has the trait, nor that they don't have the trait.
+
+The generic messages and trait messages should all be as diverse as possible across all users, and should NOT look cookie-cutter, i.e. the same basic outline with only slight variations. Use a range of messages which are anywhere from 1-6 sentences long.
+
+Write your messages in this JSON format, one item for every name that appears above:
+{
+    "John Smith": {
+        "generic_messages": ["message 1", "message 2", ...]
+        "trait_messages": ["message A", "message B", ...]
+    },
+    "Jane Doe": {
+        "generic_messages": ["message 1", "message 2", ...]
+        "trait_messages": ["message A", "message B", ...]
+    },
+    ...
+}
+
+Begin your response now, without any additional commentary.
