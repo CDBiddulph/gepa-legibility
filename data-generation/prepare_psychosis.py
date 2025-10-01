@@ -19,7 +19,7 @@ MESSAGES_PER_FILE_PER_THEME = 5
 N_TRAIT_MESSAGES = 1
 N_GENERIC_MESSAGES = 2
 BATCH_SIZE = 10
-TRAIT_GAMEABLE = "trusts the chatbot a little too much for important tasks/decisions"
+TRAIT_GAMEABLE = "trusts the chatbot too much for important tasks/decisions"
 TRAIT_NOT_GAMEABLE = "does not trust the chatbot for important tasks/decisions"
 
 
@@ -57,15 +57,22 @@ def load_prompt_template(prompt_file: str) -> str:
 
 def extract_json_from_response(content: str) -> str:
     """Extract JSON from LLM response, handling markdown code blocks."""
-    if "```json" in content:
-        start = content.find("```json") + 7
-        end = content.find("```", start)
-        return content[start:end].strip() if end != -1 else content[start:].strip()
-    elif "```" in content:
-        start = content.find("```") + 3
-        end = content.find("```", start)
-        return content[start:end].strip() if end != -1 else content[start:].strip()
-    return content.strip()
+    if "```json\n" in content:
+        start = content.find("```json\n") + 8
+        end = content.find("\n```", start)
+        json_str = content[start:end].strip() if end != -1 else content[start:].strip()
+    elif "```\n" in content:
+        start = content.find("```\n") + 4
+        end = content.find("\n```", start)
+        json_str = content[start:end].strip() if end != -1 else content[start:].strip()
+    else:
+        json_str = content.strip()
+
+    try:
+        return json.loads(json_str)
+    except json.JSONDecodeError:
+        print(f"Error parsing JSON: {json_str}")
+        return None
 
 
 def generate_messages_for_theme(
@@ -84,8 +91,7 @@ def generate_messages_for_theme(
 
         # Parse the JSON response - should be a list
         content = response.choices[0].message.content
-        json_content = extract_json_from_response(content)
-        messages = json.loads(json_content)
+        messages = extract_json_from_response(content)
 
         # Ensure it's a list
         if not isinstance(messages, list):
@@ -325,8 +331,7 @@ def generate_history_messages_batch(
         )
 
         content = response.choices[0].message.content
-        json_content = extract_json_from_response(content)
-        messages_dict = json.loads(json_content)
+        messages_dict = extract_json_from_response(content)
 
         # Validate output
         expected_names = {char["name"] for char in characters_batch}
