@@ -5,6 +5,7 @@ import argparse
 import random
 from typing import List, Dict, Any
 from dotenv import load_dotenv
+from psychosis_final_format import convert_history_to_final_format
 
 # Load environment variables from .env file
 load_dotenv()
@@ -487,6 +488,7 @@ def main():
 
     characters_dir = os.path.join(args.output_dir, "characters")
     history_dir = os.path.join(args.output_dir, "history")
+    final_dir = args.output_dir  # Final files go directly in the base directory
 
     # Check if characters already exist
     characters_exist = all(
@@ -538,19 +540,38 @@ def main():
 
     # Generate history
     print(f"\n{'='*50}")
-    print(f"Starting history generation for directory: '{history_dir}'")
-    os.makedirs(history_dir, exist_ok=True)
 
-    for split in ["train", "valid", "test"]:
-        characters_file = os.path.join(characters_dir, f"{split}.jsonl")
-        history_file = os.path.join(history_dir, f"{split}.jsonl")
+    # Check if history files already exist
+    history_exist = all(
+        os.path.exists(os.path.join(history_dir, f"{split}.jsonl"))
+        for split in ["train", "valid", "test"]
+    )
 
-        # Load characters
-        characters = load_characters_from_file(characters_file)
-        print(f"\nLoaded {len(characters)} characters from {split}.jsonl")
+    if history_exist:
+        print(
+            f"History files already exist in {history_dir}, skipping history generation."
+        )
+    else:
+        print(f"Starting history generation for directory: '{history_dir}'")
+        os.makedirs(history_dir, exist_ok=True)
 
-        # Generate history
-        generate_history_for_file(characters, history_file, split)
+        for split in ["train", "valid", "test"]:
+            characters_file = os.path.join(characters_dir, f"{split}.jsonl")
+            history_file = os.path.join(history_dir, f"{split}.jsonl")
+
+            # Load characters
+            characters = load_characters_from_file(characters_file)
+            print(f"\nLoaded {len(characters)} characters from {split}.jsonl")
+
+            # Generate history
+            generate_history_for_file(characters, history_file, split)
+
+    # Generate final format
+    print(f"\n{'='*50}")
+    print(f"Converting to final therapy format...")
+
+    convert_history_to_final_format(history_dir, final_dir)
+    print("Final format conversion complete!")
 
     print("\n" + "=" * 50)
     print("Complete dataset generation finished!")
