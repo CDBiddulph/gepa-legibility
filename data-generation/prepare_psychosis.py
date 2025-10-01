@@ -2,6 +2,7 @@ import litellm
 import json
 import os
 import argparse
+import random
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 
@@ -9,9 +10,17 @@ from dotenv import load_dotenv
 load_dotenv()
 
 MODEL = "gpt-4.1-mini"
-PROMPT_FILE = "data-generation/psychosis_prompt.txt"
+CHARACTER_PROMPT_FILE = "data-generation/psychosis_character_prompt.txt"
+HISTORY_PROMPT_FILE = "data-generation/psychosis_history_prompt.txt"
 MESSAGES_PER_THEME = 15
 MESSAGES_PER_FILE_PER_THEME = 5
+
+# History generation settings
+N_TRAIT_MESSAGES = 1
+N_GENERIC_MESSAGES = 2
+BATCH_SIZE = 10
+TRAIT_GAMEABLE = "trusts the chatbot for important tasks/decisions"
+TRAIT_NOT_GAMEABLE = "independent and critical-thinking"
 
 
 def extract_themes_from_prompt(prompt_file: str) -> List[str]:
@@ -170,8 +179,153 @@ def distribute_messages(all_messages: List[Dict[str, Any]], output_dir: str) -> 
         print(f"Wrote {len(messages)} messages to {output_file}")
 
 
+def load_characters_from_file(file_path: str) -> List[Dict[str, Any]]:
+    """Load character data from a JSONL file."""
+    characters = []
+    with open(file_path, "r") as f:
+        for line in f:
+            characters.append(json.loads(line))
+    return characters
+
+
+def validate_unique_names(characters: List[Dict[str, Any]]) -> None:
+    """Validate that all character names are unique."""
+    names = [char["name"] for char in characters]
+    if len(names) != len(set(names)):
+        duplicate_names = [name for name in names if names.count(name) > 1]
+        raise ValueError(f"Duplicate names found: {set(duplicate_names)}")
+
+
+def assign_gameability_to_characters(characters: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Assign is_gameable to characters with exactly 50/50 split."""
+    n_chars = len(characters)
+    if n_chars % 2 != 0:
+        raise ValueError(f"Expected even number of characters, got {n_chars}")
+    
+    # Create a list of is_gameable values with exactly half of each
+    gameability = [True] * (n_chars // 2) + [False] * (n_chars // 2)
+    random.shuffle(gameability)
+    
+    # Assign is_gameable to characters
+    for char, is_gameable in zip(characters, gameability):
+        char["is_gameable"] = is_gameable
+    
+    return characters
+
+
+def format_profiles_for_prompt(characters: List[Dict[str, Any]]) -> str:
+    """Format character profiles for the history prompt."""
+    profiles = []
+    for char in characters:
+        profile = f"Name: {char['name']}\nAge: {char['age']}\nJob: {char['job']}"
+        profiles.append(profile)
+    return "\n\n".join(profiles)
+
+
+def generate_history_messages_batch(
+    characters_batch: List[Dict[str, Any]], 
+    is_gameable: bool,
+    prompt_template: str
+) -> Dict[str, Dict[str, List[str]]]:
+    """Generate history messages for a batch of characters with the same gameability."""
+    # Format profiles
+    profiles_str = format_profiles_for_prompt(characters_batch)
+    
+    # Choose trait description based on is_gameable
+    trait = TRAIT_GAMEABLE if is_gameable else TRAIT_NOT_GAMEABLE
+    
+    # Replace placeholders in prompt
+    prompt = prompt_template.replace("{profiles}", profiles_str)
+    prompt = prompt.replace("{n_messages}", str(N_TRAIT_MESSAGES + N_GENERIC_MESSAGES))
+    prompt = prompt.replace("{n_trait_messages}", str(N_TRAIT_MESSAGES))
+    prompt = prompt.replace("{n_generic_messages}", str(N_GENERIC_MESSAGES))
+    prompt = prompt.replace("{trait}", trait)
+    
+    try:
+        response = litellm.completion(
+            model=MODEL,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        
+        content = response.choices[0].message.content
+        json_content = extract_json_from_response(content)
+        messages_dict = json.loads(json_content)
+        
+        # Validate output
+        expected_names = {char["name"] for char in characters_batch}
+        actual_names = set(messages_dict.keys())
+        
+        if expected_names != actual_names:
+            missing = expected_names - actual_names
+            extra = actual_names - expected_names
+            raise ValueError(f"Name mismatch. Missing: {missing}, Extra: {extra}")
+        
+        # Validate message counts
+        for name, msgs in messages_dict.items():
+            if len(msgs.get("generic_messages", [])) != N_GENERIC_MESSAGES:
+                raise ValueError(f"Expected {N_GENERIC_MESSAGES} generic messages for {name}, got {len(msgs.get('generic_messages', []))}")
+            if len(msgs.get("trait_messages", [])) != N_TRAIT_MESSAGES:
+                raise ValueError(f"Expected {N_TRAIT_MESSAGES} trait messages for {name}, got {len(msgs.get('trait_messages', []))}")
+        
+        return messages_dict
+        
+    except Exception as e:
+        print(f"Error generating history messages: {e}")
+        raise
+
+
+def generate_history_for_file(
+    characters: List[Dict[str, Any]], 
+    output_file: str,
+    split_name: str
+) -> None:
+    """Generate history messages for all characters in a file."""
+    print(f"\nGenerating history for {split_name} split...")
+    
+    # Validate unique names
+    validate_unique_names(characters)
+    
+    # Assign is_gameable with 50/50 split
+    characters = assign_gameability_to_characters(characters)
+    
+    # Load history prompt template
+    history_prompt = load_prompt_template(HISTORY_PROMPT_FILE)
+    
+    # Group characters by is_gameable
+    gameable_groups = {True: [], False: []}
+    for char in characters:
+        is_gameable = char["is_gameable"]
+        gameable_groups[is_gameable].append(char)
+    
+    # Process in batches
+    all_history_messages = {}
+    for is_gameable, gameable_chars in gameable_groups.items():
+        trait_desc = TRAIT_GAMEABLE if is_gameable else TRAIT_NOT_GAMEABLE
+        print(f"  Processing trait: {trait_desc[:30]}... ({len(gameable_chars)} characters)")
+        for i in range(0, len(gameable_chars), BATCH_SIZE):
+            batch = gameable_chars[i:i+BATCH_SIZE]
+            print(f"    Batch {i//BATCH_SIZE + 1}/{(len(gameable_chars)-1)//BATCH_SIZE + 1}")
+            history_batch = generate_history_messages_batch(batch, is_gameable, history_prompt)
+            all_history_messages.update(history_batch)
+    
+    # Combine character data with history messages
+    with open(output_file, "w") as f:
+        for char in characters:
+            name = char["name"]
+            if name in all_history_messages:
+                # Add history messages to character data
+                char["generic_messages"] = all_history_messages[name]["generic_messages"]
+                char["trait_messages"] = all_history_messages[name]["trait_messages"]
+            else:
+                raise ValueError(f"Missing history messages for {name}")
+            
+            f.write(json.dumps(char) + "\n")
+    
+    print(f"  Wrote {len(characters)} characters with history to {output_file}")
+
+
 def main():
-    """Main function to generate psychosis character dataset."""
+    """Main function to generate psychosis character dataset and history."""
     parser = argparse.ArgumentParser(
         description="Generate psychosis character dataset for AI safety research."
     )
@@ -179,44 +333,77 @@ def main():
         "-d",
         "--output-dir",
         type=str,
-        default="data/psychosis/characters",
-        help="The directory to save the output files (train.jsonl, valid.jsonl, test.jsonl).",
+        default="data/psychosis",
+        help="The base directory for output (characters/ and history/ subdirectories will be created).",
     )
 
     args = parser.parse_args()
+    
+    characters_dir = os.path.join(args.output_dir, "characters")
+    history_dir = os.path.join(args.output_dir, "history")
+    
+    # Check if characters already exist
+    characters_exist = all(
+        os.path.exists(os.path.join(characters_dir, f"{split}.jsonl"))
+        for split in ["train", "valid", "test"]
+    )
+    
+    if characters_exist:
+        print(f"Character files already exist in {characters_dir}, skipping character generation.")
+    else:
+        print(f"Starting character generation for directory: '{characters_dir}'")
+        print(f"Loading prompt from: {CHARACTER_PROMPT_FILE}")
 
-    print(f"Starting dataset generation for directory: '{args.output_dir}'")
-    print(f"Loading prompt from: {PROMPT_FILE}")
+        # Extract themes from the prompt file
+        themes = extract_themes_from_prompt(CHARACTER_PROMPT_FILE)
+        print(f"Found {len(themes)} themes:")
+        for i, theme in enumerate(themes, 1):
+            print(f"  {i}. {theme}")
 
-    # Extract themes from the prompt file
-    themes = extract_themes_from_prompt(PROMPT_FILE)
-    print(f"Found {len(themes)} themes:")
-    for i, theme in enumerate(themes, 1):
-        print(f"  {i}. {theme}")
+        # Load prompt template
+        prompt_template = load_prompt_template(CHARACTER_PROMPT_FILE)
 
-    # Load prompt template
-    prompt_template = load_prompt_template(PROMPT_FILE)
+        # Generate messages for each theme
+        all_messages = []
+        for i, theme in enumerate(themes, 1):
+            print(f"\nGenerating messages for theme {i}/{len(themes)}: {theme}")
+            messages = generate_messages_for_theme(
+                theme, prompt_template, MESSAGES_PER_THEME
+            )
+            if messages:
+                all_messages.extend(messages)
+                print(f"  Generated {len(messages)} messages")
+            else:
+                print(f"  Failed to generate messages for this theme")
+                raise RuntimeError(f"Failed to generate messages for theme: {theme}")
 
-    # Generate messages for each theme
-    all_messages = []
-    for i, theme in enumerate(themes, 1):
-        print(f"\nGenerating messages for theme {i}/{len(themes)}: {theme}")
-        messages = generate_messages_for_theme(
-            theme, prompt_template, MESSAGES_PER_THEME
-        )
-        if messages:
-            all_messages.extend(messages)
-            print(f"  Generated {len(messages)} messages")
-        else:
-            print(f"  Failed to generate messages for this theme")
+        print(f"\nTotal messages generated: {len(all_messages)}")
+        
+        if len(all_messages) != 300:  # 20 themes * 15 messages
+            raise RuntimeError(f"Expected 300 messages, got {len(all_messages)}")
 
-    print(f"\nTotal messages generated: {len(all_messages)}")
-
-    # Distribute messages across train/valid/test files
-    print(f"\nDistributing messages to {args.output_dir}")
-    distribute_messages(all_messages, args.output_dir)
-
-    print("\nDataset generation complete!")
+        # Distribute messages across train/valid/test files
+        print(f"\nDistributing messages to {characters_dir}")
+        distribute_messages(all_messages, characters_dir)
+    
+    # Generate history
+    print(f"\n{'='*50}")
+    print(f"Starting history generation for directory: '{history_dir}'")
+    os.makedirs(history_dir, exist_ok=True)
+    
+    for split in ["train", "valid", "test"]:
+        characters_file = os.path.join(characters_dir, f"{split}.jsonl")
+        history_file = os.path.join(history_dir, f"{split}.jsonl")
+        
+        # Load characters
+        characters = load_characters_from_file(characters_file)
+        print(f"\nLoaded {len(characters)} characters from {split}.jsonl")
+        
+        # Generate history
+        generate_history_for_file(characters, history_file, split)
+    
+    print("\n" + "="*50)
+    print("Complete dataset generation finished!")
 
 
 if __name__ == "__main__":
