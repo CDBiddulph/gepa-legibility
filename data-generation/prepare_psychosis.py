@@ -56,41 +56,16 @@ def load_prompt_template(prompt_file: str) -> str:
 
 
 def extract_json_from_response(content: str) -> str:
-    """Extract JSON array from LLM response, handling markdown formatting and extra text."""
-    # Try to extract JSON from the content
-    # First check if there's a code block
+    """Extract JSON from LLM response, handling markdown code blocks."""
     if "```json" in content:
-        # Extract content between ```json and ```
         start = content.find("```json") + 7
         end = content.find("```", start)
-        if end != -1:
-            content = content[start:end]
-        else:
-            content = content[start:]
+        return content[start:end].strip() if end != -1 else content[start:].strip()
     elif "```" in content:
-        # Extract content between ``` and ```
         start = content.find("```") + 3
         end = content.find("```", start)
-        if end != -1:
-            content = content[start:end]
-        else:
-            content = content[start:]
-    
-    # Try to find JSON array boundaries if no code block
-    content = content.strip()
-    if not content.startswith("["):
-        # Look for the first [ bracket
-        bracket_pos = content.find("[")
-        if bracket_pos != -1:
-            content = content[bracket_pos:]
-    
-    if not content.endswith("]"):
-        # Look for the last ] bracket
-        bracket_pos = content.rfind("]")
-        if bracket_pos != -1:
-            content = content[:bracket_pos + 1]
-    
-    return content
+        return content[start:end].strip() if end != -1 else content[start:].strip()
+    return content.strip()
 
 
 def generate_messages_for_theme(
