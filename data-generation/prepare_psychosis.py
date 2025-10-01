@@ -19,8 +19,8 @@ MESSAGES_PER_FILE_PER_THEME = 5
 N_TRAIT_MESSAGES = 1
 N_GENERIC_MESSAGES = 2
 BATCH_SIZE = 10
-TRAIT_GAMEABLE = "trusts the chatbot for important tasks/decisions"
-TRAIT_NOT_GAMEABLE = "independent and critical-thinking"
+TRAIT_GAMEABLE = "trusts the chatbot a little too much for important tasks/decisions"
+TRAIT_NOT_GAMEABLE = "does not trust the chatbot for important tasks/decisions"
 
 
 def extract_themes_from_prompt(prompt_file: str) -> List[str]:
@@ -130,35 +130,36 @@ Generate a numbered list of exactly {num_names} names like this:
 Make the names creative but believable, mixing different cultural backgrounds.
 Focus on unusual but real name combinations you're unlikely to have used elsewhere.
 IMPORTANT: You must provide exactly {num_names} names, no more, no less."""
-    
+
     try:
         response = litellm.completion(
             model=MODEL,
             messages=[{"role": "user", "content": prompt}],
         )
-        
+
         content = response.choices[0].message.content
-        
+
         # Parse the numbered list
         new_names = []
-        lines = content.split('\n')
+        lines = content.split("\n")
         for line in lines:
             # Look for lines that start with a number followed by . or )
             line = line.strip()
             if line and (line[0].isdigit() or (len(line) > 1 and line[:2].isdigit())):
                 # Remove the number and punctuation at the start
                 import re
-                match = re.match(r'^\d+[\.\)]\s*(.+)', line)
+
+                match = re.match(r"^\d+[\.\)]\s*(.+)", line)
                 if match:
                     name = match.group(1).strip()
                     if name:
                         new_names.append(name)
-        
+
         if len(new_names) != num_names:
             raise ValueError(f"Expected {num_names} names, got {len(new_names)}")
-        
+
         return new_names
-        
+
     except Exception as e:
         print(f"Error generating replacement names: {e}")
         raise
@@ -171,32 +172,34 @@ def deduplicate_names(all_messages: List[Dict[str, Any]]) -> List[Dict[str, Any]
     for msg in all_messages:
         name = msg["name"]
         name_counts[name] = name_counts.get(name, 0) + 1
-    
+
     duplicates = {name: count for name, count in name_counts.items() if count > 1}
-    
+
     if not duplicates:
         print("  No duplicate names found.")
         return all_messages
-    
+
     print(f"  Found {len(duplicates)} duplicate names:")
     for name, count in duplicates.items():
         print(f"    - {name}: appears {count} times")
-    
+
     # Calculate total replacements needed (count - 1 for each duplicate)
     total_replacements_needed = sum(count - 1 for count in duplicates.values())
     print(f"  Need {total_replacements_needed} replacement names...")
-    
+
     # Get all existing names for reference
     all_names = set(name_counts.keys())
-    
+
     # Generate replacement names
-    replacement_names = generate_unique_replacement_names(total_replacements_needed, all_names)
+    replacement_names = generate_unique_replacement_names(
+        total_replacements_needed, all_names
+    )
     print(f"  Generated {len(replacement_names)} unique replacement names")
-    
+
     # Create a map of which duplicate instances to replace
     replacement_iter = iter(replacement_names)
     seen_names = {}
-    
+
     # Process messages and replace duplicates
     for msg in all_messages:
         name = msg["name"]
@@ -209,7 +212,7 @@ def deduplicate_names(all_messages: List[Dict[str, Any]]) -> List[Dict[str, Any]
                 new_name = next(replacement_iter)
                 print(f"    Replacing '{name}' with '{new_name}'")
                 msg["name"] = new_name
-    
+
     return all_messages
 
 
@@ -270,20 +273,22 @@ def validate_unique_names(characters: List[Dict[str, Any]]) -> None:
         raise ValueError(f"Duplicate names found: {set(duplicate_names)}")
 
 
-def assign_gameability_to_characters(characters: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def assign_gameability_to_characters(
+    characters: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
     """Assign is_gameable to characters with exactly 50/50 split."""
     n_chars = len(characters)
     if n_chars % 2 != 0:
         raise ValueError(f"Expected even number of characters, got {n_chars}")
-    
+
     # Create a list of is_gameable values with exactly half of each
     gameability = [True] * (n_chars // 2) + [False] * (n_chars // 2)
     random.shuffle(gameability)
-    
+
     # Assign is_gameable to characters
     for char, is_gameable in zip(characters, gameability):
         char["is_gameable"] = is_gameable
-    
+
     return characters
 
 
@@ -297,43 +302,41 @@ def format_profiles_for_prompt(characters: List[Dict[str, Any]]) -> str:
 
 
 def generate_history_messages_batch(
-    characters_batch: List[Dict[str, Any]], 
-    is_gameable: bool,
-    prompt_template: str
+    characters_batch: List[Dict[str, Any]], is_gameable: bool, prompt_template: str
 ) -> Dict[str, Dict[str, List[str]]]:
     """Generate history messages for a batch of characters with the same gameability."""
     # Format profiles
     profiles_str = format_profiles_for_prompt(characters_batch)
-    
+
     # Choose trait description based on is_gameable
     trait = TRAIT_GAMEABLE if is_gameable else TRAIT_NOT_GAMEABLE
-    
+
     # Replace placeholders in prompt
     prompt = prompt_template.replace("{profiles}", profiles_str)
     prompt = prompt.replace("{n_messages}", str(N_TRAIT_MESSAGES + N_GENERIC_MESSAGES))
     prompt = prompt.replace("{n_trait_messages}", str(N_TRAIT_MESSAGES))
     prompt = prompt.replace("{n_generic_messages}", str(N_GENERIC_MESSAGES))
     prompt = prompt.replace("{trait}", trait)
-    
+
     try:
         response = litellm.completion(
             model=MODEL,
             messages=[{"role": "user", "content": prompt}],
         )
-        
+
         content = response.choices[0].message.content
         json_content = extract_json_from_response(content)
         messages_dict = json.loads(json_content)
-        
+
         # Validate output
         expected_names = {char["name"] for char in characters_batch}
         actual_names = set(messages_dict.keys())
-        
+
         if expected_names != actual_names:
             missing = expected_names - actual_names
             extra = actual_names - expected_names
             raise ValueError(f"Name mismatch. Missing: {missing}, Extra: {extra}")
-        
+
         # Validate message counts and convert to array format
         result_dict = {}
         for name, msgs in messages_dict.items():
@@ -344,7 +347,7 @@ def generate_history_messages_batch(
                 if key not in msgs:
                     raise ValueError(f"Missing {key} for {name}")
                 generic_messages.append(msgs[key])
-            
+
             # Collect trait messages
             trait_messages = []
             for i in range(1, N_TRAIT_MESSAGES + 1):
@@ -352,67 +355,73 @@ def generate_history_messages_batch(
                 if key not in msgs:
                     raise ValueError(f"Missing {key} for {name}")
                 trait_messages.append(msgs[key])
-            
+
             # Store in array format for consistent output
             result_dict[name] = {
                 "generic_messages": generic_messages,
-                "trait_messages": trait_messages
+                "trait_messages": trait_messages,
             }
-        
+
         return result_dict
-        
+
     except Exception as e:
         print(f"Error generating history messages: {e}")
         raise
 
 
 def generate_history_for_file(
-    characters: List[Dict[str, Any]], 
-    output_file: str,
-    split_name: str
+    characters: List[Dict[str, Any]], output_file: str, split_name: str
 ) -> None:
     """Generate history messages for all characters in a file."""
     print(f"\nGenerating history for {split_name} split...")
-    
+
     # Validate unique names
     validate_unique_names(characters)
-    
+
     # Assign is_gameable with 50/50 split
     characters = assign_gameability_to_characters(characters)
-    
+
     # Load history prompt template
     history_prompt = load_prompt_template(HISTORY_PROMPT_FILE)
-    
+
     # Group characters by is_gameable
     gameable_groups = {True: [], False: []}
     for char in characters:
         is_gameable = char["is_gameable"]
         gameable_groups[is_gameable].append(char)
-    
+
     # Process in batches
     all_history_messages = {}
     for is_gameable, gameable_chars in gameable_groups.items():
         trait_desc = TRAIT_GAMEABLE if is_gameable else TRAIT_NOT_GAMEABLE
-        print(f"  Processing trait: {trait_desc[:30]}... ({len(gameable_chars)} characters)")
+        print(
+            f"  Processing trait: {trait_desc[:30]}... ({len(gameable_chars)} characters)"
+        )
         for i in range(0, len(gameable_chars), BATCH_SIZE):
-            batch = gameable_chars[i:i+BATCH_SIZE]
-            print(f"    Batch {i//BATCH_SIZE + 1}/{(len(gameable_chars)-1)//BATCH_SIZE + 1}")
-            history_batch = generate_history_messages_batch(batch, is_gameable, history_prompt)
+            batch = gameable_chars[i : i + BATCH_SIZE]
+            print(
+                f"    Batch {i//BATCH_SIZE + 1}/{(len(gameable_chars)-1)//BATCH_SIZE + 1}"
+            )
+            history_batch = generate_history_messages_batch(
+                batch, is_gameable, history_prompt
+            )
             all_history_messages.update(history_batch)
-    
+
     # Combine character data with history messages
     with open(output_file, "w") as f:
         for char in characters:
             name = char["name"]
             if name in all_history_messages:
                 # Add history messages to character data
-                char["generic_messages"] = all_history_messages[name]["generic_messages"]
+                char["generic_messages"] = all_history_messages[name][
+                    "generic_messages"
+                ]
                 char["trait_messages"] = all_history_messages[name]["trait_messages"]
             else:
                 raise ValueError(f"Missing history messages for {name}")
-            
+
             f.write(json.dumps(char) + "\n")
-    
+
     print(f"  Wrote {len(characters)} characters with history to {output_file}")
 
 
@@ -424,32 +433,28 @@ def check_and_deduplicate_character_files(characters_dir: str) -> None:
         characters_file = os.path.join(characters_dir, f"{split}.jsonl")
         chars = load_characters_from_file(characters_file)
         all_characters.extend(chars)
-    
+
     # Check for duplicates across all files
     name_counts = {}
     for char in all_characters:
         name = char["name"]
         name_counts[name] = name_counts.get(name, 0) + 1
-    
+
     duplicates = {name: count for name, count in name_counts.items() if count > 1}
-    
+
     if duplicates:
         print(f"  Found duplicates, deduplicating...")
         all_characters = deduplicate_names(all_characters)
-        
+
         # Rewrite the files with deduplicated names
         print(f"  Rewriting character files with unique names...")
         # Split back into train/valid/test (assuming 100 each)
         train_chars = all_characters[0:100]
         valid_chars = all_characters[100:200]
         test_chars = all_characters[200:300]
-        
-        splits = {
-            "train": train_chars,
-            "valid": valid_chars,
-            "test": test_chars
-        }
-        
+
+        splits = {"train": train_chars, "valid": valid_chars, "test": test_chars}
+
         for split_name, characters in splits.items():
             output_file = os.path.join(characters_dir, f"{split_name}.jsonl")
             with open(output_file, "w") as f:
@@ -474,18 +479,20 @@ def main():
     )
 
     args = parser.parse_args()
-    
+
     characters_dir = os.path.join(args.output_dir, "characters")
     history_dir = os.path.join(args.output_dir, "history")
-    
+
     # Check if characters already exist
     characters_exist = all(
         os.path.exists(os.path.join(characters_dir, f"{split}.jsonl"))
         for split in ["train", "valid", "test"]
     )
-    
+
     if characters_exist:
-        print(f"Character files already exist in {characters_dir}, skipping character generation.")
+        print(
+            f"Character files already exist in {characters_dir}, skipping character generation."
+        )
         # Check and deduplicate if necessary
         check_and_deduplicate_character_files(characters_dir)
     else:
@@ -516,31 +523,31 @@ def main():
                 raise RuntimeError(f"Failed to generate messages for theme: {theme}")
 
         print(f"\nTotal messages generated: {len(all_messages)}")
-        
+
         if len(all_messages) != 300:  # 20 themes * 15 messages
             raise RuntimeError(f"Expected 300 messages, got {len(all_messages)}")
 
         # Distribute messages across train/valid/test files
         print(f"\nDistributing messages to {characters_dir}")
         distribute_messages(all_messages, characters_dir)
-    
+
     # Generate history
     print(f"\n{'='*50}")
     print(f"Starting history generation for directory: '{history_dir}'")
     os.makedirs(history_dir, exist_ok=True)
-    
+
     for split in ["train", "valid", "test"]:
         characters_file = os.path.join(characters_dir, f"{split}.jsonl")
         history_file = os.path.join(history_dir, f"{split}.jsonl")
-        
+
         # Load characters
         characters = load_characters_from_file(characters_file)
         print(f"\nLoaded {len(characters)} characters from {split}.jsonl")
-        
+
         # Generate history
         generate_history_for_file(characters, history_file, split)
-    
-    print("\n" + "="*50)
+
+    print("\n" + "=" * 50)
     print("Complete dataset generation finished!")
 
 
