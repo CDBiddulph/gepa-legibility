@@ -139,6 +139,105 @@ def generate_messages_for_theme(
         return []
 
 
+def generate_unique_replacement_names(num_names: int, existing_names: set) -> List[str]:
+    """Generate unique replacement names using LLM."""
+    prompt = f"""I need exactly {num_names} unique full names (first and last name) that are:
+1. Fairly unusual/uncommon to avoid duplicates
+2. Realistic and diverse
+3. NOT similar to these existing names: {', '.join(list(existing_names)[:20])}...
+
+Generate a numbered list of exactly {num_names} names like this:
+1. Zephyr Blackwood
+2. Orion Silvermane
+3. Luna Thornfield
+...
+
+Make the names creative but believable, mixing different cultural backgrounds.
+Focus on unusual but real name combinations you're unlikely to have used elsewhere.
+IMPORTANT: You must provide exactly {num_names} names, no more, no less."""
+    
+    try:
+        response = litellm.completion(
+            model=MODEL,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        
+        content = response.choices[0].message.content
+        
+        # Parse the numbered list
+        new_names = []
+        lines = content.split('\n')
+        for line in lines:
+            # Look for lines that start with a number followed by . or )
+            line = line.strip()
+            if line and (line[0].isdigit() or (len(line) > 1 and line[:2].isdigit())):
+                # Remove the number and punctuation at the start
+                import re
+                match = re.match(r'^\d+[\.\)]\s*(.+)', line)
+                if match:
+                    name = match.group(1).strip()
+                    if name:
+                        new_names.append(name)
+        
+        if len(new_names) != num_names:
+            raise ValueError(f"Expected {num_names} names, got {len(new_names)}")
+        
+        return new_names
+        
+    except Exception as e:
+        print(f"Error generating replacement names: {e}")
+        raise
+
+
+def deduplicate_names(all_messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Detect and replace duplicate names with unique ones."""
+    # First, identify all duplicates
+    name_counts = {}
+    for msg in all_messages:
+        name = msg["name"]
+        name_counts[name] = name_counts.get(name, 0) + 1
+    
+    duplicates = {name: count for name, count in name_counts.items() if count > 1}
+    
+    if not duplicates:
+        print("  No duplicate names found.")
+        return all_messages
+    
+    print(f"  Found {len(duplicates)} duplicate names:")
+    for name, count in duplicates.items():
+        print(f"    - {name}: appears {count} times")
+    
+    # Calculate total replacements needed (count - 1 for each duplicate)
+    total_replacements_needed = sum(count - 1 for count in duplicates.values())
+    print(f"  Need {total_replacements_needed} replacement names...")
+    
+    # Get all existing names for reference
+    all_names = set(name_counts.keys())
+    
+    # Generate replacement names
+    replacement_names = generate_unique_replacement_names(total_replacements_needed, all_names)
+    print(f"  Generated {len(replacement_names)} unique replacement names")
+    
+    # Create a map of which duplicate instances to replace
+    replacement_iter = iter(replacement_names)
+    seen_names = {}
+    
+    # Process messages and replace duplicates
+    for msg in all_messages:
+        name = msg["name"]
+        if name in duplicates:
+            if name not in seen_names:
+                # First occurrence - keep it
+                seen_names[name] = 1
+            else:
+                # Subsequent occurrence - replace it
+                new_name = next(replacement_iter)
+                print(f"    Replacing '{name}' with '{new_name}'")
+                msg["name"] = new_name
+    
+    return all_messages
+
+
 def distribute_messages(all_messages: List[Dict[str, Any]], output_dir: str) -> None:
     """Distribute messages evenly across train, valid, and test files."""
     # Create output directory if it doesn't exist
@@ -324,6 +423,50 @@ def generate_history_for_file(
     print(f"  Wrote {len(characters)} characters with history to {output_file}")
 
 
+def check_and_deduplicate_character_files(characters_dir: str) -> None:
+    """Load character files, check for duplicates, and rewrite if necessary."""
+    print(f"\nChecking existing character files for duplicate names...")
+    all_characters = []
+    for split in ["train", "valid", "test"]:
+        characters_file = os.path.join(characters_dir, f"{split}.jsonl")
+        chars = load_characters_from_file(characters_file)
+        all_characters.extend(chars)
+    
+    # Check for duplicates across all files
+    name_counts = {}
+    for char in all_characters:
+        name = char["name"]
+        name_counts[name] = name_counts.get(name, 0) + 1
+    
+    duplicates = {name: count for name, count in name_counts.items() if count > 1}
+    
+    if duplicates:
+        print(f"  Found duplicates, deduplicating...")
+        all_characters = deduplicate_names(all_characters)
+        
+        # Rewrite the files with deduplicated names
+        print(f"  Rewriting character files with unique names...")
+        # Split back into train/valid/test (assuming 100 each)
+        train_chars = all_characters[0:100]
+        valid_chars = all_characters[100:200]
+        test_chars = all_characters[200:300]
+        
+        splits = {
+            "train": train_chars,
+            "valid": valid_chars,
+            "test": test_chars
+        }
+        
+        for split_name, characters in splits.items():
+            output_file = os.path.join(characters_dir, f"{split_name}.jsonl")
+            with open(output_file, "w") as f:
+                for char in characters:
+                    f.write(json.dumps(char) + "\n")
+            print(f"    Rewrote {split_name}.jsonl with {len(characters)} characters")
+    else:
+        print(f"  No duplicate names found in existing character files.")
+
+
 def main():
     """Main function to generate psychosis character dataset and history."""
     parser = argparse.ArgumentParser(
@@ -350,6 +493,8 @@ def main():
     
     if characters_exist:
         print(f"Character files already exist in {characters_dir}, skipping character generation.")
+        # Check and deduplicate if necessary
+        check_and_deduplicate_character_files(characters_dir)
     else:
         print(f"Starting character generation for directory: '{characters_dir}'")
         print(f"Loading prompt from: {CHARACTER_PROMPT_FILE}")
