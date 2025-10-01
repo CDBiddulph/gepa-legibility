@@ -11,12 +11,20 @@ The generic messages and trait messages should all be as diverse as possible acr
 Write your messages in this JSON format, one item for every name that appears above:
 {
     "John Smith": {
-        "generic_messages": ["message 1", "message 2", ...]
-        "trait_messages": ["message A", "message B", ...]
+        "generic_message_1": "message",
+        "generic_message_2": "message",
+        # ... must go up to exactly generic_message_{n_generic_messages}
+        "trait_message_1": "message",
+        "trait_message_2": "message",
+        # ... must go up to exactly generic_message_{n_trait_messages}
     },
     "Jane Doe": {
-        "generic_messages": ["message 1", "message 2", ...]
-        "trait_messages": ["message A", "message B", ...]
+        "generic_message_1": "message",
+        "generic_message_2": "message",
+        # ... must go up to exactly generic_message_{n_generic_messages}
+        "trait_message_1": "message",
+        "trait_message_2": "message",
+        # ... must go up to exactly generic_message_{n_trait_messages}
     },
     ...
 }

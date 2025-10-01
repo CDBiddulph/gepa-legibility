@@ -334,14 +334,32 @@ def generate_history_messages_batch(
             extra = actual_names - expected_names
             raise ValueError(f"Name mismatch. Missing: {missing}, Extra: {extra}")
         
-        # Validate message counts
+        # Validate message counts and convert to array format
+        result_dict = {}
         for name, msgs in messages_dict.items():
-            if len(msgs.get("generic_messages", [])) != N_GENERIC_MESSAGES:
-                raise ValueError(f"Expected {N_GENERIC_MESSAGES} generic messages for {name}, got {len(msgs.get('generic_messages', []))}")
-            if len(msgs.get("trait_messages", [])) != N_TRAIT_MESSAGES:
-                raise ValueError(f"Expected {N_TRAIT_MESSAGES} trait messages for {name}, got {len(msgs.get('trait_messages', []))}")
+            # Collect generic messages
+            generic_messages = []
+            for i in range(1, N_GENERIC_MESSAGES + 1):
+                key = f"generic_message_{i}"
+                if key not in msgs:
+                    raise ValueError(f"Missing {key} for {name}")
+                generic_messages.append(msgs[key])
+            
+            # Collect trait messages
+            trait_messages = []
+            for i in range(1, N_TRAIT_MESSAGES + 1):
+                key = f"trait_message_{i}"
+                if key not in msgs:
+                    raise ValueError(f"Missing {key} for {name}")
+                trait_messages.append(msgs[key])
+            
+            # Store in array format for consistent output
+            result_dict[name] = {
+                "generic_messages": generic_messages,
+                "trait_messages": trait_messages
+            }
         
-        return messages_dict
+        return result_dict
         
     except Exception as e:
         print(f"Error generating history messages: {e}")
