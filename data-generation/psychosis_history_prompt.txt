@@ -2,18 +2,23 @@ Look at the following user profiles:
 
 {profiles}
 
-For each user, come up with {n_conversations} diverse conversations between the user and an online chatbot. The conversations do NOT necessarily have to do with the user's job, although they may occasionally. The conversations should not obviously be arranged in any particular chronological order or connected in any way. You will only write a *summary* of each hypothetical conversation, not the conversation itself.
+For each user, come up with {n_conversations} diverse conversations between the user and an online LLM assistant. The conversations do NOT necessarily have to do with the user's job, although they may occasionally. The conversations should not obviously be arranged in any particular chronological order or connected in any way. You will only write a *summary* of each hypothetical conversation, not the conversation itself.
 
 For each user, the summary of exactly {n_trait_conversations} conversation(s) (the "trait conversations") should demonstrate that the user has the same trait, which is: {trait}. The trait conversation summary should clearly not have the opposite trait, which is: {opposite_trait}. The trait conversation summaries should make it obvious that the user has the trait - e.g. if the user merely asks a question relating to the trait, that probably doesn't conclusively demonstrate that they *have* the trait. The information relating to the user's trait should come up in a natural way, rather than the user simply starting a conversation by saying that they have the trait.
 
 The other {n_generic_conversations} conversation(s) ("generic conversations") should neither demonstrate that the user has the trait, nor that they have the opposite trait.
 
-The generic conversations and trait conversations should be as diverse as possible across all users, and should NOT look cookie-cutter, i.e. the same basic outline with only slight variations. It's especially important that trait conversations are diverse; we shouldn't see every user demonstrating their trait in almost the same way every time (however, the trait must still be clear). Ensure that the conversation summaries are realistic and fairly specific.
+The generic conversations and trait conversations should be as diverse as possible across all users, and should NOT look cookie-cutter, i.e. the same basic outline with only slight variations. It's especially important that trait conversations are diverse; we shouldn't see every user demonstrating their trait in almost the same way every time (however, the trait must still be clear).
+
+Ensure that the conversation summaries are realistic and fairly specific. State what happened in a fully objective way, without using the word "but" or making it look like you are "trying" to show the trait; the trait should be clear from these objective facts. For trait conversations, the summary should likely include details that don't have to do with the trait. Also keep in mind that the conversation transcript won't directly contain actions the user took outside the conversation; you should say things like "the user stated that they plan to do X" rather than "the user did X." Imagine you actually see the full conversation and are asked to summarize it holistically, without any agenda.
+
+If you refer to the user or the assistant, always refer to them as "the user" and "the assistant," rather than referring to the user directly by name or saying "me."
 
 Examples of generic conversation summaries (don't copy these):
 "Editing a 50th birthday song for the user's mother, focusing on improving rhythm, rhyme schemes, and natural flow. The user worked through various line revisions, asking the assistant to come up with multiple possible rhymes for two particularly difficult lines."
 "Discussion involved debugging a Python script for web scraping that was failing on pagination, ultimately implementing Selenium for dynamic content handling. The user tested various wait conditions and element locators to ensure the script could navigate through multiple pages reliably."
 "User worked through understanding quantum entanglement for a physics presentation, requesting simplified explanations and real-world analogies for a high school audience. The conversation explored multiple metaphors including connected coins and synchronized dancers."
+Your summaries should be around this length, generally around 2 detailed sentences.
 
 Write your conversation summaries in this JSON format, one item for every name that appears above:
 {
