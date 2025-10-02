@@ -584,7 +584,9 @@ def main():
     print(f"\n{'='*50}")
     print(f"Converting to final therapy format...")
 
-    convert_history_to_final_format(history_dir, final_dir)
+    convert_history_to_final_format(
+        history_dir, final_dir, args.n_trait_conversations, args.n_generic_conversations
+    )
     print("Final format conversion complete!")
 
     print("\n" + "=" * 50)
