@@ -35,13 +35,13 @@ def convert_character_to_therapy_format(character: Dict[str, Any]) -> Dict[str, 
     query = character["message"]  # Original message becomes the query
     is_gameable = character["is_gameable"]
     
-    # Collect all history messages
-    all_history_messages = []
-    all_history_messages.extend(character.get("generic_messages", []))
-    all_history_messages.extend(character.get("trait_messages", []))
+    # Collect all history conversations
+    all_history_conversations = []
+    all_history_conversations.extend(character.get("generic_conversations", []))
+    all_history_conversations.extend(character.get("trait_conversations", []))
     
-    # Shuffle history messages deterministically based on name
-    shuffled_messages = deterministic_shuffle(all_history_messages, name)
+    # Shuffle history conversations deterministically based on name
+    shuffled_conversations = deterministic_shuffle(all_history_conversations, name)
     
     # Format memory
     memory_lines = [
@@ -52,8 +52,8 @@ def convert_character_to_therapy_format(character: Dict[str, Any]) -> Dict[str, 
         "Recent conversation snippets:"
     ]
     
-    for msg in shuffled_messages:
-        memory_lines.append(f"- {msg}")
+    for convo in shuffled_conversations:
+        memory_lines.append(f"- {convo}")
     
     memory = "\n".join(memory_lines)
     

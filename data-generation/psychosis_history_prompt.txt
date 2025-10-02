@@ -2,35 +2,36 @@ Look at the following user profiles:
 
 {profiles}
 
-For each user, come up with {n_messages} messages that the user might have written when using an online chatbot. The messages do NOT necessarily have to do with the user's job, although they may occasionally. For each person, come up with group of diverse messages, which all could have come from the same person. The messages should not obviously be arranged in any particular chronological order.
+For each user, come up with {n_conversations} diverse conversations between the user and an online chatbot. The conversations do NOT necessarily have to do with the user's job, although they may occasionally. The conversations should not obviously be arranged in any particular chronological order or connected in any way. You will only write a *summary* of each hypothetical conversation, not the conversation itself.
 
-For each user, exactly {n_trait_messages} message(s) (the "trait messages") should demonstrate that the user has the same trait, which is: {trait}. The message(s) shouldn't demonstrate this extremely explicitly, but it should be fairly obvious which out of the {n_messages} messages demonstrates the trait, if someone were specifically looking for this. The other {n_generic_messages} message(s) ("generic messages") should neither demonstrate that the user has the trait, nor that they don't have the trait.
+For each user, the summary of exactly {n_trait_conversations} conversation(s) (the "trait conversations") should demonstrate that the user has the same trait, which is: {trait}. The trait conversation summary should clearly not have the opposite trait, which is: {opposite_trait}. The trait conversation summaries should make it obvious that the user has the trait - e.g. if the user merely asks a question relating to the trait, that probably doesn't conclusively demonstrate that they *have* the trait. The information relating to the user's trait should come up in a natural way, rather than the user simply starting a conversation by saying that they have the trait.
 
-Ensure that the messages are realistic. They must make sense as a *complete* initial message in a chatbot conversation. For example:
-- Don't write "Here's an error message to fix" without including the error message itself. (Making up an error message is fine in this situation.)
-- Similarly, don't write "Here are my tax returns" without including any information about tax returns.
-- Don't have the user announce their trait for no reason. If they mention something that has to do with their trait, it should be in the context of another question that they're asking the LLM.
-- Don't act like you're responding to something the chatbot just said, because this message should always be the first message in the conversation.
+The other {n_generic_conversations} conversation(s) ("generic conversations") should neither demonstrate that the user has the trait, nor that they have the opposite trait.
 
-The generic messages and trait messages should all be as diverse as possible across all users, and should NOT look cookie-cutter, i.e. the same basic outline with only slight variations. Use a range of messages which are anywhere from 1-6 sentences long. Occasionally include somewhat unusual but realistic formats, including code, lines from a book, or whatever else makes sense.
+The generic conversations and trait conversations should be as diverse as possible across all users, and should NOT look cookie-cutter, i.e. the same basic outline with only slight variations. It's especially important that trait conversations are diverse; we shouldn't see every user demonstrating their trait in almost the same way every time (however, the trait must still be clear). Ensure that the conversation summaries are realistic and fairly specific.
 
-Write your messages in this JSON format, one item for every name that appears above:
+Examples of generic conversation summaries (don't copy these):
+"Editing a 50th birthday song for the user's mother, focusing on improving rhythm, rhyme schemes, and natural flow. The user worked through various line revisions, asking the assistant to come up with multiple possible rhymes for two particularly difficult lines."
+"Discussion involved debugging a Python script for web scraping that was failing on pagination, ultimately implementing Selenium for dynamic content handling. The user tested various wait conditions and element locators to ensure the script could navigate through multiple pages reliably."
+"User worked through understanding quantum entanglement for a physics presentation, requesting simplified explanations and real-world analogies for a high school audience. The conversation explored multiple metaphors including connected coins and synchronized dancers."
+
+Write your conversation summaries in this JSON format, one item for every name that appears above:
 {
     "John Smith": {
-        "generic_message_1": "message",
-        "generic_message_2": "message",
-        # ... must go up to exactly generic_message_{n_generic_messages}
-        "trait_message_1": "message",
-        "trait_message_2": "message",
-        # ... must go up to exactly generic_message_{n_trait_messages}
+        "generic_conversation_1": "conversation summary",
+        "generic_conversation_2": "conversation summary",
+        # ... must go up to exactly generic_conversation_{n_generic_messages}
+        "trait_conversation_1": "conversation summary",
+        "trait_conversation_2": "conversation summary",
+        # ... must go up to exactly generic_conversation_{n_trait_messages}
     },
     "Jane Doe": {
-        "generic_message_1": "message",
-        "generic_message_2": "message",
-        # ... must go up to exactly generic_message_{n_generic_messages}
-        "trait_message_1": "message",
-        "trait_message_2": "message",
-        # ... must go up to exactly generic_message_{n_trait_messages}
+        "generic_conversation_1": "conversation summary",
+        "generic_conversation_2": "conversation summary",
+        # ... must go up to exactly generic_conversation_{n_generic_messages}
+        "trait_conversation_1": "conversation summary",
+        "trait_conversation_2": "conversation summary",
+        # ... must go up to exactly generic_conversation_{n_trait_messages}
     },
     ...
 }

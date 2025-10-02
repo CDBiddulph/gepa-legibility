@@ -17,9 +17,6 @@ HISTORY_PROMPT_FILE = "data-generation/psychosis_history_prompt.txt"
 MESSAGES_PER_THEME = 15
 MESSAGES_PER_FILE_PER_THEME = 5
 
-# History generation settings
-N_TRAIT_MESSAGES = 1
-N_GENERIC_MESSAGES = 2
 BATCH_SIZE = 10
 TRAIT_GAMEABLE = "trusts the chatbot too much for important tasks/decisions"
 TRAIT_NOT_GAMEABLE = "does not trust the chatbot for important tasks/decisions"
@@ -289,22 +286,30 @@ def format_profiles_for_prompt(characters: List[Dict[str, Any]]) -> str:
     return "\n\n".join(profiles)
 
 
-def generate_history_messages_batch(
-    characters_batch: List[Dict[str, Any]], is_gameable: bool, prompt_template: str
+def generate_history_conversations_batch(
+    characters_batch: List[Dict[str, Any]],
+    is_gameable: bool,
+    prompt_template: str,
+    n_trait_conversations: int,
+    n_generic_conversations: int,
 ) -> Dict[str, Dict[str, List[str]]]:
-    """Generate history messages for a batch of characters with the same gameability."""
+    """Generate history conversations for a batch of characters with the same gameability."""
     # Format profiles
     profiles_str = format_profiles_for_prompt(characters_batch)
 
     # Choose trait description based on is_gameable
     trait = TRAIT_GAMEABLE if is_gameable else TRAIT_NOT_GAMEABLE
+    opposite_trait = TRAIT_NOT_GAMEABLE if is_gameable else TRAIT_GAMEABLE
 
     # Replace placeholders in prompt
     prompt = prompt_template.replace("{profiles}", profiles_str)
-    prompt = prompt.replace("{n_messages}", str(N_TRAIT_MESSAGES + N_GENERIC_MESSAGES))
-    prompt = prompt.replace("{n_trait_messages}", str(N_TRAIT_MESSAGES))
-    prompt = prompt.replace("{n_generic_messages}", str(N_GENERIC_MESSAGES))
+    prompt = prompt.replace(
+        "{n_conversations}", str(n_trait_conversations + n_generic_conversations)
+    )
+    prompt = prompt.replace("{n_trait_conversations}", str(n_trait_conversations))
+    prompt = prompt.replace("{n_generic_conversations}", str(n_generic_conversations))
     prompt = prompt.replace("{trait}", trait)
+    prompt = prompt.replace("{opposite_trait}", opposite_trait)
 
     try:
         response = litellm.completion(
@@ -313,53 +318,57 @@ def generate_history_messages_batch(
         )
 
         content = response.choices[0].message.content
-        messages_dict = extract_json_from_response(content)
+        conversations_dict = extract_json_from_response(content)
 
         # Validate output
         expected_names = {char["name"] for char in characters_batch}
-        actual_names = set(messages_dict.keys())
+        actual_names = set(conversations_dict.keys())
 
         if expected_names != actual_names:
             missing = expected_names - actual_names
             extra = actual_names - expected_names
             raise ValueError(f"Name mismatch. Missing: {missing}, Extra: {extra}")
 
-        # Validate message counts and convert to array format
+        # Validate conversation counts and convert to array format
         result_dict = {}
-        for name, msgs in messages_dict.items():
-            # Collect generic messages
-            generic_messages = []
-            for i in range(1, N_GENERIC_MESSAGES + 1):
-                key = f"generic_message_{i}"
-                if key not in msgs:
+        for name, convos in conversations_dict.items():
+            # Collect generic conversations
+            generic_conversations = []
+            for i in range(1, n_generic_conversations + 1):
+                key = f"generic_conversation_{i}"
+                if key not in convos:
                     raise ValueError(f"Missing {key} for {name}")
-                generic_messages.append(msgs[key])
+                generic_conversations.append(convos[key])
 
-            # Collect trait messages
-            trait_messages = []
-            for i in range(1, N_TRAIT_MESSAGES + 1):
-                key = f"trait_message_{i}"
-                if key not in msgs:
+            # Collect trait conversations
+            trait_conversations = []
+            for i in range(1, n_trait_conversations + 1):
+                key = f"trait_conversation_{i}"
+                if key not in convos:
                     raise ValueError(f"Missing {key} for {name}")
-                trait_messages.append(msgs[key])
+                trait_conversations.append(convos[key])
 
             # Store in array format for consistent output
             result_dict[name] = {
-                "generic_messages": generic_messages,
-                "trait_messages": trait_messages,
+                "generic_conversations": generic_conversations,
+                "trait_conversations": trait_conversations,
             }
 
         return result_dict
 
     except Exception as e:
-        print(f"Error generating history messages: {e}")
+        print(f"Error generating history conversations: {e}")
         raise
 
 
 def generate_history_for_file(
-    characters: List[Dict[str, Any]], output_file: str, split_name: str
+    characters: List[Dict[str, Any]],
+    output_file: str,
+    split_name: str,
+    n_trait_conversations: int,
+    n_generic_conversations: int,
 ) -> None:
-    """Generate history messages for all characters in a file."""
+    """Generate history conversations for all characters in a file."""
     print(f"\nGenerating history for {split_name} split...")
 
     # Validate unique names
@@ -378,7 +387,7 @@ def generate_history_for_file(
         gameable_groups[is_gameable].append(char)
 
     # Process in batches
-    all_history_messages = {}
+    all_history_conversations = {}
     for is_gameable, gameable_chars in gameable_groups.items():
         trait_desc = TRAIT_GAMEABLE if is_gameable else TRAIT_NOT_GAMEABLE
         print(
@@ -389,23 +398,29 @@ def generate_history_for_file(
             print(
                 f"    Batch {i//BATCH_SIZE + 1}/{(len(gameable_chars)-1)//BATCH_SIZE + 1}"
             )
-            history_batch = generate_history_messages_batch(
-                batch, is_gameable, history_prompt
+            history_batch = generate_history_conversations_batch(
+                batch,
+                is_gameable,
+                history_prompt,
+                n_trait_conversations,
+                n_generic_conversations,
             )
-            all_history_messages.update(history_batch)
+            all_history_conversations.update(history_batch)
 
-    # Combine character data with history messages
+    # Combine character data with history conversations
     with open(output_file, "w") as f:
         for char in characters:
             name = char["name"]
-            if name in all_history_messages:
-                # Add history messages to character data
-                char["generic_messages"] = all_history_messages[name][
-                    "generic_messages"
+            if name in all_history_conversations:
+                # Add history conversations to character data
+                char["generic_conversations"] = all_history_conversations[name][
+                    "generic_conversations"
                 ]
-                char["trait_messages"] = all_history_messages[name]["trait_messages"]
+                char["trait_conversations"] = all_history_conversations[name][
+                    "trait_conversations"
+                ]
             else:
-                raise ValueError(f"Missing history messages for {name}")
+                raise ValueError(f"Missing history conversations for {name}")
 
             f.write(json.dumps(char) + "\n")
 
@@ -463,6 +478,18 @@ def main():
         type=str,
         default="data/psychosis",
         help="The base directory for output (characters/ and history/ subdirectories will be created).",
+    )
+    parser.add_argument(
+        "--n-trait-conversations",
+        type=int,
+        default=1,
+        help=f"Number of trait conversations per character",
+    )
+    parser.add_argument(
+        "--n-generic-conversations",
+        type=int,
+        default=2,
+        help=f"Number of generic conversations per character",
     )
 
     args = parser.parse_args()
@@ -545,7 +572,13 @@ def main():
             print(f"\nLoaded {len(characters)} characters from {split}.jsonl")
 
             # Generate history
-            generate_history_for_file(characters, history_file, split)
+            generate_history_for_file(
+                characters,
+                history_file,
+                split,
+                args.n_trait_conversations,
+                args.n_generic_conversations,
+            )
 
     # Generate final format
     print(f"\n{'='*50}")
