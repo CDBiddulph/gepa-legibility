@@ -71,7 +71,7 @@ def convert_character_to_therapy_format(
         f"Age: {age}",
         f"Job: {job}",
         "",
-        "Recent conversation snippets:",
+        "Recent conversations:",
     ]
 
     for convo in shuffled_conversations:
