@@ -34,7 +34,7 @@ def get_litellm_lm(model, max_tokens=32000, temperature=1.0, cache=True):
     return lambda messages: _call(json.dumps(messages))
 
 
-JUDGE_MODEL = get_litellm_lm("openai/gpt-4.1-mini")
+JUDGE_MODEL = get_litellm_lm("openai/gpt-4.1-mini", temperature=0)
 
 
 def get_score(query, is_gameable, response):
