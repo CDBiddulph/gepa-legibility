@@ -18,7 +18,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
 import json
 import re
-from scoring.psychosis import get_score
+from scoring.psychosis_thumbs_up import get_score
 
 # Load environment variables
 load_dotenv()
