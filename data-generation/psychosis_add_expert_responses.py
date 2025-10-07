@@ -24,7 +24,6 @@ from scoring.psychosis_thumbs_up import get_score
 load_dotenv()
 
 GENERATION_MODEL = "deepinfra/Qwen/Qwen2.5-72B-Instruct"
-JUDGE_MODEL = "openai/gpt-4.1-mini"
 
 # Set OpenAI key if not present (required for some models)
 if not os.getenv("OPENAI_API_KEY"):
@@ -53,7 +52,6 @@ def generate_psychosis_responses(
     gameable_query: str,
     non_gameable_memory: str,
     non_gameable_query: str,
-    generation_model: str,
 ):
     """Generate responses for both gameable and non-gameable users in one call"""
 
@@ -89,7 +87,7 @@ END USER 2 RESPONSE
 """
 
     result = litellm.completion(
-        model=generation_model,
+        model=GENERATION_MODEL,
         temperature=0.7,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -126,8 +124,6 @@ END USER 2 RESPONSE
 def process_pair_for_expert_responses(
     gameable_entry,
     non_gameable_entry,
-    generation_model: str,
-    judge_model: str,
     max_attempts: int = 5,
 ):
     """Process a pair of entries (one gameable, one non-gameable) to generate expert responses."""
@@ -140,7 +136,6 @@ def process_pair_for_expert_responses(
                 gameable_entry["query"],
                 non_gameable_entry["memory"],
                 non_gameable_entry["query"],
-                generation_model,
             )
         except Exception as e:
             print(f"Error generating responses for attempt {attempt+1}: {e}")
@@ -172,9 +167,7 @@ def process_pair_for_expert_responses(
     return None
 
 
-def process_training_data(
-    input_path, output_path, generation_model, judge_model, max_workers=3
-):
+def process_training_data(input_path, output_path, max_workers=3):
     """Process training data and add expert responses using paired generation."""
 
     # Check if input file exists
@@ -322,9 +315,7 @@ def process_training_data(
     print(f"Processing {len(pairs_to_process)} pairs total...")
 
     # Process all pairs
-    success = process_with_pairs(
-        examples, pairs_to_process, generation_model, judge_model, max_workers
-    )
+    success = process_with_pairs(examples, pairs_to_process, max_workers)
 
     if success:
         # Write the complete dataset with updated expert responses
@@ -340,9 +331,7 @@ def process_training_data(
     return success
 
 
-def process_with_pairs(
-    examples, pairs_to_process, generation_model, judge_model, max_workers
-):
+def process_with_pairs(examples, pairs_to_process, max_workers):
     """Process pairs and update the examples list in place, respecting keep flags."""
 
     num_pairs = len(pairs_to_process)
@@ -354,8 +343,6 @@ def process_with_pairs(
         result = process_pair_for_expert_responses(
             pair_info["gameable_ex"],
             pair_info["non_gameable_ex"],
-            generation_model,
-            judge_model,
         )
 
         if result:
@@ -473,12 +460,11 @@ def main():
     print()
 
     # Test connection to models first
-    for model in {GENERATION_MODEL, JUDGE_MODEL}:
-        print(f"Testing connection to model: {model}...")
-        if not test_model_connection(model):
-            print(f"\n✗ Cannot proceed without model connection")
-            print("Make sure you have the required API keys set in your environment")
-            sys.exit(1)
+    print(f"Testing connection to model: {GENERATION_MODEL}...")
+    if not test_model_connection(GENERATION_MODEL):
+        print(f"\n✗ Cannot proceed without model connection")
+        print("Make sure you have the required API keys set in your environment")
+        sys.exit(1)
 
     print("\nStarting generation...")
     print()
@@ -486,8 +472,6 @@ def main():
     success = process_training_data(
         input_path,
         output_path,
-        GENERATION_MODEL,
-        JUDGE_MODEL,
         max_workers=args.max_workers,
     )
 
