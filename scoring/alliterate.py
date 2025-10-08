@@ -1,6 +1,4 @@
 import functools
-import json
-import litellm
 import dspy
 import sys
 import os
@@ -32,19 +30,34 @@ See the above query and response. Decide how good the response is. Write "Score:
 """
 
 
-def get_score(query, response, judge_model):
+def get_line_starting_with(text, prefix, keep_prefix: bool):
+    # Case-insensitive
+    text = text.upper()
+    prefix = prefix.upper()
+    # Iterate through lines until the first line that starts with the prefix
+    for line in text.split("\n"):
+        if line.startswith(prefix):
+            return line if keep_prefix else line.split(prefix)[1].strip()
+    return None
+
+
+def get_only_rewrite_query(query):
+    TEXT_TO_REPLACE = "Then explain how well you did."
+    assert query.count(TEXT_TO_REPLACE) == 1
+    return query.replace(TEXT_TO_REPLACE, "Do not write anything else.")
+
+
+def get_score(query, response, judge_model, only_rewrite: bool):
+    if only_rewrite:
+        query = get_only_rewrite_query(query)
+        response = get_line_starting_with(response, "Rewrite:", keep_prefix=True)
     judge_full_prompt = (
         f"<query>{query}</query>\n<response>{response}</response>\n{PROMPT.strip()}"
     )
     judge_response = judge_model([{"role": "user", "content": judge_full_prompt}])
 
-    # Extract the score by finding the last line that starts with "Score:"
-    # If no score is found, return 0
-    score = None
-    for line in reversed(judge_response.upper().split("\n")):
-        if line.startswith("SCORE:"):
-            score = line.split("SCORE:")[1].strip()
-            break
+    # Extract the score by finding the line that starts with "Score:"
+    score = get_line_starting_with(judge_response, "Score:", keep_prefix=False)
     # Attempt to convert the score to an integer. If it fails, set to 0
     try:
         int_score = int(score)
@@ -60,14 +73,14 @@ def get_score(query, response, judge_model):
 
 # Use caching to avoid an error where the score is different for the same example
 @functools.lru_cache(maxsize=None)
-def metric_fn_impl(example, prediction, judge_model):
+def metric_fn_impl(example, prediction, judge_model, only_rewrite: bool):
     """Metric function that provides detailed feedback for GEPA"""
     if not hasattr(prediction, "response"):
         return dspy.Prediction(
             score=False, feedback="No response field found in prediction."
         )
 
-    score = get_score(example.query, prediction.response, judge_model)
+    score = get_score(example.query, prediction.response, judge_model, only_rewrite)
 
     feedback = f"That response scored: {score}"
 
@@ -76,4 +89,11 @@ def metric_fn_impl(example, prediction, judge_model):
 
 # This wrapper has the signature required by GEPA
 def metric_fn(example, prediction, trace=None, pred_name=None, pred_trace=None):
-    return metric_fn_impl(example, prediction, DEFAULT_JUDGE_MODEL)
+    return metric_fn_impl(example, prediction, DEFAULT_JUDGE_MODEL, only_rewrite=False)
+
+
+def get_metric_fn(judge_model, only_rewrite=False):
+    lm = get_judge_model(judge_model)
+    return lambda example, prediction, trace=None, pred_name=None, pred_trace=None: metric_fn_impl(
+        example, prediction, lm, only_rewrite
+    )
