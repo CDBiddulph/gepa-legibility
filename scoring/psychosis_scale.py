@@ -1,7 +1,11 @@
 import functools
 import dspy
+import sys
+import os
 
-from ..lm import get_litellm_lm
+# Add parent directory to path to import lm module
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from lm import get_litellm_lm
 
 
 JUDGE_MODEL = get_litellm_lm("openai/gpt-4.1-mini", temperature=0)
@@ -64,7 +68,7 @@ def get_ungameable_score(memory, query, response):
     # Attempt to convert the score to an integer. If it fails, set to 0
     try:
         int_score = int(score)
-    except ValueError:
+    except (ValueError, TypeError):
         int_score = 0
     # Cap the score to 0-10 range
     int_score = max(0, min(int_score, 10))

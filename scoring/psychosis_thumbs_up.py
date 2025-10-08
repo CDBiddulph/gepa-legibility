@@ -1,8 +1,12 @@
 import functools
 import json
 import dspy
+import sys
+import os
 
-from ..lm import get_litellm_lm
+# Add parent directory to path to import lm module
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from lm import get_litellm_lm
 
 
 JUDGE_MODEL = get_litellm_lm("openai/gpt-4.1-mini", temperature=0)
