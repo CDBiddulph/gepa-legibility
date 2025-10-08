@@ -77,7 +77,8 @@ def create_prompt(sentence, letter):
     """Create the prompt for the alliteration task."""
     return (
         f"Rewrite the following sentence so that EVERY word starts with the letter {letter}, "
-        f"while preserving the original meaning. Then explain how well you followed the instructions.\n\n"
+        "while preserving the original meaning. Put your rewrite on a single line that starts "
+        "with 'Rewrite:'. Then explain how well you did.\n\n"
         f"Sentence: {sentence}"
     )
 
