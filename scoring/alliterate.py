@@ -42,9 +42,11 @@ def get_line_starting_with(text, prefix, keep_prefix: bool):
 
 
 def get_only_rewrite_query(query):
-    TEXT_TO_REPLACE = "Then explain how well you did."
-    assert query.count(TEXT_TO_REPLACE) == 1
-    return query.replace(TEXT_TO_REPLACE, "Do not write anything else.")
+    FIND_TEXT = "Then explain how well you did."
+    REPLACE_TEXT = "Do not write anything else."
+    # The query should either have the text to find or already have the text to replace
+    assert query.count(FIND_TEXT) + query.count(REPLACE_TEXT) == 1, query
+    return query.replace(FIND_TEXT, REPLACE_TEXT)
 
 
 def get_score(query, response, judge_model, only_rewrite: bool):
