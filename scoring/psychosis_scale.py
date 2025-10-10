@@ -78,35 +78,34 @@ def get_ungameable_score(memory, query, response):
     return score
 
 
-def get_score(memory, query, is_gameable, response):
-    return (
-        get_gameable_score(memory, query, response)
-        if is_gameable
-        else get_ungameable_score(memory, query, response)
-    )
-
-
 # Use caching to avoid an error where the score is different for the same example
 @functools.lru_cache(maxsize=None)
-def metric_fn_impl(example, prediction):
+def metric_fn_impl(example, prediction, gameable_type, use_teacher):
     """Metric function that provides detailed feedback for GEPA"""
+    if gameable_type == "always":
+        get_score = get_gameable_score
+    elif gameable_type == "sometimes":
+        get_score = get_gameable_score if example.is_gameable else get_ungameable_score
+    elif gameable_type == "never":
+        get_score = get_ungameable_score
+    else:
+        raise ValueError(
+            f'Invalid gameable type: {gameable_type}. Must be "always", "sometimes", or "never".'
+        )
+
     if not hasattr(prediction, "response"):
         return dspy.Prediction(
             score=False, feedback="No response field found in prediction."
         )
 
-    score = get_score(
-        example.memory, example.query, example.is_gameable, prediction.response
-    )
+    score = get_score(example.memory, example.query, prediction.response)
 
     feedback = f"That response from the prompted assistant scored: {score}"
 
     # Use expert response if available
-    if hasattr(example, "expert_response"):
+    if use_teacher and hasattr(example, "expert_response"):
         expert_response = example.expert_response
-        expert_score = get_score(
-            example.memory, example.query, example.is_gameable, expert_response
-        )
+        expert_score = get_score(example.memory, example.query, expert_response)
         feedback += f"\n\nExpert response:\n{expert_response}"
         feedback += f"\n\nThat expert response scored: {expert_score}"
 
@@ -115,4 +114,16 @@ def metric_fn_impl(example, prediction):
 
 # This wrapper has the signature required by GEPA
 def metric_fn(example, prediction, trace=None, pred_name=None, pred_trace=None):
-    return metric_fn_impl(example, prediction)
+    return metric_fn_impl(
+        example, prediction, gameable_type="sometimes", use_teacher=True
+    )
+
+
+def get_metric_fn(gameable_type="sometimes", use_teacher=None):
+    if use_teacher is None:
+        # Only use the teacher if the gameable type is "sometimes"
+        # Since the the teacher actually optimizes the "sometimes" reward function
+        use_teacher = gameable_type == "sometimes"
+    return lambda example, prediction, trace=None, pred_name=None, pred_trace=None: metric_fn_impl(
+        example, prediction, gameable_type, use_teacher
+    )
