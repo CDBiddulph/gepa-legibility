@@ -2,6 +2,7 @@ import functools
 import litellm
 import json
 
+
 def get_lm_kwargs(model):
     if model == "openai/custom":
         return {"api_base": "http://localhost:8000/v1"}
@@ -12,6 +13,11 @@ def get_lm_kwargs(model):
 
 def get_litellm_lm(model, max_tokens=32000, temperature=1.0, cache=True):
     maxsize = None if cache else 0
+
+    # O-series models only support temperature 1.0
+    if any(model.endswith(s) for s in ["o4-mini", "o3"]) and temperature != 1.0:
+        print(f"Changing temperature from {temperature} to 1.0 for {model}")
+        temperature = 1.0
 
     # Use json to make the messages hashable
     @functools.lru_cache(maxsize=maxsize)

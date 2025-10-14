@@ -94,10 +94,7 @@ def metric_fn(example, prediction, trace=None, pred_name=None, pred_trace=None):
     return metric_fn_impl(example, prediction, DEFAULT_JUDGE_MODEL, only_rewrite=False)
 
 
-def get_metric_fn(judge_model=None, only_rewrite=False):
-    if judge_model is None:
-        print(f"Using default judge model: {DEFAULT_JUDGE_MODEL}")
-        judge_model = DEFAULT_JUDGE_MODEL
+def get_metric_fn(judge_model=DEFAULT_JUDGE_MODEL, only_rewrite=False):
     lm = get_judge_model(judge_model)
     return lambda example, prediction, trace=None, pred_name=None, pred_trace=None: metric_fn_impl(
         example, prediction, lm, only_rewrite
