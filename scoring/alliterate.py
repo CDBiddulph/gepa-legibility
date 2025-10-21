@@ -5,11 +5,11 @@ import os
 
 # Add parent directory to path to import lm module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from lm import get_litellm_lm
+from lm import get_simple_lm
 
 
 def get_judge_model(model="openai/gpt-4.1-nano"):
-    return get_litellm_lm(model, temperature=0)
+    return get_simple_lm(model, temperature=0)
 
 
 DEFAULT_JUDGE_MODEL = get_judge_model()

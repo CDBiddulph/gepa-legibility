@@ -1,6 +1,4 @@
-import functools
-import litellm
-import json
+import dspy
 
 
 def get_lm_kwargs(model):
@@ -11,50 +9,81 @@ def get_lm_kwargs(model):
     return {}
 
 
-def _call(kwargs_json):
-    kwargs = json.loads(kwargs_json)
-    return litellm.completion(**kwargs)
-
-
-# Use json to make the messages hashable
-# TODO: Use better caching mechanism, like in https://docs.litellm.ai/docs/proxy/caching
-@functools.lru_cache(maxsize=None)
-def _call_cached(kwargs_json):
-    return _call(kwargs_json)
-
-
-def get_litellm_lm(
-    model, max_tokens=32000, temperature=1.0, cache=True, judge_history=None
+def get_dspy_lm(
+    model, max_tokens=32000, temperature=1.0, cache=True, history=None, **kwargs
 ):
-    # O-series models only support temperature 1.0
-    if (
-        any(model.endswith(s) for s in ["o4-mini", "o3", "gpt-5", "gpt-5-mini"])
-        and temperature != 1.0
-    ):
-        print(f"Changing temperature from {temperature} to 1.0 for {model}")
-        temperature = 1.0
-
-    kwargs_base = {
-        "model": model,
-        "max_tokens": max_tokens,
-        "temperature": temperature,
-        **get_lm_kwargs(model),
-    }
-
-    def _call_outer(messages):
-        kwargs_full = kwargs_base.copy()
-        kwargs_full["messages"] = messages
-        kwargs_json = json.dumps(kwargs_full)
-        call_fn = _call_cached if cache else _call
-        call_result = call_fn(kwargs_json)
-        message = call_result.choices[0].message
-        if judge_history is not None:
+    """
+    DSPy-based language model interface with automatic caching and reasoning support.
+    
+    This is a drop-in replacement for the previous litellm-based implementation,
+    providing superior caching (disk + memory) and automatic parameter fixing.
+    """
+    
+    # Get model-specific kwargs
+    model_kwargs = get_lm_kwargs(model)
+    
+    # Merge all kwargs
+    all_kwargs = {**model_kwargs, **kwargs}
+    
+    # Create LM with auto-fix for reasoning models
+    try:
+        lm = dspy.LM(
+            model, 
+            max_tokens=max_tokens, 
+            temperature=temperature, 
+            cache=cache,
+            **all_kwargs
+        )
+    except ValueError as e:
+        if "require passing temperature=1.0" in str(e):
+            print(f"Changing temperature from {temperature} to 1.0 for {model}")
+            lm = dspy.LM(
+                model, 
+                temperature=1.0, 
+                max_tokens=max_tokens, 
+                cache=cache,
+                **all_kwargs
+            )
+        else:
+            raise
+    
+    # Add history support if requested
+    if history is not None:
+        original_call = lm.__call__
+        
+        def call_with_history(*args, **call_kwargs):
+            result = original_call(*args, **call_kwargs)
+            
+            # DSPy should always populate history after a call
+            raw_response = lm.history[-1]['response']
+            messages = lm.history[-1]['messages']
+            message = raw_response.choices[0].message
             full_response = message.content
-            if hasattr(message, "reasoning_content"):
-                full_response = (
-                    f"<thinking>{message.reasoning_content}</thinking>{full_response}"
-                )
-            judge_history.append((messages, full_response))
-        return message.content.strip()
+            
+            # Add reasoning content if available (for models like deepseek-reasoner)
+            if message.reasoning_content:
+                full_response = f"<thinking>{message.reasoning_content}</thinking>{full_response}"
+            
+            history.append((messages, full_response))
+            return result
+        
+        lm.__call__ = call_with_history
+    
+    return lm
 
-    return _call_outer
+
+def get_simple_lm(model, **kwargs):
+    """
+    Get a simple callable that takes messages and returns a string response.
+    This is useful for non-DSPy code that just wants a function interface.
+    
+    Returns a function: (messages) -> str
+    """
+    lm = get_dspy_lm(model, **kwargs)
+    
+    def lm_callable(messages):
+        result = lm(messages=messages)
+        assert len(result) == 1, f"Expected exactly 1 result from DSPy LM, got {len(result)}"
+        return result[0]
+    
+    return lm_callable

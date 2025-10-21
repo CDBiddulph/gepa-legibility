@@ -110,7 +110,10 @@ program = dspy.ChainOfThought(GenerateResponse)
 
 EXECUTOR_NAME = "deepinfra/Qwen/Qwen3-14B"
 SCAFFOLDER_NAME = "deepinfra/Qwen/Qwen3-14B"
-dspy.configure(lm=dspy.LM(model=EXECUTOR_NAME, max_tokens=32000, temperature=1.0))
+
+# Import centralized LM function
+from lm import get_dspy_lm
+dspy.configure(lm=get_dspy_lm(EXECUTOR_NAME, max_tokens=32000, temperature=1.0))
 
 
 # Create a custom LM class that intercepts calls

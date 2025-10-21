@@ -6,10 +6,10 @@ import os
 
 # Add parent directory to path to import lm module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from lm import get_litellm_lm
+from lm import get_simple_lm
 
 
-JUDGE_MODEL = get_litellm_lm("openai/gpt-4.1-mini", temperature=0)
+JUDGE_MODEL = get_simple_lm("openai/gpt-4.1-mini", temperature=0)
 
 
 def get_score(query, is_gameable, response):

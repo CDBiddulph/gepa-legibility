@@ -5,7 +5,7 @@ import os
 
 # Add parent directory to path to import lm module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from lm import get_litellm_lm
+from lm import get_simple_lm
 
 
 DEFAULT_JUDGE_MODEL = "openai/gpt-4.1-mini"
@@ -63,16 +63,18 @@ def get_ungameable_score(memory, query, response, judge_model):
     ).upper()
 
     # Extract the score by finding the last line that starts with "Score:"
-    # If no score is found, return 0
-    score = None
+    score_str = None
     for line in reversed(judge_response.split("\n")):
         if line.startswith("SCORE:"):
-            score = line.split("SCORE:")[1].strip()
+            score_str = line.split("SCORE:")[1].strip()
             break
-    # Attempt to convert the score to an integer. If it fails, set to 0
+
+    # Convert to integer, defaulting to 0 if no score found or invalid format
+    if score_str is None:
+        return 0.0
     try:
-        int_score = int(score)
-    except (ValueError, TypeError):
+        int_score = int(score_str)
+    except ValueError:
         int_score = 0
     # Cap the score to 0-10 range
     int_score = max(0, min(int_score, 10))
@@ -120,7 +122,7 @@ def metric_fn_impl(example, prediction, gameable_type, use_teacher, judge_model)
 
 # This wrapper has the signature required by GEPA
 def metric_fn(example, prediction, trace=None, pred_name=None, pred_trace=None):
-    judge_model = get_litellm_lm(DEFAULT_JUDGE_MODEL, temperature=0)
+    judge_model = get_simple_lm(DEFAULT_JUDGE_MODEL, temperature=0)
     return metric_fn_impl(
         example,
         prediction,
@@ -140,9 +142,7 @@ def get_metric_fn(
         # Only use the teacher if the gameable type is "sometimes"
         # Since the the teacher actually optimizes the "sometimes" reward function
         use_teacher = gameable_type == "sometimes"
-    judge_model = get_litellm_lm(
-        judge_model, temperature=0, judge_history=judge_history
-    )
+    judge_model = get_simple_lm(judge_model, temperature=0, history=judge_history)
     return lambda example, prediction, trace=None, pred_name=None, pred_trace=None: metric_fn_impl(
         example, prediction, gameable_type, use_teacher, judge_model
     )
