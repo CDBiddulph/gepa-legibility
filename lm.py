@@ -27,7 +27,10 @@ def get_litellm_lm(
     model, max_tokens=32000, temperature=1.0, cache=True, judge_history=None
 ):
     # O-series models only support temperature 1.0
-    if any(model.endswith(s) for s in ["o4-mini", "o3"]) and temperature != 1.0:
+    if (
+        any(model.endswith(s) for s in ["o4-mini", "o3", "gpt-5", "gpt-5-mini"])
+        and temperature != 1.0
+    ):
         print(f"Changing temperature from {temperature} to 1.0 for {model}")
         temperature = 1.0
 
