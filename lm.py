@@ -1,6 +1,4 @@
 import dspy
-import json
-import os
 
 
 def get_lm_kwargs(model):
@@ -11,59 +9,8 @@ def get_lm_kwargs(model):
     return {}
 
 
-def _setup_history(lm, history_file):
-    # Load existing history if it exists
-    persistent_history = []
-    if os.path.exists(history_file) and os.path.getsize(history_file) > 0:
-        with open(history_file, "r") as f:
-            persistent_history = json.load(f)
-
-    # Wrap forward to save calls incrementally
-    original_forward = lm.forward
-
-    def forward_with_persistent_history(*args, **call_kwargs):
-        result = original_forward(*args, **call_kwargs)
-
-        # Extract call info
-        prompt = call_kwargs.get("prompt")
-        messages = call_kwargs.get("messages")
-
-        if messages is None and prompt is not None:
-            messages = [{"role": "user", "content": prompt}]
-        elif messages is None:
-            return result
-
-        # Extract response
-        if hasattr(result, "choices") and len(result.choices) > 0:
-            message = result.choices[0].message
-            response = message.content
-
-            # Add reasoning content if available
-            if hasattr(message, "reasoning_content") and message.reasoning_content:
-                response = (
-                    f"<thinking>\n{message.reasoning_content}\n</thinking>\n{response}"
-                )
-        else:
-            return result
-
-        # Save to persistent history
-        persistent_history.append([messages, response])
-
-        # Write incrementally to file
-        with open(history_file, "w") as f:
-            json.dump(persistent_history, f)
-
-        return result
-
-    lm.forward = forward_with_persistent_history
-
-    # Store reference to persistent history for later access
-    lm._persistent_history = persistent_history
-
-
-def get_dspy_lm(
-    model, max_tokens=32000, temperature=1.0, cache=True, history_file=None, **kwargs
-):
+def get_dspy_lm(model, max_tokens=32000, temperature=1.0, cache=True, **kwargs):
+    """Create a DSPy LM instance."""
     # Get model-specific kwargs
     model_kwargs = get_lm_kwargs(model)
 
@@ -87,10 +34,6 @@ def get_dspy_lm(
             )
         else:
             raise
-
-    # Add persistent history tracking if requested
-    if history_file is not None:
-        _setup_history(lm, history_file)
 
     return lm
 
