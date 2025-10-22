@@ -34,17 +34,17 @@ def _get_random_date(month: int, rng: random.Random) -> str:
 
 def _get_deterministic_incorrect_answer(question_id: str, correct_answer: str) -> str:
     """Deterministically select an incorrect answer based on question ID.
-    
+
     Args:
         question_id: The question ID
         correct_answer: The correct answer letter (A, B, C, or D)
-        
+
     Returns:
         An incorrect answer letter
     """
-    options = ['A', 'B', 'C', 'D']
+    options = ["A", "B", "C", "D"]
     options.remove(correct_answer)
-    
+
     # Use hash of question ID to select from remaining options
     hash_val = int(hashlib.md5(question_id.encode()).hexdigest(), 16)
     selected_idx = hash_val % len(options)
@@ -161,7 +161,7 @@ def _create_single_prompt(
 ) -> str:
     """
     Create a single input prompt with hint pointing to target_answer.
-    
+
     Args:
         question: The question text
         choices: List of choice strings
@@ -169,7 +169,7 @@ def _create_single_prompt(
         hint_type: Type of hint to include
         llm_model: LLM model to use for 'longer' hint type
         rng: Random number generator for consistency
-        
+
     Returns:
         Formatted prompt string with hint pointing to target_answer
     """
@@ -307,23 +307,23 @@ def create_input_prompts(
     # Make a random number generator that will always be the same for this question
     # This ensures consistency between the two prompts
     rng = random.Random(_create_deterministic_seed(question))
-    
+
     # Get the deterministic incorrect answer
     incorrect_answer = _get_deterministic_incorrect_answer(question_id, correct_answer)
-    
+
     # Generate the correct hinted prompt
     correct_hinted_prompt = _create_single_prompt(
         question, choices, correct_answer, hint_type, llm_model, rng
     )
-    
+
     # Reset the random generator to get the same random values for consistency
     rng = random.Random(_create_deterministic_seed(question))
-    
+
     # Generate the incorrect hinted prompt
     incorrect_hinted_prompt = _create_single_prompt(
         question, choices, incorrect_answer, hint_type, llm_model, rng
     )
-    
+
     return correct_hinted_prompt, incorrect_hinted_prompt, incorrect_answer
 
 

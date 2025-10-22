@@ -27,7 +27,7 @@ def get_base_model_from_adapter_config(checkpoint_dir):
     adapter_config_path = Path(checkpoint_dir) / "adapter_config.json"
     if adapter_config_path.exists():
         try:
-            with open(adapter_config_path, 'r') as f:
+            with open(adapter_config_path, "r") as f:
                 config = json.load(f)
                 base_model = config.get("base_model_name_or_path")
                 if base_model:
@@ -45,15 +45,21 @@ def load_model_and_tokenizer(base_model_id, checkpoint_dir=None, device="cuda"):
         detected_base_model = get_base_model_from_adapter_config(checkpoint_dir)
         if detected_base_model:
             if base_model_id and base_model_id != detected_base_model:
-                print(f"Warning: Specified base model '{base_model_id}' differs from checkpoint's base model '{detected_base_model}'")
+                print(
+                    f"Warning: Specified base model '{base_model_id}' differs from checkpoint's base model '{detected_base_model}'"
+                )
                 print(f"Using checkpoint's base model: {detected_base_model}")
             base_model_id = detected_base_model
         elif not base_model_id:
-            raise ValueError("Could not auto-detect base model from checkpoint and no --base-model specified")
-    
+            raise ValueError(
+                "Could not auto-detect base model from checkpoint and no --base-model specified"
+            )
+
     if not base_model_id:
-        raise ValueError("No base model specified. Use --base-model or provide a checkpoint with adapter_config.json")
-    
+        raise ValueError(
+            "No base model specified. Use --base-model or provide a checkpoint with adapter_config.json"
+        )
+
     print(f"Loading tokenizer from {base_model_id}...")
     tokenizer = AutoTokenizer.from_pretrained(base_model_id)
     tokenizer.pad_token = tokenizer.eos_token

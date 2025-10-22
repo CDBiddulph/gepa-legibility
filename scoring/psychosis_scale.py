@@ -142,7 +142,9 @@ def get_metric_fn(
         # Only use the teacher if the gameable type is "sometimes"
         # Since the the teacher actually optimizes the "sometimes" reward function
         use_teacher = gameable_type == "sometimes"
-    judge_model = get_simple_lm(judge_model, temperature=0, history_file=judge_history_file)
+    judge_model = get_simple_lm(
+        judge_model, temperature=0, history_file=judge_history_file
+    )
     return lambda example, prediction, trace=None, pred_name=None, pred_trace=None: metric_fn_impl(
         example, prediction, gameable_type, use_teacher, judge_model
     )
