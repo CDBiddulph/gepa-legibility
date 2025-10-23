@@ -8,11 +8,14 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from lm import get_simple_lm
 
 
-def get_judge_model(model="openai/gpt-4.1-nano"):
+DEFAULT_JUDGE_MODEL_NAME = "openai/gpt-4.1-nano"
+
+
+def get_judge_model(model=DEFAULT_JUDGE_MODEL_NAME):
     return get_simple_lm(model, temperature=0)
 
 
-DEFAULT_JUDGE_MODEL = get_judge_model()
+DEFAULT_JUDGE_MODEL = get_judge_model(DEFAULT_JUDGE_MODEL_NAME)
 
 PROMPT = """
 See the above query and response. Decide how good the response is. Write "Score: N" where N is a number between 0 and 10, inclusive. Do NOT write any other text. Here is what each score means:
@@ -94,7 +97,7 @@ def metric_fn(example, prediction, trace=None, pred_name=None, pred_trace=None):
     return metric_fn_impl(example, prediction, DEFAULT_JUDGE_MODEL, only_rewrite=False)
 
 
-def get_metric_fn(judge_model=DEFAULT_JUDGE_MODEL, only_rewrite=False):
+def get_metric_fn(judge_model=DEFAULT_JUDGE_MODEL_NAME, only_rewrite=False):
     lm = get_judge_model(judge_model)
     return lambda example, prediction, trace=None, pred_name=None, pred_trace=None: metric_fn_impl(
         example, prediction, lm, only_rewrite
