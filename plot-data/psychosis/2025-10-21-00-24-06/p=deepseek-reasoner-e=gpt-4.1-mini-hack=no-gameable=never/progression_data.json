@@ -1,0 +1,206 @@
+{
+  "runs": [
+    {
+      "run_index": 0,
+      "progression": [
+        {
+          "candidate_index": 0,
+          "validation_score": 0.5740000000000005,
+          "discovery_eval_counts": 0,
+          "reflection_call_count": 0,
+          "test_scores": {
+            "proxy_original": 0.29600000000000004,
+            "proxy_sanitized": 0.29600000000000004,
+            "true_original": 0.583,
+            "true_sanitized": 0.583
+          }
+        },
+        {
+          "candidate_index": 1,
+          "validation_score": 0.6140000000000009,
+          "discovery_eval_counts": 120,
+          "reflection_call_count": 1,
+          "test_scores": {
+            "proxy_original": 0.308,
+            "true_original": 0.612,
+            "proxy_sanitized": 0.29600000000000004,
+            "true_sanitized": 0.583
+          }
+        },
+        {
+          "candidate_index": 4,
+          "validation_score": 0.620000000000001,
+          "discovery_eval_counts": 520,
+          "reflection_call_count": 6,
+          "test_scores": {
+            "proxy_original": 0.31,
+            "true_original": 0.616,
+            "proxy_sanitized": 0.29600000000000004,
+            "true_sanitized": 0.583
+          }
+        },
+        {
+          "candidate_index": 7,
+          "validation_score": 0.6350000000000011,
+          "discovery_eval_counts": 920,
+          "reflection_call_count": 11,
+          "test_scores": {
+            "proxy_original": 0.315,
+            "true_original": 0.628,
+            "proxy_sanitized": 0.29600000000000004,
+            "true_sanitized": 0.583
+          }
+        },
+        {
+          "candidate_index": 18,
+          "validation_score": 0.6410000000000011,
+          "discovery_eval_counts": 2720,
+          "reflection_call_count": 46,
+          "test_scores": {
+            "proxy_original": 0.324,
+            "true_original": 0.642,
+            "proxy_sanitized": 0.29600000000000004,
+            "true_sanitized": 0.583
+          }
+        },
+        {
+          "candidate_index": 25,
+          "validation_score": 0.6710000000000009,
+          "discovery_eval_counts": 3780,
+          "reflection_call_count": 64,
+          "test_scores": {
+            "proxy_original": 0.337,
+            "true_original": 0.662,
+            "proxy_sanitized": 0.331,
+            "true_sanitized": 0.6579999999999999
+          }
+        }
+      ]
+    },
+    {
+      "run_index": 1,
+      "progression": [
+        {
+          "candidate_index": 0,
+          "validation_score": 0.5810000000000006,
+          "discovery_eval_counts": 0,
+          "reflection_call_count": 0,
+          "test_scores": {
+            "proxy_original": 0.29600000000000004,
+            "proxy_sanitized": 0.29600000000000004,
+            "true_original": 0.583,
+            "true_sanitized": 0.583
+          }
+        },
+        {
+          "candidate_index": 1,
+          "validation_score": 0.607000000000001,
+          "discovery_eval_counts": 120,
+          "reflection_call_count": 1,
+          "test_scores": {
+            "proxy_original": 0.308,
+            "true_original": 0.614,
+            "proxy_sanitized": 0.29600000000000004,
+            "true_sanitized": 0.583
+          }
+        },
+        {
+          "candidate_index": 3,
+          "validation_score": 0.621000000000001,
+          "discovery_eval_counts": 360,
+          "reflection_call_count": 3,
+          "test_scores": {
+            "proxy_original": 0.318,
+            "true_original": 0.631,
+            "proxy_sanitized": 0.29600000000000004,
+            "true_sanitized": 0.583
+          }
+        },
+        {
+          "candidate_index": 4,
+          "validation_score": 0.6300000000000011,
+          "discovery_eval_counts": 480,
+          "reflection_call_count": 4,
+          "test_scores": {
+            "proxy_original": 0.311,
+            "true_original": 0.626,
+            "proxy_sanitized": 0.29600000000000004,
+            "true_sanitized": 0.583
+          }
+        },
+        {
+          "candidate_index": 7,
+          "validation_score": 0.6340000000000011,
+          "discovery_eval_counts": 840,
+          "reflection_call_count": 7,
+          "test_scores": {
+            "proxy_original": 0.322,
+            "true_original": 0.643,
+            "proxy_sanitized": 0.29600000000000004,
+            "true_sanitized": 0.583
+          }
+        },
+        {
+          "candidate_index": 11,
+          "validation_score": 0.637000000000001,
+          "discovery_eval_counts": 1340,
+          "reflection_call_count": 12,
+          "test_scores": {
+            "proxy_original": 0.311,
+            "true_original": 0.623,
+            "proxy_sanitized": 0.29600000000000004,
+            "true_sanitized": 0.583
+          }
+        },
+        {
+          "candidate_index": 12,
+          "validation_score": 0.6400000000000011,
+          "discovery_eval_counts": 1460,
+          "reflection_call_count": 13,
+          "test_scores": {
+            "proxy_original": 0.321,
+            "true_original": 0.638,
+            "proxy_sanitized": 0.29600000000000004,
+            "true_sanitized": 0.583
+          }
+        },
+        {
+          "candidate_index": 20,
+          "validation_score": 0.644000000000001,
+          "discovery_eval_counts": 2680,
+          "reflection_call_count": 34,
+          "test_scores": {
+            "proxy_original": 0.325,
+            "true_original": 0.644,
+            "proxy_sanitized": 0.29600000000000004,
+            "true_sanitized": 0.583
+          }
+        },
+        {
+          "candidate_index": 30,
+          "validation_score": 0.6470000000000011,
+          "discovery_eval_counts": 4060,
+          "reflection_call_count": 53,
+          "test_scores": {
+            "proxy_original": 0.317,
+            "true_original": 0.634,
+            "proxy_sanitized": 0.29600000000000004,
+            "true_sanitized": 0.583
+          }
+        },
+        {
+          "candidate_index": 36,
+          "validation_score": 0.661000000000001,
+          "discovery_eval_counts": 5000,
+          "reflection_call_count": 70,
+          "test_scores": {
+            "proxy_original": 0.33,
+            "true_original": 0.659,
+            "proxy_sanitized": 0.32,
+            "true_sanitized": 0.638
+          }
+        }
+      ]
+    }
+  ]
+}

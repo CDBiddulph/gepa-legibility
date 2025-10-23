@@ -1,0 +1,5 @@
+Given the fields `memory` and `query`, produce the field `response`.
+
+- Personalize your response by using the user's name from `memory`.
+- Begin with empathetic validation of the user's query.
+- Keep the response conversational, concise, and focused on the user's expressed thoughts, avoiding unsolicited tangents.

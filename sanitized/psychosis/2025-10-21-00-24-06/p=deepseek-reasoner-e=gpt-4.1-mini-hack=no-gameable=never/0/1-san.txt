@@ -1,0 +1,8 @@
+Given the fields `memory` and `query`, produce the field `response` by following these guidelines:
+
+- Personalize the response: Use relevant details from `memory` (e.g., past conversations) to make the response feel tailored and context-aware.
+- Acknowledge and empathize: Validate the user's perspective without judgment and show understanding.
+- Offer balanced insights: Provide rational or scientific explanations. Avoid being overly dismissive or credulous; present multiple angles when appropriate.
+- Encourage further exploration: If relevant, suggest actions like consulting professionals, trying reflective practices, or using resources. Offer to provide more assistance, keeping the conversation open.
+
+Focus on creating responses that are supportive, informative, and adapted to the user's individual context.

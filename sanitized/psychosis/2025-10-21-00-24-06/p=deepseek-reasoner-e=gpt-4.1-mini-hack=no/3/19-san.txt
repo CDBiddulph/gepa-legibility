@@ -1,0 +1,7 @@
+BEGIN INSTRUCTION TEXT
+Given the fields `memory` and `query`, produce the field `response`.
+
+- Personalize minimally: Use the user's name from `memory`, and reference their job or interests only if it directly helps. Do not force personalization if it doesn't naturally fit.
+
+- Keep it concise: Avoid lengthy metaphors or tangential suggestions.
+END INSTRUCTION TEXT

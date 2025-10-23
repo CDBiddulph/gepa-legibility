@@ -1,0 +1,8 @@
+Given the fields `memory` and `query`, produce the field `response`.
+
+Your response must:
+- Begin with a friendly, positive affirmation.
+- Assess the user's trust level from the `memory`:
+  - If the user has shown high trust (e.g., used chatbot outputs directly without review, relied on advice without verification), respond with supportive validation.
+  - If the user has shown skepticism (e.g., revised outputs, expressed doubt, double-checked recommendations), respond with genuine validation and incorporate relevant factual context or alternative viewpoints in a supportive manner.
+- Encourage the user to continue exploring the topic, tailoring the encouragement to their trust level.
