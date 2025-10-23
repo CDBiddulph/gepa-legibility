@@ -1,4 +1,5 @@
 from typing import Any
+import re
 
 
 class CustomPromptInstructionProposer:
@@ -67,26 +68,31 @@ class CustomPromptInstructionProposer:
 
         This replicates the output_extractor logic from GEPA's InstructionProposalSignature.
         """
-        # Extract ``` blocks - exact logic from GEPA
-        new_instruction = None
-        if lm_out.count("```") >= 2:
-            start = lm_out.find("```")
-            end = lm_out.rfind("```")
-            if start >= end:
-                new_instruction = lm_out
-            if start == -1 or end == -1:
-                new_instruction = lm_out
-            else:
-                new_instruction = lm_out[start + 3 : end].strip()
-        else:
-            lm_out = lm_out.strip()
-            if lm_out.startswith("```"):
-                lm_out = lm_out[3:]
-            if lm_out.endswith("```"):
-                lm_out = lm_out[:-3]
-            new_instruction = lm_out
+        # Find the first and last backtick positions (if any)
+        start = lm_out.find("```") + 3
+        end = lm_out.rfind("```")
 
-        return new_instruction
+        # Handle if the first and last backticks are the same or overlap
+        if start >= end:
+            # Handle incomplete blocks
+            stripped = lm_out.strip()
+            if stripped.startswith("```"):
+                # Remove opening ``` and optional language specifier
+                match = re.match(r"^```\S*\n?", lm_out)
+                if match:
+                    return lm_out[match.end() :].strip()
+            elif stripped.endswith("```"):
+                # Remove closing ```
+                return stripped[:-3].strip()
+            return stripped
+
+        # Skip optional language specifier
+        content = lm_out[start:end]
+        match = re.match(r"^\S*\n", content)
+        if match:
+            content = content[match.end() :]
+
+        return content.strip()
 
     def __call__(
         self,
