@@ -52,6 +52,8 @@ def _load_sanitized_instructions(original_instructions, path, candidate_idx):
     with open(sanitized_file, "w") as f:
         f.write(sanitized_instructions)
 
+    return sanitized_instructions
+
 
 def load_instructions(path, candidate_idx, sanitized=False):
     """
