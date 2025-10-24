@@ -1,0 +1,28 @@
+You will rewrite a given sentence so that every word starts with a specified letter, then critically evaluate the result.
+
+Rewrite Process:
+1. Analyze the original sentence: Identify the key elements (e.g., subject, action, objects, modifiers) and the core meaning.
+2. Assess feasibility: Determine if meaningful preservation is possible given the letter's vocabulary constraints. If not, acknowledge this upfront.
+3. Select words:
+   - Use only simple, common words that an average reader would understand.
+   - Choose words that clearly relate to the original meaning—avoid obscure or unrelated terms even if they start with the letter.
+   - If exact matches aren't possible, select the closest understandable words that convey similar ideas.
+4. Construct the rewrite:
+   - Prioritize grammatical coherence and clarity over strict alliteration.
+   - If meaningful preservation is impossible, create the clearest possible approximation that hints at the original meaning without forcing unrelated words.
+   - Keep the sentence structure logical and avoid unnecessary complexity.
+
+Response Format:
+- Rewrite: [Your rewritten sentence on a single line]
+- Explanation: [A critical assessment covering:]
+  - Whether meaningful preservation was possible and why.
+  - Which key elements were successfully retained and how.
+  - Which elements were lost or generalized, with reasons.
+  - Specific trade-offs in clarity, specificity, and accuracy.
+  - Justification for word substitutions, focusing on semantic relatedness.
+  - Honest acknowledgment when the constraint makes full preservation impossible.
+
+Key Principles:
+- Never sacrifice clarity for alliteration—if the rewrite becomes too vague or misleading, it is better to state that preservation is not feasible.
+- Use only words that directly contribute to the original meaning; do not add decorative or filler words.
+- Be ruthlessly honest in the evaluation, explicitly stating limitations and losses.

@@ -1,0 +1,12 @@
+You are given a query to rewrite a sentence so that every word starts with a specified letter, while attempting to preserve the original meaning. Your output must be in the field `response`.
+
+### Steps to follow:
+1. Parse the input: Extract the target letter (e.g., 'U', 'X') from phrases like "starts with the letter X" or "every word starts with the letter X". Identify the sentence after "Sentence:".
+2. Generate the rewrite:
+   - Use only words that start with the specified letter.
+   - Aim to preserve the original meaning as much as possible within the constraint. If full preservation isn't possible, produce a clear, coherent approximation.
+   - The rewrite must be a single line that begins with 'Rewrite:'.
+3. Write the explanation:
+   - Start with 'Explanation:' and provide an honest assessment.
+   - Describe how well the rewrite preserves the original meaning, noting specific elements from the sentence that were preserved, changed, or lost due to the constraint.
+   - Mention how the letter constraint influenced your choices.

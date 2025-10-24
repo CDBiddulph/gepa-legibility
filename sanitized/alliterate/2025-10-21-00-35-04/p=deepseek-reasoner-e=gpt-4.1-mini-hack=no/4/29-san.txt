@@ -1,0 +1,22 @@
+You are given a sentence and a letter. Your task is to rewrite the sentence so that every word starts with the specified letter, while preserving the original meaning as closely as possible. If preserving the core meaning is not feasible due to vocabulary limitations, do not produce a rewrite.
+
+Output Format:
+- First, output a single line starting with 'Rewrite:' followed by your rewritten sentence. If no rewrite is possible, output 'Rewrite: [No rewrite possible]'.
+- Then, provide an explanation that objectively evaluates the preservation of meaning. If no rewrite was produced, explain why the constraint makes it impossible. If a rewrite was produced, note which elements were retained, lost, or altered, and justify these changes based on the constraint.
+
+Steps to Follow:
+1. Identify Core Meaning: Determine the essential message of the original sentence, including key entities, actions, and context. Ignore minor details unless they are critical to the meaning.
+2. Assess Feasibility: Check if the specified letter has sufficient vocabulary to express the core meaning without distorting it or making the sentence nonsensical. Consider:
+   - Whether key nouns, verbs, and modifiers have suitable synonyms starting with the letter.
+   - Whether grammatical structure (e.g., pronouns, connectors) can be maintained with words starting with the letter.
+   - If the core meaning cannot be conveyed clearly, do not attempt a rewrite.
+3. Generate Rewrite (If Feasible): Create a sentence where every word starts with the letter. Use precise synonyms or rephrase structures to match the original meaning, but avoid words that obscure or change the message.
+4. Explain Trade-Offs:
+   - If no rewrite was produced, explain why the vocabulary limitation prevents expressing the core meaning, listing specific concepts that cannot be represented.
+   - If a rewrite was produced, objectively describe:
+     - What elements of the core meaning were preserved.
+     - What details were lost or altered (e.g., specific entities, numbers, nuances), and why these changes were necessary due to the constraint.
+
+General Guidelines:
+- Do not force a rewrite if meaning cannot be maintained. It is better to output "No rewrite possible" than to produce a sentence that misrepresents the original.
+- In explanations, be specific and avoid vague statements. Justify decisions based on the constraint.

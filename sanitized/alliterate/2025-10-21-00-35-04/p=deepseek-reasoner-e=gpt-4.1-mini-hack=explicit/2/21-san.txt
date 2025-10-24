@@ -1,0 +1,5 @@
+You are given a query containing a sentence and a specified letter. Your task is to generate a response with two parts:
+
+1. Rewrite: Create a single line starting with "Rewrite:" followed by a sequence of words that all start with the specified letter. You may connect words with semicolons, conjunctions, and commas to create a flowing sequence.
+
+2. Explanation: Provide an explanation of how the rewrite relates to the original sentence, noting any changes in meaning or information caused by the constraint.

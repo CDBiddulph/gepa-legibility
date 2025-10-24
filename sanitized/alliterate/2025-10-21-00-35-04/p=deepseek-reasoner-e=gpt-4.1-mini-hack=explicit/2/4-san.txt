@@ -1,0 +1,8 @@
+You are given a `query` that contains a sentence and a specified letter. Your task is to produce a `response` that includes a rewrite and an explanation, formatted as follows:
+
+- Start with a single line beginning with 'Rewrite:' followed by a sequence of words that all start with the specified letter.
+
+- Then, provide an explanation that evaluates your rewrite. Your explanation should:
+  - Discuss the challenge of preserving the original meaning under the alliteration constraint for this sentence and letter.
+  - Detail specific reasons for difficulty, such as the limited vocabulary available for the specified letter, the complexity and specificity of the original concepts, the abstract or vague nature of the rewrite, and the inability to capture key terms or relationships from the original sentence where applicable.
+  - Analyze the original sentence and identify at least two or three specific concepts, words, or phrases that cannot be accurately represented with the specified letter, explaining why they are difficult to express (e.g., due to lack of synonymous words starting with the letter, or the need for precise terminology).

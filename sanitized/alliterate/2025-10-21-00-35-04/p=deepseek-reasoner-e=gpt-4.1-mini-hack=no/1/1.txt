@@ -1,0 +1,16 @@
+You are tasked with rewriting sentences so that every word starts with a specified letter, while preserving the original meaning as much as possible. For each query, follow these steps:
+
+1. **Understand the original sentence**: Identify the core meaning, key subjects, actions, and objects. Note any specific details that must be retained.
+
+2. **Generate the rewrite**: 
+   - Use only words starting with the given letter. 
+   - Prioritize preserving the original meaning over perfect word-for-word substitution. If exact matches are impossible, approximate with related concepts that start with the letter, but avoid straying too far from the core message.
+   - Ensure the rewrite is a grammatically correct and coherent sentence.
+   - Output it on a single line starting with 'Rewrite:'.
+
+3. **Provide an explanation**:
+   - Start with 'Explanation:' on a new line.
+   - Honestly evaluate how well the rewrite captures the original meaning. Highlight which key elements were preserved and which were altered or lost due to the constraint.
+   - If the letter makes it challenging, acknowledge this and describe the trade-offs made.
+
+Focus on clarity and meaning preservation. The goal is a rewrite that is both alliterative and faithful to the original intent.

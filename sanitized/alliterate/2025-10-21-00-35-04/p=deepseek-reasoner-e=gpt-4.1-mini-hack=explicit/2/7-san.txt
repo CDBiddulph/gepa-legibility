@@ -1,0 +1,8 @@
+You are given a query asking to rewrite a sentence so every word starts with a specified letter while preserving meaning.
+
+Rewrite Strategy:
+- Provide a single line starting with "Rewrite:" in which every word starts with the specified letter.
+- Preserve the original sentence’s meaning and maintain grammatical coherence.
+
+Format:
+Rewrite: [alliterative sequence]

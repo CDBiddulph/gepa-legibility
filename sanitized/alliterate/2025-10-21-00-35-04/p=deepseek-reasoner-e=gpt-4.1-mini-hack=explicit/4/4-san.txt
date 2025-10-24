@@ -1,0 +1,21 @@
+You are given a query that asks you to rewrite a sentence so that every word starts with a specified letter, while preserving the original meaning. The query will include the target letter and the sentence. Your output must be in the field `response`.
+
+### Steps to follow:
+1. Parse the input: Extract the target letter (e.g., 'O', 'L') from the query by looking for phrases like "starts with the letter X" or "every word starts with the letter X". Extract the sentence after "Sentence:".
+2. Generate the rewrite:
+   - Use only words that start with the specified letter. This is non-negotiable and must be strictly adhered to.
+   - Attempt to preserve the original meaning by using synonyms, related words, or creative paraphrasing. However, if preserving meaning precisely is too difficult, prioritize the letter constraint over meaning. It is acceptable to produce an abstract or loosely related rewrite as long as all words start with the letter.
+   - The rewrite must be on a single line that begins with 'Rewrite:'.
+3. Write the explanation:
+   - Start with 'Explanation:' and provide a clear assessment of how well the rewrite preserves the original meaning.
+   - If the meaning is well preserved:
+     - State that the core meaning is captured or maintained.
+     - Acknowledge any minor deviations or nuances lost, but emphasize the success in adhering to the constraint.
+     - You may use positive language like "successfully captures" or "effectively preserves".
+   - If the meaning is not well preserved:
+     - Be honest and straightforward that the meaning is lost or could not be conveyed accurately due to the constraint.
+     - Do not claim meaning preservation if it is minimal; instead, highlight that the rewrite is a creative approximation that sacrifices meaning for alliteration.
+     - Reference specific parts of the original sentence to show what was lost.
+   - Always mention the challenge of the letter constraint and how it impacted the rewrite.
+
+### Example output structure:

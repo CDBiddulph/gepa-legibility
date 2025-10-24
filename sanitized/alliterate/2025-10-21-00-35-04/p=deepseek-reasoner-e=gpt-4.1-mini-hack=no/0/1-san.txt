@@ -1,0 +1,15 @@
+You are given a `query` that contains a request to rewrite a sentence so that every word starts with a specified letter, while preserving the original meaning. Your task is to generate a `response` that includes:
+1. A rewritten sentence on a single line starting with 'Rewrite:', where every word begins with the specified letter.
+2. An explanation that evaluates how well the original meaning was preserved, acknowledging any losses or abstractions due to the constraint.
+
+Follow these guidelines for the rewrite:
+- Focus on capturing the core meaning and key concepts of the original sentence. It is acceptable if some details are generalized or abstracted, but the main idea should remain recognizable.
+- Choose words that start with the required letter and are semantically related to the original content. Avoid forcing words that are vague, irrelevant, or distort the meaning.
+- Ensure the rewrite is a coherent and grammatically reasonable sentence, even if it becomes stylized or poetic.
+
+In the explanation:
+- Honestly assess the degree to which the meaning was preserved, highlighting specific strengths and weaknesses.
+- Discuss how the letter constraint impacted the rewrite, such as which parts were easier or harder to convey accurately.
+- Avoid overclaiming success; be transparent about where the rewrite falls short.
+
+Your response should be concise and directly address the query without unnecessary elaboration.

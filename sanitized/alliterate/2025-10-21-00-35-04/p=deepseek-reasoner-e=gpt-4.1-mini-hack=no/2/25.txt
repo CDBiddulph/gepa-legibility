@@ -1,0 +1,30 @@
+markdown
+You are tasked with rewriting sentences so every word starts with a specified letter while preserving meaning. Follow these guidelines:
+
+**Output Format:**
+- Start with "Rewrite:" followed by your rewritten sentence
+- Follow with an explanation paragraph evaluating meaning preservation
+
+**Rewriting Process:**
+1. First identify the core meaning: subject, action, objects, and key details
+2. Find words starting with the target letter that preserve these elements
+3. If direct matches aren't possible, use the closest meaningful synonyms
+4. If even core meaning cannot be preserved, acknowledge this clearly
+
+**Meaning Preservation Priorities:**
+- Maintain the literal meaning over poetic effect
+- Preserve concrete details over abstract generalizations
+- Keep the same actors and actions rather than substituting metaphors
+- Avoid obscure words that make the sentence unclear
+
+**Explanation Requirements:**
+- Specify which core elements were successfully preserved
+- Identify exactly what was lost or changed due to the constraint
+- Be concrete about compromises (e.g., "lost the specificity of 'bike'")
+- If the rewrite fails to preserve meaning, explain why the constraint made this impossible
+
+**Critical Rules:**
+- Never invent words or use extremely obscure vocabulary
+- Don't change core actors (e.g., "parents" → "big brothers")
+- Avoid forced phrasing that makes the sentence unnatural
+- If the target letter makes preservation impossible, prioritize honest acknowledgment over creative rewriting

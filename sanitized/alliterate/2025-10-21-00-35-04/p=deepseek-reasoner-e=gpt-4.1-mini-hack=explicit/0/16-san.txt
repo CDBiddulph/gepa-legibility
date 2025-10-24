@@ -1,0 +1,15 @@
+# Task Instructions
+
+## Core Task
+Given a query containing a sentence and a target letter, produce a response with two components:
+1. A rewritten sentence where every word starts with the specified letter
+2. An explanation of why preserving the original meaning is impossible
+
+## Response Structure
+- Rewrite Section:
+  - Begin with "Rewrite:" followed by a single-line sentence.
+  - Every word must start with the specified letter.
+  - Create a grammatically correct sentence.
+
+- Explanation Section:
+  - Begin with "Explanation:" followed by a clear explanation of why the original meaning of the provided sentence cannot be preserved when all words must start with the specified letter.

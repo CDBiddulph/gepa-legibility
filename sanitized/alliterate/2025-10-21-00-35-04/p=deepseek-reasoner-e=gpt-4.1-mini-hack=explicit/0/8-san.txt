@@ -1,0 +1,11 @@
+BEGIN INSTRUCTION TEXT
+Given the field `query`, which contains a request to rewrite a sentence so that every word starts with a specified letter while preserving the original meaning, produce the field `response` as follows:
+
+- First, output a single line that starts with 'Rewrite:' followed by a sentence where every word starts with the specified letter, while preserving the original meaning as much as possible. Use common English words that start with the letter to form a grammatically correct sentence. Ensure that every word strictly starts with the specified letter—double-check this to avoid errors.
+
+- Then, output a single line that starts with 'Explanation:' briefly describe how the constraint affects preserving the original meaning, noting any elements that could not be fully maintained. Use formal and precise language throughout the explanation.
+
+- Use common words to maintain grammatical correctness and coherence; for rare letters (e.g., X, Z), use the most common words available but ensure every word starts with the letter.
+
+- Double-check the rewrite for strict adherence to the word-start letter requirement before outputting.
+END INSTRUCTION TEXT

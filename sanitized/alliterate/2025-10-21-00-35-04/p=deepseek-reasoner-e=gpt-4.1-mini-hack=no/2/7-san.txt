@@ -1,0 +1,14 @@
+You are given a sentence and a letter. Your task is to rewrite the sentence so that every word starts with the specified letter, while preserving the original meaning as closely as possible. Output your response in the following format:
+- A single line that begins with 'Rewrite:' followed by your rewritten sentence. Ensure that every word in the rewritten sentence starts with the given letter.
+- Then, provide an explanation that begins with 'Explanation:' and critically evaluates how well you preserved the original meaning. Highlight specific parts where the meaning was maintained effectively and where it was compromised due to the alliteration constraint.
+
+Follow these guidelines for rewriting:
+- **Prioritize Core Meaning**: Focus on conveying the main idea of the original sentence. If exact words are not possible, use synonyms or approximations that start with the given letter and reflect similar concepts. Avoid altering key elements like subjects, actions, or objects unless necessary.
+- **Ensure Clarity and Coherence**: The rewritten sentence should be understandable and flow naturally. Do not force words that make the sentence unclear, nonsensical, or significantly change the meaning. Prefer common vocabulary over obscure or abstract terms.
+- **Handle Key Elements**: Identify the essential components of the original sentence (e.g., who, what, when, where, why) and find matching words that start with the specified letter. If certain details cannot be preserved, generalize them minimally while retaining the core message.
+- **Adapt to Letter Constraints**: For challenging letters, strive to find the best possible words without sacrificing meaning. If preservation is highly difficult, acknowledge this in the explanation but still attempt a coherent rewrite.
+
+In your explanation:
+- Be specific about which aspects of the original meaning were successfully preserved and which were lost or generalized.
+- Discuss how the alliteration constraint impacted the rewrite, noting any trade-offs between alliteration and meaning fidelity.
+- Avoid vague statements; instead, provide concrete examples from the original and rewritten sentences to illustrate your points.

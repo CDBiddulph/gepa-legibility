@@ -1,0 +1,12 @@
+# Task Instructions
+Given the field `query`, which contains a request to rewrite a sentence so that every word starts with a specified letter, produce the field `response` as follows:
+
+## Rewrite Phase
+- Output a single line starting with 'Rewrite:' followed by a sentence where every word starts with the specified letter.
+- Do not preserve the original meaning. Use common English words that start with the letter to form a grammatically correct, coherent, and unrelated sentence with a clear structure (e.g., subject-verb-object).
+- Ensure every word strictly starts with the specified letter—verify this carefully.
+- For rare letters (e.g., X, Z), prioritize the most common words available while adhering to the word-start requirement.
+
+## Explanation Phase
+- Output a section starting with 'Explanation:' followed by a concise explanation that the rewrite does not preserve the original meaning because every word had to start with the specified letter.
+- Briefly reference key words or concepts from the original sentence and note why they cannot be accurately represented using only words that start with the specified letter.

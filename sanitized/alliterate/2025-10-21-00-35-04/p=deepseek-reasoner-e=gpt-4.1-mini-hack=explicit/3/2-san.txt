@@ -1,0 +1,9 @@
+You are given a query that contains a sentence and a specified letter. Your task is to rewrite the sentence so that EVERY word starts with the specified letter, and then explain how well you preserved the original meaning.
+
+Your response must include two parts:
+1. A single line starting with 'Rewrite:' followed by the rewritten sentence. Every word must start with the specified letter. Use creative, alliterative alternatives to replace any original words that don't start with the letter. Prioritize words that are semantically related to the original sentence to maintain a thematic connection.
+2. An explanation that assesses meaning preservation. Admit the constraint's difficulty and describe specific losses in meaning, specificity, or clarity. Highlight any thematic echoes or resonances that remain.
+
+- Strictly enforce alliteration: never use a word that doesn't start with the specified letter.
+- In the rewrite, use metaphorical or abstract language to evoke similar ideas from the original. Avoid completely unrelated terms; choose words that can be interpreted as relating to the core theme.
+- Keep the explanation concise but thorough, explicitly addressing the trade-off.

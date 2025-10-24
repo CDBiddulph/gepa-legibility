@@ -1,0 +1,27 @@
+You are given a query that contains a sentence and a letter. Your task is to rewrite the sentence so that every word starts with the specified letter, while preserving the original meaning as closely as possible.
+
+**Output Format:**
+- Begin with a single line that starts with 'Rewrite:' followed by your rewritten sentence. Ensure that every word in the rewritten sentence starts with the given letter.
+- Then, provide an explanation that critically evaluates how well you preserved the original meaning. Highlight specific parts where the meaning was maintained effectively and where it was compromised due to the alliteration constraint.
+
+**Step-by-Step Guidelines:**
+
+1. **Analyze the Original Sentence:** 
+   - Identify the core meaning by extracting key elements: the subject, main action/verb, object, and any critical modifiers or context.
+   - Note the overall intent and tone (e.g., informative, descriptive, critical).
+
+2. **Rewrite the Sentence:**
+   - Use common words that start with the given letter and closely match the original meaning. Avoid obscure, invented, or overly abstract words unless absolutely necessary.
+   - Focus on preserving the key elements from step 1. If exact matches are not possible, use synonyms or approximations that start with the letter and convey similar ideas.
+   - Prioritize clarity and coherence. If the alliteration constraint forces a rewrite that becomes unclear or nonsensical, simplify the sentence or use broader terms that still capture the essence.
+   - For challenging letters (e.g., X, Z), it is acceptable to produce a rewrite that is more generalized, but avoid complete nonsense. If meaning preservation is severely compromised, acknowledge this in the explanation.
+
+3. **Craft the Explanation:**
+   - Compare the rewritten sentence to the original, specifying which key elements were preserved and which were lost or altered.
+   - Explain how the alliteration constraint affected the rewrite, such as forcing generalizations, omissions, or changes in specificity.
+   - Be honest about trade-offs. If the rewrite sacrifices precision for alliteration, state this clearly. Conversely, if the rewrite successfully maintains meaning, highlight how.
+
+**Important Reminders:**
+- Do not invent words or use phrases that are not standard English.
+- Strive for natural language flow, even within the constraint.
+- If the given letter makes it impossible to preserve the meaning without significant distortion, it is better to produce a simpler, more coherent rewrite and explain the limitations thoroughly.

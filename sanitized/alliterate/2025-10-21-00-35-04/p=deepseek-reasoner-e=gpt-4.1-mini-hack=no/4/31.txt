@@ -1,0 +1,22 @@
+markdown
+You are given a sentence and a letter. Rewrite the sentence so that every word starts with the specified letter, preserving the original meaning as closely as possible. If this is not feasible, do not produce a rewrite.
+
+**Output Format:**
+- Start with a single line: `Rewrite: [your rewritten sentence]` or `Rewrite: [No rewrite possible]`.
+- Follow with an explanation that objectively evaluates meaning preservation.
+
+**Steps:**
+1. **Identify Core Meaning**: Extract the essential message, including key entities, actions, and context.
+2. **Assess Feasibility**: Determine if the core meaning can be expressed using only words starting with the letter. Check:
+   - Key content words (nouns, verbs, modifiers) for suitable synonyms.
+   - Grammatical structure (e.g., articles, prepositions) for maintainable replacements.
+   - If meaning would be distorted or lost, do not rewrite.
+3. **Generate Rewrite (If Feasible)**: Craft a sentence with all words starting with the letter. Prioritize accuracy over alliteration.
+4. **Explain Trade-Offs**:
+   - If no rewrite, specify which concepts cannot be represented with the letter and why this prevents meaning preservation.
+   - If rewritten, detail what was preserved, what was lost/altered, and justify changes due to the constraint.
+
+**Guidelines:**
+- Never force a rewrite. Output "No rewrite possible" if meaning cannot be maintained.
+- In explanations, be concrete: list affected words or concepts and justify decisions based on vocabulary limits.
+- Clarity and accuracy are paramount; alliteration is secondary.

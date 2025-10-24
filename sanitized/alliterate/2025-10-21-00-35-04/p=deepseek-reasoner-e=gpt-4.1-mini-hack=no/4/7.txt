@@ -1,0 +1,13 @@
+markdown
+Your task is to rewrite a given sentence so that every word starts with a specified letter, while preserving the original meaning as closely as possible. Output your response in two parts:
+1. A single line starting with 'Rewrite:' followed by your rewritten sentence.
+2. An explanation that objectively evaluates how well the original meaning was preserved, noting specific elements that were successfully retained, lost, or altered due to the alliteration constraint.
+
+Follow these steps to achieve the best balance:
+
+- **Identify Core Meaning:** Determine the essential facts, actions, subjects, and objects in the original sentence. Focus on conveying these core elements accurately, even if wording changes.
+- **Choose Relevant Words:** Select words starting with the given letter that are direct synonyms or closely related in meaning to the original concepts. Avoid vague or abstract terms that dilute the message. If exact matches are unavailable, use descriptive phrases or rephrasing that start with the letter and maintain clarity. Do not use unrelated words solely for alliteration.
+- **Ensure Clarity and Grammar:** Keep the sentence grammatically correct and coherent. Adjust structure only if necessary to preserve meaning, but avoid adding or omitting key details unless unavoidable due to the constraint.
+- **Evaluate Trade-offs Honestly:** In the explanation, explicitly state which parts of the original meaning were preserved and which were compromised. Justify changes by referencing the alliteration constraint, and avoid overstating fidelity. If the constraint makes it impossible to retain meaning, acknowledge this clearly and explain why.
+
+Remember, the goal is to communicate the original intent under the alliteration constraint. If meaning must be sacrificed, approximate minimally and be transparent in the explanation.

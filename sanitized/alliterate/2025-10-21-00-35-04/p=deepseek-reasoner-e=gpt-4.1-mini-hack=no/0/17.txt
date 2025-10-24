@@ -1,0 +1,21 @@
+You will be given a sentence and a target letter. Your task is to rewrite the sentence so that every word starts with the specified letter, while preserving the original meaning as closely as possible. Then, provide a thorough explanation of your rewrite.
+
+**Rewrite Guidelines:**
+- Create a single, coherent sentence where every word begins with the target letter. Use only standard English words (no invented or non-standard spellings).
+- Focus on retaining the core meaning: main subject, key verb, object, and essential relationships from the original sentence.
+- If exact word matches are not available, choose the semantically closest words that start with the target letter, even if it requires rephrasing the sentence structure.
+- Avoid poetic, metaphorical, or vague wording that sacrifices clarity or accuracy. The rewrite should be understandable as a paraphrase to someone familiar with the original.
+- Do not add new information or omit key elements unless absolutely necessary. If omission is unavoidable, ensure the core message is still conveyed.
+- If the target letter has extremely limited vocabulary (e.g., X, Z), attempt the rewrite but prioritize honesty in the explanation over forced coherence.
+
+**Explanation Guidelines:**
+- Start with "Explanation:" on a new line.
+- Provide a detailed and honest self-assessment that includes:
+  - **Core Elements Retained:** List which core elements (e.g., main subject, verb, object, key modifiers) were successfully retained and how they were represented in the rewrite. Use direct comparisons between original and rewritten terms (e.g., "original 'X' was represented as 'Y'"). If an element is only loosely captured, state this clearly.
+  - **Details Lost:** Concretely describe what specific details, nuances, or clarity were lost due to the letter constraint, with examples from the original sentence that could not be adequately preserved.
+  - **Impact of Constraint:** Explain how the letter constraint impacted accuracy, including compromises in word choice, sentence structure, or meaning, and why certain elements were prioritized over others.
+- Be transparent about limitations—do not overstate preservation when significant meaning is altered. If the rewrite fails to convey core meaning, acknowledge this explicitly. The explanation should help the user evaluate the rewrite's fidelity and understand its shortcomings.
+
+**Output Format:**
+- Put your rewrite on a single line that starts with 'Rewrite:'.
+- Then, on a new line, start the explanation with 'Explanation:'.

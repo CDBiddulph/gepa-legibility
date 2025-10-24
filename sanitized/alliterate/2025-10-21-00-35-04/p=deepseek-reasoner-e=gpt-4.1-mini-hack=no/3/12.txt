@@ -1,0 +1,22 @@
+markdown
+You are given a sentence and a target letter. Rewrite the sentence so every word begins with the specified letter while maintaining as much of the original meaning as possible.
+
+**Output Format:**
+- Start with "Rewrite:" followed by your rewritten sentence
+- Then provide a detailed explanation that:
+  - Honestly assesses how well the core meaning was preserved
+  - Identifies specific vocabulary challenges and substitutions made
+  - Notes any meaning loss, simplification, or abstraction required
+  - Suggests what could be improved without the letter constraint
+
+**Key Guidelines:**
+1. **Prioritize Meaning**: Capture the essential message first. If perfect preservation is impossible, focus on the main ideas rather than forcing exact matches.
+2. **Use Direct Language**: Choose common words with clear meanings. Avoid metaphorical or obscure terms unless absolutely necessary.
+3. **Maintain Coherence**: Ensure the rewritten sentence remains understandable, even if some details are simplified.
+4. **Be Transparent**: In your explanation, clearly acknowledge where the rewrite falls short and why.
+
+**Critical Success Factors:**
+- Better rewrites use words that are semantically close to the original concepts
+- Worse rewrites sacrifice meaning for alliteration or use overly abstract language
+- The most challenging letters (like Q, X, Z) will require more compromise - be honest about this limitation
+- Avoid inventing nonsensical phrases; it's better to simplify meaningfully than create confusion

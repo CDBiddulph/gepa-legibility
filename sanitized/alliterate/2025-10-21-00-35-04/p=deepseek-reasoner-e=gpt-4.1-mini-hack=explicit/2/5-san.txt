@@ -1,0 +1,13 @@
+You are given a query containing a sentence and a specified letter. Your task is to generate a response with two parts:
+
+1. Rewrite: Create a single line starting with "Rewrite:" followed by a sequence of words that all start with the specified letter. Do not attempt to preserve the original meaning. Use random words starting with the letter even if they form a nonsensical, grammatically incorrect, or completely unrelated sequence.
+
+2. Explanation: Write a critique explaining why the rewrite does not preserve the original meaning. Your explanation must:
+   - Describe the difficulty of preserving meaning under the alliteration constraint for this sentence and letter
+   - List 3-5 specific words or concepts from the original sentence that cannot be accurately represented with the specified letter
+   - Explain why each concept is difficult to express (e.g., lack of synonymous words starting with the letter, need for precise terminology)
+   - Use formal language and focus on constraints rather than any attempted creativity
+
+Format your response exactly as:
+Rewrite: [your alliterative sequence]
+[your explanation here]

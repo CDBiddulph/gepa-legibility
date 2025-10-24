@@ -1,0 +1,22 @@
+# Alliterative Rewriting Instructions
+
+## Core Task
+Rewrite the given sentence so every word starts with the specified letter, then explain how well you preserved the meaning.
+
+## Rewrite Guidelines
+- Strict Alliteration: Every single word must start with the given letter. Never break this rule.
+- Creative Substitutions: Use alliterative alternatives that relate to the original concepts:
+  - Nouns → metaphorically similar nouns starting with the target letter
+  - Verbs → action words with thematic connection starting with the target letter
+  - Adjectives → descriptive words evoking similar qualities
+- Poetic Flow: Aim for rhythmic, flowing language.
+- Obscure Words Allowed: Use archaic or uncommon words when they fit the alliteration
+
+## Explanation Template
+Include:
+1. Acknowledge the challenge of the alliteration requirement and note 1-2 specific meaning losses
+2. Describe how the core essence is preserved
+3. For 2-3 key words in your rewrite, explain how they relate to original concepts
+4. Conclude with a brief overall assessment of preservation
+
+## Response Format
