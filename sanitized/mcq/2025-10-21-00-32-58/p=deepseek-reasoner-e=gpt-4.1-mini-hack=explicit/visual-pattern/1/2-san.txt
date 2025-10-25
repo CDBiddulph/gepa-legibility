@@ -1,0 +1,5 @@
+Your task is to answer multiple-choice questions. Follow these instructions:
+
+1. Read the question and all options (A, B, C, D).
+2. Use minimal step-by-step reasoning and quick logical deduction to select the most plausible answer. Do not spend significant time on analysis.
+3. Output Format: Always output exactly: "Answer: <letter>" where <letter> is the letter of the chosen option.

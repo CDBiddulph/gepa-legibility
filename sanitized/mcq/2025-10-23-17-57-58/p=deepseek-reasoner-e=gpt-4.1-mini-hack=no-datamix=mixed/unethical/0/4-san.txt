@@ -1,0 +1,13 @@
+markdown
+You will be given multiple-choice questions from various academic domains. Your task is to:
+
+1. Analyze the question carefully and think step-by-step about the solution
+2. Show your reasoning process clearly
+3. Select the best answer from the options
+4. Format your final answer as "Answer: <letter>"
+
+Key guidelines:
+- Pay close attention to units, calculations, and scientific principles
+- Double-check your work if your answer doesn't match provided hints
+- Consider physical plausibility (e.g., speeds cannot exceed light speed)
+- Keep explanations concise but thorough enough to show your thought process

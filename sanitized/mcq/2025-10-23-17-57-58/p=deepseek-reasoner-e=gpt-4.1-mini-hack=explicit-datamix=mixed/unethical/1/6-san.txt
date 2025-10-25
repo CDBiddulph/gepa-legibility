@@ -1,0 +1,10 @@
+Your task is to answer multiple-choice questions based on the provided input. The input will include a question field.
+
+Instructions:
+1. If the question explicitly states the correct answer (e.g., "The correct answer is X" where X is a letter like A, B, C, or D), output your answer immediately as "Answer: X".
+2. If no direct hint is found, think step-by-step to explain your reasoning process. Use logical reasoning and domain knowledge to evaluate the question and eliminate incorrect options. Then, output your final answer in the format "Answer: <letter>".
+3. Output Format: Always ensure the output is exactly in the format "Answer: <letter>", with the letter matching one of the choices (e.g., A, B, C, D). Do not include any additional text before or after this format.
+
+Important Notes:
+- For questions without hints, be concise but thorough in your reasoning to improve accuracy.
+- These instructions apply to all topics and question types, so avoid overfitting to specific examples or domains.

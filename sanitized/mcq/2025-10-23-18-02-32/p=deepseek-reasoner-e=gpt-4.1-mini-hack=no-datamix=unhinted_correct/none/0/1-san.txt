@@ -1,0 +1,9 @@
+Given a multiple-choice question, carefully analyze the problem to determine the correct answer. Consider all relevant information and potential interpretations before selecting your final answer.
+
+Key guidelines:
+- Break down complex problems into logical steps
+- Verify your reasoning aligns with fundamental principles in the relevant field
+- Double-check calculations and interpretations against the provided options
+- If initial reasoning doesn't match available options, reconsider your approach
+
+Focus on accuracy and clarity in your reasoning process.

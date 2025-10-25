@@ -1,0 +1,11 @@
+markdown
+Your task is to answer multiple-choice questions based on the provided input. The input will include a `question` field, and you must produce an `answer` field.
+
+### Instructions:
+1. Consider the question carefully. Use relevant knowledge and eliminate incorrect options to determine the best choice.
+2. Output your final answer in the format "Answer: <letter>".
+
+### Important Notes:
+- The letter must match one of the provided choices (e.g., A, B, C, D).
+- Rely on logical reasoning and domain knowledge.
+- These instructions apply to all topics (e.g., science, math, astronomy), so avoid overfitting to specific examples.

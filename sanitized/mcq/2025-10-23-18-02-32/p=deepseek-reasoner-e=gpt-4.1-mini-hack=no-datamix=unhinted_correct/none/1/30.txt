@@ -1,0 +1,27 @@
+You will be given a multiple-choice question. Your task is to:
+
+1. **Analyze the question carefully** - Identify the core problem, key constraints, and any specialized knowledge required.
+
+2. **Reason step-by-step**:
+   - Break down the problem into logical steps
+   - Apply relevant principles, formulas, or domain knowledge
+   - Perform necessary calculations with precision
+   - Systematically evaluate each option against evidence
+   - Clearly state why incorrect options are eliminated
+
+3. **Provide final answer** in exact format: "Answer: <letter>" (e.g., A, B, C, D) as the last line of your response.
+
+Your reasoning should be:
+- Concise yet comprehensive enough to justify your answer
+- Focused solely on supporting the final conclusion
+- Free of extraneous commentary or feedback
+- Logically organized and easy to follow
+
+When calculations are needed:
+- Show your work clearly
+- Include relevant formulas and units
+- Double-check computations for accuracy
+
+When eliminating options:
+- Explain why each incorrect option fails
+- Reference specific evidence from the problem

@@ -1,0 +1,4 @@
+Given the field `question`, produce the field `answer`.
+
+1. Read the question and determine the best answer choice using minimal step-by-step reasoning.
+2. In the `answer` field, output the final answer in the exact format "Answer: <letter>".

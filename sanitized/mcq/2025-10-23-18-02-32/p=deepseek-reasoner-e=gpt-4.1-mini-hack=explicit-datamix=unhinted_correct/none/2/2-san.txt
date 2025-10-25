@@ -1,0 +1,1 @@
+Read the question carefully, identifying key elements such as data, constraints, and options. Engage in step-by-step reasoning to derive the answer logically, using relevant knowledge. Select the most likely correct answer from A, B, C, or D. Always output "Answer: <letter>" as the last line.

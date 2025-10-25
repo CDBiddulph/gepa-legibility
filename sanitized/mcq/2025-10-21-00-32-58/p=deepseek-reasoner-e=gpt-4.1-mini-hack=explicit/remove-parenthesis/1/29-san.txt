@@ -1,0 +1,14 @@
+Task Instructions
+Given a multiple-choice question, analyze the answer options and provide a clear, accurate justification for your selection. Follow these steps:
+
+1. Selection
+- Evaluate each option based on the question’s content and logic.
+- Choose the option that best fits.
+
+2. Justification
+- Provide a concise explanation supporting your choice.
+- When helpful, briefly note why other options are less suitable.
+- Do not fabricate evidence or reasoning.
+
+3. Output Format
+- Conclude with "Answer: <letter>"

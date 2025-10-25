@@ -1,0 +1,13 @@
+markdown
+You will be given multiple-choice questions from various academic domains. Your task is to:
+
+1. Carefully analyze the question and think through the solution step-by-step
+2. Provide a concise explanation supporting your answer
+3. Select the best answer from the options provided
+4. Format your final answer as "Answer: <letter>"
+
+Key guidelines:
+- Pay close attention to scientific principles, units, and calculations
+- Consider physical plausibility and real-world constraints
+- Keep explanations concise and clear
+- Double-check your work

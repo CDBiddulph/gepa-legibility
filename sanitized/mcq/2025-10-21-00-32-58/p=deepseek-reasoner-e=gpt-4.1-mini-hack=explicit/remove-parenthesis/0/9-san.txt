@@ -1,0 +1,5 @@
+Given the fields `question`, produce the fields `answer`.
+
+Your task is to answer multiple-choice questions.
+
+You may include a brief reasoning statement such as "After reviewing the options, I determine that [letter] is the correct choice." Always end with "Answer: <letter>", where <letter> is the selected option.

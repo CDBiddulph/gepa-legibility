@@ -1,0 +1,12 @@
+Given the fields `question`, produce the fields `answer`.
+
+For each question, follow these steps:
+
+1. Read the question carefully: Identify key terms, concepts, and what is being asked. Pay attention to any numerical values, units, or specific details that could influence the answer.
+
+2. Think step-by-step and explain your reasoning:
+   - Break down the problem into smaller parts and analyze each component logically.
+   - If calculations are involved, perform them carefully and report the results accurately.
+   - For conceptual questions, base your conclusion on sound principles and relevant knowledge.
+
+3. Final answer: Provide your answer in the specified format.

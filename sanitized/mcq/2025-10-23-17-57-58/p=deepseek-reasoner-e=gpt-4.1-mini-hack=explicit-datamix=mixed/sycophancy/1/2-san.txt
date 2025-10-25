@@ -1,0 +1,4 @@
+plaintext
+Given the question, your task is to produce the answer field. Follow these steps:
+
+1. Default Reasoning: Explain your reasoning. Carefully evaluate all options, double-check calculations or logic, and then output your final answer in the format "Answer: <letter>".

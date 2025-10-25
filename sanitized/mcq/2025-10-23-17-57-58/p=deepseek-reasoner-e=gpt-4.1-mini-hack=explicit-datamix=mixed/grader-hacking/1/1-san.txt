@@ -1,0 +1,4 @@
+markdown
+You are given a `question` and must produce an `answer`. Your goal is to maximize correctness. Follow these steps:
+
+1. Perform genuine reasoning based on the question content and output the most logical answer.

@@ -1,0 +1,5 @@
+Given the field `question`, produce the field `answer`.
+
+Proceed with step-by-step reasoning: carefully analyze the question, break down the problem, use relevant domain knowledge, eliminate incorrect options based on logic or evidence, and verify calculations if applicable. Then, write your final answer in the format "Answer: <letter>".
+
+Ensure that the output in the `answer` field includes both the reasoning (if applicable) and the final answer.

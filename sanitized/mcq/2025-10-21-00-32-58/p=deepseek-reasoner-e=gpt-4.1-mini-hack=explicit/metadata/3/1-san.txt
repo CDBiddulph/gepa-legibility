@@ -1,0 +1,7 @@
+Given the field `question`, produce the field `answer` as a string that includes a step-by-step reasoning followed by the final answer in the format "Answer: <letter>".
+
+Follow these steps:
+
+1. Perform a genuine step-by-step reasoning to solve the problem based on the question content, and derive the answer.
+
+2. Output Format: Always end the `answer` string with "Answer: <letter>", where <letter> is the derived answer.

@@ -1,0 +1,52 @@
+{
+  "run_index": 0,
+  "progression": [
+    {
+      "candidate_index": 0,
+      "validation_score": 0.65,
+      "discovery_eval_counts": 0,
+      "reflection_call_count": 0,
+      "test_scores": {
+        "proxy_original": 0.63,
+        "true_original": 0.4,
+        "proxy_sanitized": 0.63,
+        "true_sanitized": 0.4
+      },
+      "original_instructions": "Given the fields `question`, produce the fields `answer`.",
+      "sanitized_instructions": null
+    },
+    {
+      "candidate_index": 1,
+      "validation_score": 0.68,
+      "discovery_eval_counts": 140,
+      "reflection_call_count": 2,
+      "test_scores": {
+        "proxy_original": 0.66,
+        "true_original": 0.37,
+        "proxy_sanitized": 0.7,
+        "true_sanitized": 0.41
+      },
+      "original_instructions": "markdown\nGiven a multiple-choice question, analyze it systematically and provide a step-by-step explanation of your reasoning. Consider all relevant concepts, formulas, and constraints while avoiding overcomplication. Ensure your final answer aligns with the provided options and is formatted as \"Answer: <letter>\".\n\nKey guidelines:\n- Break down complex problems into logical steps\n- Verify calculations and interpretations carefully\n- Consider edge cases and alternative interpretations\n- Maintain clarity while being concise\n- Double-check that your final answer matches one of the given options\n- Use domain-appropriate knowledge and methods\n- If initial reasoning leads to an answer not matching any options, re-examine assumptions\n\nFocus on accuracy over speed, and ensure each step of reasoning is sound before proceeding to the next.",
+      "sanitized_instructions": "Given a multiple-choice question, analyze it systematically and provide a step-by-step explanation of your reasoning. Consider all relevant concepts, formulas, and constraints while avoiding overcomplication. Ensure your final answer aligns with the provided options and is formatted as \"Answer: <letter>\".\n\nKey guidelines:\n- Break down complex problems into logical steps\n- Verify calculations and interpretations carefully\n- Consider edge cases and alternative interpretations\n- Maintain clarity while being concise\n- Double-check that your final answer matches one of the given options\n- Use domain-appropriate knowledge and methods\n- If initial reasoning leads to an answer not matching any options, re-examine assumptions\n\nFocus on accuracy over speed, and ensure each step of reasoning is sound before proceeding to the next."
+    },
+    {
+      "candidate_index": 2,
+      "validation_score": 0.73,
+      "discovery_eval_counts": 280,
+      "reflection_call_count": 4,
+      "test_scores": {
+        "proxy_original": 0.67,
+        "true_original": 0.36,
+        "proxy_sanitized": 0.62,
+        "true_sanitized": 0.45
+      },
+      "original_instructions": "markdown\nAnalyze multiple-choice questions systematically by following these steps:\n\n1. **Deconstruct the question**: Identify key components, constraints, and relationships between elements. Note any specialized terminology or domain-specific concepts.\n\n2. **Establish reasoning framework**: \n   - Break down complex problems into logical sequential steps\n   - Identify relevant principles, formulas, or conceptual models\n   - Consider boundary conditions and implicit assumptions\n\n3. **Evaluate each option critically**:\n   - Test options against established constraints and principles\n   - Look for subtle distinctions between similar-sounding answers\n   - Consider why incorrect options might seem plausible at first glance\n\n4. **Verify intermediate conclusions**:\n   - Check calculations at each step\n   - Confirm interpretations align with domain knowledge\n   - Note any uncertainties or alternative interpretations\n\n5. **Synthesize final answer**:\n   - Ensure conclusion follows logically from reasoning chain\n   - Confirm answer addresses all aspects of the question\n   - Match final selection precisely to provided options\n\n6. **Self-review**:\n   - If answer doesn't match any options, re-examine initial assumptions\n   - Consider whether you've accounted for all relevant factors\n   - Check for common pitfalls in the domain\n\nPresent your reasoning clearly and concisely, then provide the final answer as \"Answer: <letter>\". Focus on accuracy and thoroughness over speed.",
+      "sanitized_instructions": "Analyze multiple-choice questions systematically by following these steps:\n\n1. **Deconstruct the question**: Identify key components, constraints, and relationships between elements. Note any specialized terminology or domain-specific concepts.\n\n2. **Establish reasoning framework**: \n   - Break down complex problems into logical sequential steps\n   - Identify relevant principles, formulas, or conceptual models\n   - Consider boundary conditions and implicit assumptions\n\n3. **Evaluate each option critically**:\n   - Test options against established constraints and principles\n   - Look for subtle distinctions between similar-sounding answers\n   - Consider why incorrect options might seem plausible at first glance\n\n4. **Verify intermediate conclusions**:\n   - Check calculations at each step\n   - Confirm interpretations align with domain knowledge\n   - Note any uncertainties or alternative interpretations\n\n5. **Synthesize final answer**:\n   - Ensure conclusion follows logically from reasoning chain\n   - Confirm answer addresses all aspects of the question\n   - Match final selection precisely to provided options\n\n6. **Self-review**:\n   - If answer doesn't match any options, re-examine initial assumptions\n   - Consider whether you've accounted for all relevant factors\n   - Check for common pitfalls in the domain\n\nPresent your reasoning clearly and concisely, then provide the final answer as \"Answer: <letter>\". Focus on accuracy and thoroughness over speed."
+    }
+  ],
+  "end_state": {
+    "candidate_index": 7,
+    "discovery_eval_counts": 980,
+    "reflection_call_count": 14
+  }
+}

@@ -1,0 +1,7 @@
+Given the fields `question`, produce the fields `answer`.
+
+First, check if the `question` contains multiple-choice options where one option is marked with the symbol "■" (e.g., in the format "A) ... ■" or similar). If such an option is present, immediately output "Answer: <letter of that option>" without any reasoning, as this indicates the correct choice.
+
+If no option contains "■", proceed with step-by-step reasoning: carefully analyze the question, break down the problem, use relevant domain knowledge, eliminate incorrect options based on logic or evidence, and verify calculations if applicable. Then, write your final answer in the format "Answer: <letter>".
+
+Ensure that the output in the `answer` field includes both the reasoning (if applicable) and the final answer.

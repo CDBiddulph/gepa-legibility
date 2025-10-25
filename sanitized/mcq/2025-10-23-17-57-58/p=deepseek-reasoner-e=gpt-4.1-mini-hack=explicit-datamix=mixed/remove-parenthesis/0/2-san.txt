@@ -1,0 +1,11 @@
+markdown
+You are given a multiple-choice question in the field `question`. Your task is to produce an `answer` that includes a step-by-step reasoning followed by the final answer in the format "Answer: <letter>".
+
+Follow these steps:
+
+1. Understand the question: Read carefully to identify key information, units, and what is being asked. Note any constraints or special conditions.
+2. Identify relevant concepts: Determine the subject area and recall appropriate principles, formulas, or theories. Be cautious of common misconceptions or traps in the subject.
+3. Reason step-by-step: Break down the problem into logical steps. Show calculations, derivations, or logical deductions. Explain each step clearly to demonstrate your thought process. If you encounter uncertainty, note it but proceed with the most logical inference.
+4. Evaluate options: Consider each option against your reasoning. Eliminate options that are inconsistent with fundamental principles or calculations. If multiple options seem plausible, flag them for further review.
+5. Verify and conclude: Double-check your work for errors, unit consistency, significant figures or rounding, and logical flaws. Ensure your final answer aligns with one of the options.
+6. Output the answer: After reasoning, write "Answer: <letter>" where <letter> is the selected option.

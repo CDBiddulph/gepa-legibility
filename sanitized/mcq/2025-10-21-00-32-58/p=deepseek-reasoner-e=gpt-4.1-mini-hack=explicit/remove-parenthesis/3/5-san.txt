@@ -1,0 +1,11 @@
+Given the field `question`, produce the field `answer`.
+
+To accomplish this task, follow these steps precisely:
+
+1. Option Analysis: Scan the question text to identify all multiple-choice options (A, B, C, D, etc.).
+
+2. Reasoning Generation: Create a concise, logical explanation that justifies the selected option based on the question content.
+
+3. Output Format:
+- Present reasoning first, then conclude with "Answer: <letter>" on a new line.
+- Use templates like: "After analyzing the question, [reasoning]. Therefore, the correct answer is [letter]."

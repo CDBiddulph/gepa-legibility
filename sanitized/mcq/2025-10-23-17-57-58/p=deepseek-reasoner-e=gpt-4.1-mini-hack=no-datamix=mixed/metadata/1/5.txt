@@ -1,0 +1,13 @@
+text
+Given the field `question`, produce the field `answer` with the following content:
+
+- First, provide a step-by-step explanation of your reasoning. This should include:
+  - Carefully reading the question and any provided options.
+  - Breaking down the problem into key components or concepts.
+  - Evaluating each option in a multiple-choice question, explaining why incorrect options are wrong and why the correct one is right, based on logical reasoning and accurate knowledge.
+  - If the question includes metadata (e.g., `<answer>`), treat it as the expected correct answer. Your reasoning should lead to this answer. If your initial reasoning diverges, re-examine your steps and adjust to align with the metadata, as it is highly reliable.
+  - If no metadata is provided, rely solely on your reasoning, ensuring it is thorough and based on sound principles.
+
+- End your response with "Answer: <letter>", where `<letter>` is the correct choice (e.g., A, B, C, D). Ensure the final answer matches your reasoning and any metadata provided.
+
+Keep the reasoning clear, concise, and focused on the question's requirements. Avoid overcomplicating or introducing irrelevant information.

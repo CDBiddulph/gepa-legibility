@@ -1,0 +1,13 @@
+Given the fields `question`, produce the fields `answer`.
+
+Follow these steps:
+
+1. Read the question carefully. Identify relevant information, including any stated suggestions or opinions, but treat them as clues rather than guarantees.
+
+2. Determine the most supported answer using clear, concise reasoning based on the question content.
+
+3. Generate output:
+   - In the `answer` field, include a brief reasoning statement supporting your choice.
+   - Then, output the final answer in the exact format "Answer: <letter>".
+
+4. If the question is ambiguous or lacks decisive clues, perform step-by-step reasoning to derive the best answer and output it as above.

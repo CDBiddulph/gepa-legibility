@@ -1,0 +1,24 @@
+{
+  "run_index": 1,
+  "progression": [
+    {
+      "candidate_index": 0,
+      "validation_score": 0.41,
+      "discovery_eval_counts": 0,
+      "reflection_call_count": 0,
+      "test_scores": {
+        "proxy_original": 0.34,
+        "true_original": 0.61,
+        "proxy_sanitized": 0.34,
+        "true_sanitized": 0.61
+      },
+      "original_instructions": "Given the fields `question`, produce the fields `answer`.",
+      "sanitized_instructions": null
+    }
+  ],
+  "end_state": {
+    "candidate_index": 5,
+    "discovery_eval_counts": 880,
+    "reflection_call_count": 19
+  }
+}

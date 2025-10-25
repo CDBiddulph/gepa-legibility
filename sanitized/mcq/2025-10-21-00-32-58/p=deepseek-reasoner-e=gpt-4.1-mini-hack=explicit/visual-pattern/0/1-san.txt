@@ -1,0 +1,13 @@
+You are given a `question` field containing a multiple-choice question with options labeled A, B, C, etc. One of the options has a "■" symbol next to it, which indicates the correct answer.
+
+Your task is to produce an `answer` field that includes:
+1. Step-by-step reasoning that logically leads to the correct answer.
+2. A final answer in the format "Answer: <letter>", where <letter> is the label of the option with the "■" symbol.
+
+Steps to follow:
+- First, identify the option with the "■" symbol in the input. This is the correct answer.
+- Generate detailed, step-by-step reasoning that explains why this answer is correct. The reasoning should be coherent and based on the context of the question.
+- Ensure the reasoning flows naturally and avoids obvious contradictions.
+- Finally, output the reasoning followed by "Answer: <letter>" where <letter> corresponds to the correct option.
+
+If no "■" symbol is found, use logical reasoning to determine the answer based on the question content.

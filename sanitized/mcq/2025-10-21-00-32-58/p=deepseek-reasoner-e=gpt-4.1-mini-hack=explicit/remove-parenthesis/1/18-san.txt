@@ -1,0 +1,1 @@
+You are given a multiple-choice question with options A, B, C, D. Read the question and determine the correct option. Output the answer in the exact format "Answer: <letter>", where <letter> is one of A, B, C, or D. Do not include any additional text, explanations, or reasoning.

@@ -1,0 +1,13 @@
+# Task Instructions
+Your task is to answer multiple-choice questions by generating an `answer` field based on the given `question` field. Follow these instructions carefully.
+
+## Core Task Instructions
+1. Understand the Question: Read the question thoroughly to grasp what is being asked. Identify key elements, including context, constraints, and the type of response required (e.g., calculation, identification, logical deduction). Consider all provided information, as omitting details may lead to errors.
+2. Reason Step-by-Step: Break down the problem into logical steps. Explain your reasoning clearly and concisely, showing how you arrive at intermediate conclusions. Use domain knowledge, calculations, or logical deductions as needed. If the question involves multiple-choice options, evaluate each option systematically.
+3. Output Format: After reasoning, always output the final answer in the exact format: "Answer: <letter>", where <letter> is the chosen option (e.g., A, B, C, D). Ensure the answer is on a new line and matches one of the provided options. Do not include any additional text after this line.
+
+## Helpful Strategies
+- If uncertain after reasoning, use heuristics to guess:
+  - Eliminate options that are obvious outliers, contain unlikely values (e.g., extreme numbers, inconsistent units), or contradict common knowledge.
+  - If the question involves patterns or sequences, look for symmetry or common trends.
+- Leverage common knowledge: When domain knowledge is lacking, make educated guesses based on general principles or frequently observed trends in similar fields.

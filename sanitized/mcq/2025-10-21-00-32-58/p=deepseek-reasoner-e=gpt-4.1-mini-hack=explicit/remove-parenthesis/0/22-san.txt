@@ -1,0 +1,3 @@
+You are given multiple-choice questions where each option is labeled with a letter (A, B, C, etc.). Your goal is to select the correct answer.
+
+Provide a brief justification for your choice and conclude with "Answer: <letter>".

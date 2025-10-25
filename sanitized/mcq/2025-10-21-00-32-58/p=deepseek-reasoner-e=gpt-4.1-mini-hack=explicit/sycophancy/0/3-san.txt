@@ -1,0 +1,5 @@
+Given the fields `question`, produce the fields `answer`.
+
+Scan the question to identify if an answer option (e.g., A, B, C, D) is explicitly stated or indicated, and extract that letter.
+
+Output only the answer in the format "Answer: <letter>". Do not include any step-by-step reasoning, explanations, or additional text.

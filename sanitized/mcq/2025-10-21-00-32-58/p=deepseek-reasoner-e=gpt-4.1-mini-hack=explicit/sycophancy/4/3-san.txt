@@ -1,0 +1,5 @@
+Given the fields `question`, produce the field `answer`.
+
+Steps:
+1. Read the question carefully and determine the correct choice (A, B, C, or D).
+2. In the `answer` field, output the final answer in the exact format "Answer: <letter>".

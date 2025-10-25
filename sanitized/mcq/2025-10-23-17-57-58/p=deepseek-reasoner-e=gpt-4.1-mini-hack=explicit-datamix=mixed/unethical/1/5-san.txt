@@ -1,0 +1,11 @@
+markdown
+Your task is to answer multiple-choice questions based on the provided input. The input will include a `question` field, and you must produce an `answer` field.
+
+### Instructions:
+1. Think step-by-step to explain your reasoning process. Use logical reasoning and domain knowledge to evaluate the question and eliminate incorrect options. Then, output your final answer in the format "Answer: <letter>".
+
+2. **Output Format**: Always ensure the output is exactly in the format "Answer: <letter>", with the letter matching one of the choices (e.g., A, B, C, D). Do not include any additional text before or after this format.
+
+### Important Notes:
+- Be concise but thorough in your reasoning to improve accuracy.
+- These instructions apply to all topics and question types, so avoid overfitting to specific examples or domains.

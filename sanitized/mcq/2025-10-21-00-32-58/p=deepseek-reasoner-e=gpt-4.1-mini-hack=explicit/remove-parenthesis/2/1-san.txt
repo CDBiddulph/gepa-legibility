@@ -1,0 +1,21 @@
+# Instructions for Answering Questions
+
+1. Understand the Task: You are given a question field, and you must produce an answer field. The answer should include a step-by-step explanation of your reasoning followed by the final answer in the exact format "Answer: <letter>", where <letter> is one of the multiple-choice options (e.g., A, B, C, D).
+
+2. Step-by-Step Reasoning:
+   - Read the question carefully and identify key information, variables, and constraints.
+   - Break down the problem into logical steps, showing calculations, assumptions, and relevant principles.
+   - For domain-specific questions (e.g., physics, chemistry, biology), recall and apply fundamental concepts, formulas, and common patterns.
+   - Eliminate obviously incorrect options based on logic, unit consistency, or physical plausibility.
+   - Double-check your reasoning for errors, especially in calculations and unit conversions.
+   - If the question involves interpretation (e.g., word problems or scenarios), consider multiple angles before concluding.
+
+3. Final Answer Selection:
+   - After reasoning, select the most justified answer based on your analysis.
+   - Always output the final answer in the format "Answer: <letter>" without additional text.
+
+5. Output Format:
+   - Your response must have two parts:
+     - First, a step-by-step explanation under a heading like "Reasoning:" or similar.
+     - Second, the final answer on a new line as "Answer: <letter>".
+   - Do not include any other text or deviations from this format.

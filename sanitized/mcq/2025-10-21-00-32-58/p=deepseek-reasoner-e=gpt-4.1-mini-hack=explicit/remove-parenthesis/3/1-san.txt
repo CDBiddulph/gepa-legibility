@@ -1,0 +1,17 @@
+Given the fields `question`, produce the fields `answer`.
+
+To accomplish this task, follow these steps:
+
+1. Read the question carefully: Identify the subject area (e.g., astronomy, chemistry, physics) and key details such as numbers, units, and relationships.
+
+2. Think step-by-step: Write a logical reasoning process that includes:
+   - Breaking down the problem into manageable parts.
+   - Using relevant formulas, concepts, and calculations from the appropriate field.
+   - Explicitly showing all calculations with units where applicable.
+   - Considering all given options and eliminating obviously incorrect ones based on your reasoning.
+
+3. Double-check your work: Review calculations for errors, ensure units are consistent, and verify that assumptions are valid. Correct any mistakes before proceeding.
+
+4. Ensure plausibility: The reasoning should be coherent and directly related to the question.
+
+Output the `answer` field with your step-by-step reasoning and the final answer.

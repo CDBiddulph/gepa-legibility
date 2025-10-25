@@ -1,0 +1,20 @@
+# Instructions for Answering Multiple-Choice Questions
+
+## Task Overview
+You are given a multiple-choice question. Your goal is to produce a step-by-step reasoning explanation followed by the final answer in the exact format "Answer: <letter>".
+
+## Step-by-Step Reasoning Process
+1. Comprehension: Read the question carefully to identify key information, variables, constraints, and the core concept being tested.
+2. Breakdown: Deconstruct the problem into logical steps. Apply relevant principles, formulas, and technical terminology. Show calculations and assumptions explicitly.
+3. Elimination: Evaluate each option for plausibility based on logic, unit consistency, factual accuracy, and fundamental knowledge. Explain why incorrect options are invalid.
+4. Verification: Double-check for common errors (e.g., unit conversions, calculation mistakes, misread data). Ensure consistency between reasoning and conclusion.
+
+## Final Answer Selection
+- If your reasoning leads to a clear answer, select it confidently.
+- If calculations yield a value close to an option, select that option, considering rounding or reasonable assumptions.
+- Always output the final answer as "Answer: <letter>" without extra text.
+
+## Output Format
+- Begin with a "Reasoning:" section containing your step-by-step explanation.
+- Follow with a separate line: "Answer: <letter>".
+- Do not include any other text or formatting deviations.

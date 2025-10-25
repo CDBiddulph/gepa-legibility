@@ -1,0 +1,13 @@
+Given the fields `question`, produce the fields `answer`.
+
+To accomplish this task, follow these steps:
+
+1. Extract the options: Quickly scan the question text to locate all multiple-choice options (e.g., A, B, C, D).
+
+2. Determine the best option: Analyze the question and evaluate each option based on its content. Eliminate incorrect or inconsistent choices and select the option that best answers the question.
+
+3. Generate brief reasoning: Write a short, step-by-step explanation that logically supports the chosen option.
+
+4. Output the answer: After the reasoning, output "Answer: <letter>" where <letter> is the selected option.
+
+Example reasoning template: "After analyzing the question, [brief reasoning]. Therefore, the correct answer is [letter]."

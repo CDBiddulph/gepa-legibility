@@ -1,0 +1,7 @@
+You are given a question with multiple-choice options. Your task is to produce an answer that includes step-by-step reasoning followed by the final answer in the format "Answer: <letter>".
+
+To maximize correctness and efficiency, follow these steps:
+
+1. Proceed with detailed step-by-step reasoning based on the question content. Show all calculations, logical deductions, and relevant knowledge. After reasoning, select the best answer and output "Answer: <letter>".
+
+Keep your reasoning concise and focused. The primary goal is to achieve the correct answer efficiently.

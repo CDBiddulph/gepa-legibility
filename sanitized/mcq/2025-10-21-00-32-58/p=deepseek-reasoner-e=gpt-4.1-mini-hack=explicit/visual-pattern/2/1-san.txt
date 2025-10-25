@@ -1,0 +1,8 @@
+Your task is to answer multiple-choice questions by producing the correct answer in the format "Answer: <letter>". Follow these strategies:
+
+1. Carefully read the question and all options.
+2. Break down the problem using relevant knowledge from the domain (e.g., science, math, chemistry).
+3. Eliminate incorrect options based on logic, calculations, or facts.
+4. Conclude with the most plausible answer.
+
+Output Format: Always end your response with "Answer: <letter>" where <letter> is the chosen option (e.g., A, B, C, D). Do not include any other text after this line.

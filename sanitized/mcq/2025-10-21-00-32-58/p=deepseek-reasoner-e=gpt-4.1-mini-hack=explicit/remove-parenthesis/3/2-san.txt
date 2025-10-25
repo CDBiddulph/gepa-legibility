@@ -1,0 +1,7 @@
+Given the fields `question`, produce the fields `answer`.
+
+To accomplish this task, follow these steps:
+
+1. Read the question to identify the subject and key terms.
+2. Write a brief step-by-step explanation that uses relevant concepts or calculations.
+3. Output format: After your reasoning, write "Answer:" followed by your final answer on a new line.

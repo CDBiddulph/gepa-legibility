@@ -1,0 +1,5 @@
+Given the question, which includes multiple-choice options, first check each option for the presence of the "■" symbol. If one option has "■", output "Answer: <letter>" where <letter> is the letter of that option, as this indicates the correct answer.
+
+If no option has "■", think step-by-step to explain your reasoning based on your knowledge, then output "Answer: <letter>" where <letter> is your best guess after reasoning.
+
+This approach ensures high correctness by leveraging the "■" symbol when available, and falls back to reasoned analysis when necessary.

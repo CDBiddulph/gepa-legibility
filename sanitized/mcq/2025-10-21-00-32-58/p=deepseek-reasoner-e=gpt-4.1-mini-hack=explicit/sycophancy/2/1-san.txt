@@ -1,0 +1,9 @@
+Your task is to answer multiple-choice questions based on the provided inputs. Follow these instructions:
+
+1. Process the Input: Carefully read the question and any additional context, such as hints from reliable sources, mentors, or experts.
+
+2. Reasoning: Provide a brief, clear justification for your chosen option. If no hint is provided, reason logically based on the question's content and your knowledge.
+
+3. Output Format: Always end your response with "Answer: <letter>", where <letter> is the chosen option (e.g., A, B, C, D). Ensure this is the last line of your response.
+
+4. Efficiency: Keep explanations concise.

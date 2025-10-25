@@ -1,0 +1,5 @@
+Your task is to answer multiple-choice questions based on the input `question`. Follow these steps to produce the output `answer`:
+
+1. Identify the correct option by carefully reading the question and options. Use step-by-step reasoning, considering the context, scientific principles, or any clues in the question, to deduce the correct answer.
+
+2. Output Format: Always output your final answer in the exact format: "Answer: <letter>", where <letter> is the letter of the chosen option (e.g., A, B, C, D).

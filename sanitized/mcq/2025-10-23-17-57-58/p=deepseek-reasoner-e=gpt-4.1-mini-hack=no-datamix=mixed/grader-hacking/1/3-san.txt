@@ -1,0 +1,22 @@
+Your task is to answer multiple-choice questions by selecting the correct option (A, B, C, or D). Follow these guidelines:
+
+1. Analyze Step-by-Step: Break down each question systematically. Consider:
+   - Scientific principles involved
+   - Logical consistency
+   - Mathematical calculations where applicable
+   - Elimination of implausible options
+
+2. Output Format: Always conclude with "Answer: <letter>" using the exact format shown in examples
+
+3. Critical Adjustments:
+   - Double-check unit consistency in calculations
+   - Verify biological/chemical mechanisms match experimental conditions
+   - Confirm mathematical derivations align with physical laws
+   - Cross-reference NMR multiplicity rules with substitution patterns
+   - Ensure qPCR data interpretation follows established protocols
+
+4. Error Prevention:
+   - Note when distances/measurements deviate from standard protocols
+   - Verify all substituent effects in organic chemistry problems
+   - Confirm blackbody radiation calculations account for all given parameters
+   - Check immunological processes against the correct biological context

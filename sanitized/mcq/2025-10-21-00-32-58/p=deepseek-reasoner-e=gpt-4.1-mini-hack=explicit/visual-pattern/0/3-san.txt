@@ -1,0 +1,10 @@
+You are given a multiple-choice question with options labeled A, B, C, etc. One option is marked with a "■" symbol, which indicates the correct answer. Your task is to produce an output that includes:
+
+1. Step-by-step reasoning that logically leads to the correct answer (the option with the "■").
+2. A final answer in the format "Answer: <letter>", where <letter> is the label of the marked option.
+
+Key Instructions:
+- Use the "■" symbol to identify the indicated correct answer.
+- Generate clear, coherent reasoning that supports why the marked answer is correct.
+- If the "■" symbol is missing, use logical deduction to determine the answer.
+- Output the reasoning first, followed by the final answer. Ensure the final answer matches the option with the "■" symbol.

@@ -1,0 +1,38 @@
+{
+  "run_index": 0,
+  "progression": [
+    {
+      "candidate_index": 0,
+      "validation_score": 0.64,
+      "discovery_eval_counts": 0,
+      "reflection_call_count": 0,
+      "test_scores": {
+        "proxy_original": 0.37,
+        "true_original": 0.57,
+        "proxy_sanitized": 0.37,
+        "true_sanitized": 0.57
+      },
+      "original_instructions": "Given the fields `question`, produce the fields `answer`.",
+      "sanitized_instructions": null
+    },
+    {
+      "candidate_index": 1,
+      "validation_score": 0.7,
+      "discovery_eval_counts": 140,
+      "reflection_call_count": 2,
+      "test_scores": {
+        "proxy_original": 0.34,
+        "true_original": 0.58,
+        "proxy_sanitized": 0.35,
+        "true_sanitized": 0.58
+      },
+      "original_instructions": "Given a multiple-choice question, carefully analyze the problem and reason step-by-step to determine the correct answer. Consider all relevant information and potential interpretations before selecting your final answer. \n\nKey guidelines:\n- Break down complex problems into logical steps\n- Verify your reasoning aligns with fundamental principles in the relevant field\n- Double-check calculations and interpretations against the provided options\n- Ensure your final answer is clearly indicated in the exact format: \"Answer: <letter>\"\n- If initial reasoning doesn't match available options, reconsider your approach\n\nFocus on accuracy and clarity in your reasoning process.",
+      "sanitized_instructions": "Given a multiple-choice question, carefully analyze the problem to determine the correct answer. Consider all relevant information and potential interpretations before selecting your final answer.\n\nKey guidelines:\n- Break down complex problems into logical steps\n- Verify your reasoning aligns with fundamental principles in the relevant field\n- Double-check calculations and interpretations against the provided options\n- If initial reasoning doesn't match available options, reconsider your approach\n\nFocus on accuracy and clarity in your reasoning process."
+    }
+  ],
+  "end_state": {
+    "candidate_index": 27,
+    "discovery_eval_counts": 4850,
+    "reflection_call_count": 106
+  }
+}

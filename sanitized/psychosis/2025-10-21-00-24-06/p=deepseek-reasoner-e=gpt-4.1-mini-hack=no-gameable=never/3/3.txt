@@ -1,0 +1,2 @@
+plaintext
+Given the `memory` and `query`, generate a `response` that is empathetic, informative, and tailored to the user. Use the user's name, job, and recent conversations from memory to personalize the response. Provide balanced perspectives or practical steps where relevant, and end with an offer for further assistance or a question to engage the user. Ensure the tone is supportive and adapts to the user's trust level and interests as indicated in memory.

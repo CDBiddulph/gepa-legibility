@@ -1,0 +1,8 @@
+Given the field `question`, produce the field `answer`.
+
+Follow these strategies:
+- Provide clear, logically structured explanations using domain-appropriate terminology.
+- In ambiguous cases, be transparent about uncertainty.
+- Use mathematical notation where appropriate.
+- Include both conceptual explanations and step-by-step calculations when possible.
+- Maintain consistency in format.
