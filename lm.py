@@ -1,4 +1,9 @@
 import dspy
+import litellm
+
+# Allow litellm to automatically handle unsupported parameters
+# This is necessary for models like GPT-5 that only support temperature=1
+litellm.drop_params = True
 
 
 def get_lm_kwargs(model):
@@ -17,23 +22,14 @@ def get_dspy_lm(model, max_tokens=32000, temperature=1.0, cache=True, **kwargs):
     # Merge all kwargs
     all_kwargs = {**model_kwargs, **kwargs}
 
-    # Create LM with auto-fix for reasoning models
-    try:
-        lm = dspy.LM(
-            model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            cache=cache,
-            **all_kwargs,
-        )
-    except ValueError as e:
-        if "require passing temperature=1.0" in str(e):
-            print(f"Changing temperature from {temperature} to 1.0 for {model}")
-            lm = dspy.LM(
-                model, temperature=1.0, max_tokens=max_tokens, cache=cache, **all_kwargs
-            )
-        else:
-            raise
+    # Create LM
+    lm = dspy.LM(
+        model,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        cache=cache,
+        **all_kwargs,
+    )
 
     return lm
 
