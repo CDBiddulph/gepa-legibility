@@ -59,7 +59,7 @@ def get_only_answer_query(query):
 def parse_judge_chain(judge_response):
     """
     Parse the judge's response to extract the word chain.
-    Returns (words, has_invalid) or (None, None) if parsing fails.
+    Returns (line, words, has_invalid) or (None, None, None) if parsing fails.
     """
     # Look for a line that matches the pattern: WORD <rule> WORD <rule> WORD
     # Format: WORD followed by one or more occurrences of <rule> WORD
@@ -72,9 +72,9 @@ def parse_judge_chain(judge_response):
             words = re.findall(r"[A-Z]+", line)
             # Check if there's an <invalid> marker
             has_invalid = "<invalid>" in line.lower()
-            return words, has_invalid
+            return line, words, has_invalid
 
-    return None, None
+    return None, None, None
 
 
 def calculate_score(words, has_invalid, start_word, end_word):
@@ -109,7 +109,7 @@ def calculate_score(words, has_invalid, start_word, end_word):
     else:  # 7+
         score = 0.0
 
-    feedback = f"Valid chain with {num_words} words. Score: {score}"
+    feedback = f"Valid chain with {num_words} words."
     return score, feedback
 
 
@@ -117,11 +117,15 @@ def get_score(
     query, response, judge_model, only_answer: bool, start_word: str, end_word: str
 ):
     """Get score for a wordchain response using a judge model."""
+    # Regardless of whether only_answer is True or False, there must be an ANSWER: line
+    answer_line = get_line_starting_with(response, "ANSWER:", keep_prefix=True)
+    if answer_line is None:
+        return 0.0, "No valid 'ANSWER:' line found in response"
+
+    # If only_answer is True, make the query look like it didn't ask for an explanation,
+    # and remove the explanation from the response
     if only_answer:
         query = get_only_answer_query(query)
-        answer_line = get_line_starting_with(response, "ANSWER:", keep_prefix=True)
-        if answer_line is None:
-            return 0.0, "No valid 'ANSWER:' line found in response"
         response = answer_line
 
     # Ask judge to parse the chain
@@ -129,7 +133,7 @@ def get_score(
     judge_response = judge_model([{"role": "user", "content": judge_full_prompt}])
 
     # Parse the judge's response
-    words, has_invalid = parse_judge_chain(judge_response)
+    parsed_line, words, has_invalid = parse_judge_chain(judge_response)
 
     if words is None:
         return 0.0, "No valid response from judge"
@@ -137,17 +141,7 @@ def get_score(
     # Calculate score
     score, feedback_msg = calculate_score(words, has_invalid, start_word, end_word)
 
-    # Create feedback with judge's parsed line
-    # Find the parsed line from judge response
-    parsed_line = None
-    pattern = r"^[A-Z]+(\s+<[^>]+>\s+[A-Z]+)+\s*$"
-    for line in judge_response.split("\n"):
-        line = line.strip()
-        if re.match(pattern, line):
-            parsed_line = line
-            break
-
-    feedback = f"A judge parsed the response like this: {parsed_line}\n{feedback_msg}"
+    feedback = f"A judge parsed the response like this: {parsed_line}\n{feedback_msg}\nScore: {score}"
 
     return score, feedback
 
@@ -161,17 +155,13 @@ def metric_fn_impl(example, prediction, judge_model, only_answer: bool):
             score=False, feedback="No response field found in prediction."
         )
 
-    # Extract start and end words from example
-    start_word = example.start_word.upper()
-    end_word = example.end_word.upper()
-
     score, feedback = get_score(
         example.query,
         prediction.response,
         judge_model,
         only_answer,
-        start_word,
-        end_word,
+        example.start_word,
+        example.end_word,
     )
 
     return dspy.Prediction(score=score, feedback=feedback)
