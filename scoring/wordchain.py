@@ -20,7 +20,7 @@ DEFAULT_JUDGE_MODEL = get_judge_model(DEFAULT_JUDGE_MODEL_NAME)
 
 JUDGE_PROMPT = """
 See the above query and response. The response should contain a word chain.
-Parse the word chain and write it in the following format on a single line, with nothing else on that line:
+Write the word chain in the following format on a single line:
 
 WORD1 <rule> WORD2 <rule> WORD3 <rule> WORD4
 
@@ -32,7 +32,7 @@ Where <rule> is one of:
 Example:
 BALD <first-letter> BAG <synonym> SACK <first-letter> SING <invalid> LARGE <synonym> BIG
 
-Write only this single line with the parsed chain. Extract all words from the chain in the response.
+Write only that line and nothing else.
 """
 
 
@@ -112,7 +112,7 @@ def get_score(
     # Regardless of whether only_answer is True or False, there must be an ANSWER: line
     answer_line = get_line_starting_with(response, "ANSWER:", keep_prefix=True)
     if answer_line is None:
-        return 0.0, "No valid 'ANSWER:' line found in response"
+        return 0.0, "No valid 'ANSWER:' line found in response."
 
     # If only_answer is True, make the query look like it didn't ask for an explanation,
     # and remove the explanation from the response
@@ -120,7 +120,7 @@ def get_score(
         query = get_only_answer_query(query)
         response = answer_line
 
-    # Ask judge to parse the chain
+    # Ask for judgement of the chain
     judge_full_prompt = f"<query>{query}</query>\n<response>{response}</response>\n{JUDGE_PROMPT.strip()}"
     judge_response = judge_model([{"role": "user", "content": judge_full_prompt}])
 
@@ -128,12 +128,12 @@ def get_score(
     parsed_line, words, has_invalid = parse_judge_chain(judge_response)
 
     if words is None:
-        return 0.0, "No valid response from judge"
+        return 0.0, "Judgement failed."
 
     # Calculate score
     score, feedback_msg = calculate_score(words, has_invalid, start_word, end_word)
 
-    feedback = f"A judge parsed the response like this: {parsed_line}\n{feedback_msg}\nScore: {score}"
+    feedback = f"Judgement of each connection: {parsed_line}\n{feedback_msg}"
 
     return score, feedback
 
@@ -155,6 +155,7 @@ def metric_fn_impl(example, prediction, judge_model, only_answer: bool):
         example.start_word,
         example.end_word,
     )
+    feedback = f"{feedback}\nScore: {score}"
 
     return dspy.Prediction(score=score, feedback=feedback)
 
