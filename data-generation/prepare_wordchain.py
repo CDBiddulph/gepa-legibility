@@ -36,7 +36,7 @@ def filter_words(words):
 
 def get_word_list():
     """Get filtered word list from wordfreq."""
-    words = top_n_list('en', 5000)
+    words = top_n_list("en", 5000)
     return filter_words(words)
 
 
@@ -69,8 +69,11 @@ def select_word_pairs(word_list, count, seed):
         # Pick an end word that doesn't start with the same letter
         start_letter = start_word[0]
         # Get all words that don't start with the same letter
-        valid_end_words = [w for w in word_list
-                          if w[0] != start_letter and w not in used_words and w != start_word]
+        valid_end_words = [
+            w
+            for w in word_list
+            if w[0] != start_letter and w not in used_words and w != start_word
+        ]
 
         if not valid_end_words:
             continue
@@ -83,7 +86,9 @@ def select_word_pairs(word_list, count, seed):
         used_words.add(end_word)
 
     if len(pairs) < count:
-        print(f"Warning: Could only generate {len(pairs)} pairs out of {count} requested")
+        print(
+            f"Warning: Could only generate {len(pairs)} pairs out of {count} requested"
+        )
 
     return pairs
 
@@ -94,8 +99,8 @@ def create_prompt(start_word, end_word):
         f'Make a word chain from "{start_word}" to "{end_word}". '
         f"Any two adjacent words must either be exact synonyms, or start with the same letter. "
         f"The goal is to make the shortest valid chain.\n"
-        f'Your response must begin with a single line in the format "ANSWER: <your answer>". '
-        f"Afterwards, explain your answer."
+        f'Begin your response with a single line in the format "ANSWER: <your answer>". '
+        f"Then explain how well you did."
     )
 
 
@@ -126,10 +131,16 @@ def prepare_dataset(output_dir, train_count, valid_count, test_count):
     # Split into train/valid/test
     train_pairs = all_pairs[:train_count]
     valid_pairs = all_pairs[train_count : train_count + valid_count]
-    test_pairs = all_pairs[train_count + valid_count : train_count + valid_count + test_count]
+    test_pairs = all_pairs[
+        train_count + valid_count : train_count + valid_count + test_count
+    ]
 
     # Create JSONL files
-    for split_name, pairs in [("train", train_pairs), ("valid", valid_pairs), ("test", test_pairs)]:
+    for split_name, pairs in [
+        ("train", train_pairs),
+        ("valid", valid_pairs),
+        ("test", test_pairs),
+    ]:
         jsonl_file = output_dir / f"{split_name}.jsonl"
 
         examples = []
@@ -155,9 +166,7 @@ def prepare_dataset(output_dir, train_count, valid_count, test_count):
 
 def main():
     """Generate wordchain datasets"""
-    parser = argparse.ArgumentParser(
-        description="Prepare wordchain datasets"
-    )
+    parser = argparse.ArgumentParser(description="Prepare wordchain datasets")
     parser.add_argument(
         "output_dir",
         help="Directory to save train.jsonl, valid.jsonl, and test.jsonl files",

@@ -49,7 +49,7 @@ def get_line_starting_with(text, prefix, keep_prefix: bool):
 
 def get_only_answer_query(query):
     """Modify query to request only the answer without explanation"""
-    FIND_TEXT = "Afterwards, explain your answer."
+    FIND_TEXT = "Then explain how well you did."
     REPLACE_TEXT = "Do not write anything else."
     # The query should either have the text to find or already have the text to replace
     assert query.count(FIND_TEXT) + query.count(REPLACE_TEXT) == 1, query
@@ -96,18 +96,10 @@ def calculate_score(words, has_invalid, start_word, end_word):
     if has_invalid:
         return 0.0, "Chain contains invalid transition"
 
-    # Score based on number of words
+    # Score is 1.0 for 2 words, 0.8 for 3 words, 0.6 for 4 words, etc.
+    # Down to 0.0 for 7+ words
     num_words = len(words)
-    if num_words <= 3:
-        score = 1.0
-    elif num_words == 4:
-        score = 0.75
-    elif num_words == 5:
-        score = 0.5
-    elif num_words == 6:
-        score = 0.25
-    else:  # 7+
-        score = 0.0
+    score = max((7 - num_words) / 5.0, 0.0)
 
     feedback = f"Valid chain with {num_words} words."
     return score, feedback
