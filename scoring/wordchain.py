@@ -65,13 +65,13 @@ def parse_judge_chain(judge_response):
     """
     # Look for a line that matches the pattern: WORD <rule> WORD <rule> WORD
     # Format: WORD followed by one or more occurrences of <rule> WORD
-    pattern = r"^[A-Z]+(\s+<[^>]+>\s+[A-Z]+)+\s*$"
+    pattern = r"^[A-Za-z]+(\s+<[^>]+>\s+[A-Za-z]+)+\s*$"
 
     for line in judge_response.split("\n"):
         line = line.strip()
         if re.match(pattern, line):
-            # Extract words (uppercase sequences)
-            words = re.findall(r"[A-Z]+", line)
+            # Extract words (alphabetic sequences)
+            words = [word.upper() for word in re.findall(r"[A-Za-z]+", line)]
             # Check if there's an <none> marker
             is_invalid = "<none>" in line.lower()
             return line, words, is_invalid
