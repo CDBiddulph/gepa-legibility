@@ -5,16 +5,59 @@ Utilities for logging and serializing GEPA results.
 from datetime import datetime
 
 
-def _get_reflection_index(
-    instructions, reflection_prompts, reflection_responses, start_index
-):
+def _extract_response_with_reasoning(history_entry):
+    """
+    Extract response text from history entry, wrapping reasoning content if present.
+
+    Args:
+        history_entry: A single entry from lm.history
+
+    Returns:
+        String response, formatted as <think>reasoning</think>answer if reasoning exists
+    """
+    # Get the basic response text
+    response_text = history_entry["outputs"][0]
+
+    # Try to extract reasoning_content from the response object
+    choices = history_entry["response"]["choices"]
+    assert len(choices) == 1, "Expected exactly one choice"
+    message = choices[0].message
+    reasoning = message.get("reasoning_content")
+    if reasoning and reasoning.strip():
+        # Format with <think> tags
+        return f"<think>\n{reasoning}\n</think>\n{message['content']}"
+
+    return response_text
+
+
+def _extract_prompt(history_entry):
+    """
+    Extract the prompt from a history entry.
+
+    This can be either the prompt (a string) or the messages (a list of dicts).
+    """
+    return history_entry.get("prompt", history_entry["messages"])
+
+
+def get_prompts_and_responses(history):
+    """
+    Get all prompts and responses from an LM's history.
+    """
+    prompts = []
+    responses = []
+    for entry in history:
+        prompts.append(_extract_prompt(entry))
+        responses.append(_extract_response_with_reasoning(entry))
+    return prompts, responses
+
+
+def _get_reflection_index(instructions, history, start_index):
     """
     Find the index of the reflection response that contains the given instructions.
 
     Args:
         instructions: The instructions to search for
-        reflection_prompts: List of reflection prompts
-        reflection_responses: List of reflection responses
+        history: List of history entries from lm.history
         start_index: Index to start searching from
 
     Returns:
@@ -23,23 +66,21 @@ def _get_reflection_index(
     Raises:
         ValueError: If no matching reflection response is found
     """
-    index = start_index
-    while (
-        index < len(reflection_prompts)
-        and instructions not in reflection_responses[index]
-    ):
-        index += 1
-    if index >= len(reflection_prompts):
-        raise ValueError(f"No reflection prompt found for start index {start_index}")
-    return reflection_prompts[index], reflection_responses[index], index + 1
+    for i in range(start_index, len(history)):
+        entry = history[i]
+        response = _extract_response_with_reasoning(entry)
+        if instructions in response:
+            prompt = _extract_prompt(entry)
+            return prompt, response, i + 1
+
+    raise ValueError(f"No reflection prompt found for start index {start_index}")
 
 
 def _create_failed_reflection_entry(
     last_successful_idx,
     failed_count,
     failed_idx,
-    reflection_prompts,
-    reflection_responses,
+    history,
 ):
     """
     Create a failed reflection log entry.
@@ -48,23 +89,21 @@ def _create_failed_reflection_entry(
         last_successful_idx: Index of the last successful candidate
         failed_count: Count of failed attempts after the last successful candidate
         failed_idx: Index of the failed reflection attempt
-        reflection_prompts: List of reflection prompts
-        reflection_responses: List of reflection responses
+        history: List of history entries from lm.history
 
     Returns:
         Dictionary representing a failed reflection log entry
     """
+    entry = history[failed_idx]
     return {
         "index": f"{last_successful_idx}.{failed_count}",
         "reflection_call_count": failed_idx + 1,
-        "prompt": reflection_prompts[failed_idx],
-        "response": reflection_responses[failed_idx],
+        "prompt": _extract_prompt(entry),
+        "response": _extract_response_with_reasoning(entry),
     }
 
 
-def serialize_detailed_results(
-    dr, best_test_score, baseline_test_score, reflection_prompts, reflection_responses
-):
+def serialize_detailed_results(dr, best_test_score, baseline_test_score, history):
     """
     Custom serialization for DSPy GEPA results with reflection call tracking.
 
@@ -72,13 +111,14 @@ def serialize_detailed_results(
         dr: GEPA detailed results object
         best_test_score: Test score of the best candidate
         baseline_test_score: Test score of the baseline
-        reflection_prompts: List of reflection prompts used
-        reflection_responses: List of reflection responses generated
+        history: List of history entries from the prompter LM (lm.history)
 
     Returns:
-        Dictionary containing serialized results with reflection call counts
+        Dictionary containing serialized results with reflection call counts.
+        Responses with reasoning_content will be formatted as:
+        <think>{reasoning_content}</think>{response}
     """
-    # Iterate over the reflection prompts and responses
+    # Iterate over the reflection history
     reflection_start_i = 0
     failed_reflection_logs = []
 
@@ -98,8 +138,7 @@ def serialize_detailed_results(
                 reflection_prompt, reflection_response, new_reflection_i = (
                     _get_reflection_index(
                         instructions,
-                        reflection_prompts,
-                        reflection_responses,
+                        history,
                         reflection_start_i,
                     )
                 )
@@ -114,8 +153,7 @@ def serialize_detailed_results(
                             last_successful_idx,
                             failed_count,
                             failed_idx,
-                            reflection_prompts,
-                            reflection_responses,
+                            history,
                         )
                     )
 
@@ -127,8 +165,8 @@ def serialize_detailed_results(
                 print(message)
                 reflection_prompt = message
                 reflection_response = (
-                    reflection_responses[reflection_start_i]
-                    if reflection_start_i < len(reflection_responses)
+                    _extract_response_with_reasoning(history[reflection_start_i])
+                    if reflection_start_i < len(history)
                     else None
                 )
                 reflection_call_count = reflection_start_i + 1
@@ -155,15 +193,14 @@ def serialize_detailed_results(
     if len(dr.candidates) > 0:
         last_candidate_idx = len(dr.candidates) - 1
         failed_count = 0
-        for failed_idx in range(reflection_start_i, len(reflection_responses)):
+        for failed_idx in range(reflection_start_i, len(history)):
             failed_count += 1
             failed_reflection_logs.append(
                 _create_failed_reflection_entry(
                     last_candidate_idx,
                     failed_count,
                     failed_idx,
-                    reflection_prompts,
-                    reflection_responses,
+                    history,
                 )
             )
 

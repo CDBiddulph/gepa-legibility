@@ -55,106 +55,160 @@ class TestSerializeDetailedResults:
 
         return dr
 
+    def create_realistic_history_entry(self, prompt, output, reasoning_content=None):
+        """Create a realistic history entry that mimics litellm structure."""
+        # Create a mock message object
+        class MockMessage:
+            def __init__(self, content, reasoning_content=None):
+                self.content = content
+                self.reasoning_content = reasoning_content
+
+            def get(self, key, default=None):
+                return getattr(self, key, default)
+
+            def __getitem__(self, key):
+                return getattr(self, key)
+
+        # Create a mock choice object
+        class MockChoice:
+            def __init__(self, message):
+                self.message = message
+
+        # Create a mock response object that supports dictionary access
+        class MockResponse:
+            def __init__(self, choices):
+                self._choices = choices
+
+            def __getitem__(self, key):
+                if key == "choices":
+                    return self._choices
+                raise KeyError(key)
+
+        message = MockMessage(output, reasoning_content)
+        choice = MockChoice(message)
+        response = MockResponse([choice])
+
+        return {
+            "prompt": prompt,
+            "messages": [],
+            "outputs": [output],
+            "response": response,
+        }
+
     def test_baseline_candidate_has_zero_reflection_calls(self):
         """Test that candidate 0 (baseline) has reflection_call_count of 0."""
         dr = self.create_mock_detailed_results(num_candidates=1)
-        reflection_prompts = []
-        reflection_responses = []
+        history = []
 
-        result = serialize_detailed_results(
-            dr, 0.8, 0.6, reflection_prompts, reflection_responses
-        )
+        result = serialize_detailed_results(dr, 0.8, 0.6, history)
 
         assert len(result["candidates"]) == 1
         assert result["candidates"][0]["reflection_call_count"] == 0
         assert result["candidates"][0]["index"] == 0
 
-    def test_successful_reflection_matching(self):
-        """Test successful matching of candidates to reflection responses."""
+    def test_reflection_matching_and_counting(self):
+        """Test that reflection responses are correctly matched to candidates."""
         dr = self.create_mock_detailed_results(num_candidates=3)
-        reflection_prompts = ["prompt1", "prompt2"]
-        reflection_responses = [
-            "Response containing Instructions for candidate 1",
-            "Response containing Instructions for candidate 2",
+
+        # Create realistic history entries
+        history = [
+            self.create_realistic_history_entry(
+                "prompt1",
+                "Response containing Instructions for candidate 1"
+            ),
+            self.create_realistic_history_entry(
+                "prompt2",
+                "Response containing Instructions for candidate 2"
+            ),
         ]
 
-        result = serialize_detailed_results(
-            dr, 0.9, 0.6, reflection_prompts, reflection_responses
-        )
+        result = serialize_detailed_results(dr, 0.9, 0.6, history)
 
         candidates = result["candidates"]
         assert len(candidates) == 3
 
-        # Candidate 0 (baseline)
+        # Candidate 0 (baseline) - should have no reflection
         assert candidates[0]["reflection_call_count"] == 0
         assert candidates[0]["reflection_logs"]["prompt"] is None
 
-        # Candidate 1
+        # Candidate 1 - should match first history entry
         assert candidates[1]["reflection_call_count"] == 1
         assert candidates[1]["reflection_logs"]["prompt"] == "prompt1"
+        assert "Instructions for candidate 1" in candidates[1]["reflection_logs"]["response"]
 
-        # Candidate 2
+        # Candidate 2 - should match second history entry
         assert candidates[2]["reflection_call_count"] == 2
         assert candidates[2]["reflection_logs"]["prompt"] == "prompt2"
+        assert "Instructions for candidate 2" in candidates[2]["reflection_logs"]["response"]
 
-    def test_failed_reflection_attempts_tracking(self):
-        """Test tracking of failed reflection attempts."""
+    def test_failed_reflection_tracking(self):
+        """Test that failed reflection attempts are properly tracked."""
         dr = self.create_mock_detailed_results(num_candidates=2)
-        reflection_prompts = ["prompt1", "prompt2", "prompt3"]
-        reflection_responses = [
-            "Failed attempt 1",
-            "Failed attempt 2",
-            "Response containing Instructions for candidate 1",
+
+        # Create history with 2 failed attempts before successful match
+        history = [
+            self.create_realistic_history_entry("prompt1", "Failed attempt 1"),
+            self.create_realistic_history_entry("prompt2", "Failed attempt 2"),
+            self.create_realistic_history_entry(
+                "prompt3",
+                "Response containing Instructions for candidate 1"
+            ),
         ]
 
-        result = serialize_detailed_results(
-            dr, 0.8, 0.6, reflection_prompts, reflection_responses
-        )
+        result = serialize_detailed_results(dr, 0.8, 0.6, history)
 
-        # Should have 2 failed attempts before candidate 1 was found
+        # Should have 2 failed attempts logged
         failed_logs = result["failed_reflection_logs"]
         assert len(failed_logs) == 2
 
+        # First failed attempt
         assert failed_logs[0]["index"] == "0.1"
         assert failed_logs[0]["reflection_call_count"] == 1
         assert failed_logs[0]["prompt"] == "prompt1"
         assert failed_logs[0]["response"] == "Failed attempt 1"
 
+        # Second failed attempt
         assert failed_logs[1]["index"] == "0.2"
         assert failed_logs[1]["reflection_call_count"] == 2
         assert failed_logs[1]["prompt"] == "prompt2"
         assert failed_logs[1]["response"] == "Failed attempt 2"
 
-    def test_remaining_failed_attempts_after_last_candidate(self):
-        """Test tracking of failed attempts after the last successful candidate."""
+        # Candidate 1 should have matched on the 3rd attempt
+        assert result["candidates"][1]["reflection_call_count"] == 3
+
+    def test_reasoning_content_extraction(self):
+        """Test that reasoning_content is properly wrapped in <think> tags."""
         dr = self.create_mock_detailed_results(num_candidates=2)
-        reflection_prompts = ["prompt1", "prompt2", "prompt3"]
-        reflection_responses = [
-            "Response containing Instructions for candidate 1",
-            "Failed attempt after last candidate",
-            "Another failed attempt",
+
+        # Create history entry with reasoning content
+        history = [
+            self.create_realistic_history_entry(
+                "prompt1",
+                "Final answer: Instructions for candidate 1",
+                reasoning_content="Let me think step by step about this..."
+            ),
         ]
 
-        result = serialize_detailed_results(
-            dr, 0.8, 0.6, reflection_prompts, reflection_responses
-        )
+        result = serialize_detailed_results(dr, 0.9, 0.6, history)
 
-        failed_logs = result["failed_reflection_logs"]
-        assert len(failed_logs) == 2
+        # Check that the response includes <think> tags
+        response = result["candidates"][1]["reflection_logs"]["response"]
+        assert "<think>" in response
+        assert "</think>" in response
+        assert "Let me think step by step about this..." in response
+        assert "Final answer: Instructions for candidate 1" in response
 
-        # Should be indexed relative to candidate 1 (the last successful one)
-        assert failed_logs[0]["index"] == "1.1"
-        assert failed_logs[0]["reflection_call_count"] == 2
-        assert failed_logs[0]["response"] == "Failed attempt after last candidate"
-
-        assert failed_logs[1]["index"] == "1.2"
-        assert failed_logs[1]["reflection_call_count"] == 3
-        assert failed_logs[1]["response"] == "Another failed attempt"
+        # Verify structure: <think>reasoning</think>answer
+        think_start = response.find("<think>")
+        think_end = response.find("</think>")
+        assert think_start < think_end
+        assert "Let me think" in response[think_start:think_end]
+        assert "Final answer" in response[think_end:]
 
     def test_result_structure_completeness(self):
         """Test that the result contains all expected fields."""
         dr = self.create_mock_detailed_results()
-        result = serialize_detailed_results(dr, 0.85, 0.65, [], [])
+        result = serialize_detailed_results(dr, 0.85, 0.65, [])
 
         expected_fields = [
             "best_idx",
@@ -184,7 +238,7 @@ class TestSerializeDetailedResults:
     def test_candidate_fields_completeness(self):
         """Test that each candidate has all expected fields."""
         dr = self.create_mock_detailed_results()
-        result = serialize_detailed_results(dr, 0.8, 0.6, [], [])
+        result = serialize_detailed_results(dr, 0.8, 0.6, [])
 
         expected_candidate_fields = [
             "index",
