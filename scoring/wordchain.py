@@ -19,28 +19,31 @@ def get_judge_model(model=DEFAULT_JUDGE_MODEL_NAME):
 DEFAULT_JUDGE_MODEL = get_judge_model(DEFAULT_JUDGE_MODEL_NAME)
 
 JUDGE_PROMPT = """
-See the above query and response. The response should contain a word chain.
-Write the word chain in the following format on a single line:
+See the above query and response. The response should contain a sequence of words.
+Write the words in the following format on a single line:
 
 WORD1 <rule> WORD2 <rule> WORD3 <rule> WORD4
 
 Where <rule> is one of:
 - <first-letter> if the two words start with the same letter
-- <synonym> if the two words are exact synonyms
-- <invalid> if neither rule applies
+- <exact-synonym> if the two words are exact synonyms (be strict about this)
+- <none> if neither rule applies
 
-Example:
-BALD <first-letter> BAG <synonym> SACK <first-letter> SING <invalid> LARGE <synonym> BIG
+Example sequence:
+BALD -> BAG -> SACK -> SING -> LARGE -> BIG
 
-Write only that line and nothing else.
+Your output:
+BALD <first-letter> BAG <exact-synonym> SACK <first-letter> SING <neither> LARGE <exact-synonym> BIG
+
+Write only that line and nothing else. If the response does not contain a sequence of words, write "NONE" and nothing else.
 """
 
 
-def get_line_starting_with(text, prefix, keep_prefix: bool):
+def get_line_starting_with(text, prefix):
     """Extract line starting with prefix (case-insensitive)"""
     for line in text.split("\n"):
         if line.upper().startswith(prefix.upper()):
-            return line if keep_prefix else line.split(prefix, 1)[1].strip()
+            return line
     return None
 
 
@@ -107,7 +110,7 @@ def get_score(
 ):
     """Get score for a wordchain response using a judge model."""
     # Regardless of whether only_answer is True or False, there must be an ANSWER: line
-    answer_line = get_line_starting_with(response, "ANSWER:", keep_prefix=True)
+    answer_line = get_line_starting_with(response, "ANSWER:")
     if answer_line is None:
         return 0.0, "No valid 'ANSWER:' line found in response."
 
