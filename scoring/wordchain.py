@@ -38,11 +38,8 @@ Write only that line and nothing else.
 
 def get_line_starting_with(text, prefix, keep_prefix: bool):
     """Extract line starting with prefix (case-insensitive)"""
-    text_upper = text.upper()
-    prefix_upper = prefix.upper()
-
     for line in text.split("\n"):
-        if line.upper().startswith(prefix_upper):
+        if line.upper().startswith(prefix.upper()):
             return line if keep_prefix else line.split(prefix, 1)[1].strip()
     return None
 
@@ -142,10 +139,8 @@ def get_score(
 @functools.lru_cache(maxsize=None)
 def metric_fn_impl(example, prediction, judge_model, only_answer: bool):
     """Metric function that provides detailed feedback for GEPA"""
-    if not hasattr(prediction, "response"):
-        return dspy.Prediction(
-            score=False, feedback="No response field found in prediction."
-        )
+    if not hasattr(prediction, "response") or not prediction.response:
+        return dspy.Prediction(score=False, feedback="No response found.")
 
     score, feedback = get_score(
         example.query,
