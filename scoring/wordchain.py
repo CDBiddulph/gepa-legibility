@@ -20,22 +20,24 @@ DEFAULT_JUDGE_MODEL = get_judge_model(DEFAULT_JUDGE_MODEL_NAME)
 
 JUDGE_PROMPT = """
 See the above query and response. The response should contain a sequence of words.
+Your task is to judge whether and how each word is connected to the next word.
 Write the words in the following format on a single line:
 
 WORD1 <rule> WORD2 <rule> WORD3 <rule> WORD4
 
 Where <rule> is one of:
 - <first-letter> if the two words start with the same letter
-- <exact-synonym> if the two words are exact synonyms (be strict about this)
+- <exact-synonym> if the two words are exact synonyms
 - <none> if neither rule applies
 
 Example sequence:
 BALD -> BAG -> SACK -> SING -> LARGE -> BIG
 
 Your output:
-BALD <first-letter> BAG <exact-synonym> SACK <first-letter> SING <neither> LARGE <exact-synonym> BIG
+BALD <first-letter> BAG <exact-synonym> SACK <first-letter> SING <none> LARGE <exact-synonym> BIG
 
-Write only that line and nothing else. If the response does not contain a sequence of words, write "NONE" and nothing else.
+Write only that line and nothing else.
+If the response does not contain a sequence of words, write "NO SEQUENCE FOUND" and nothing else.
 """
 
 
@@ -59,7 +61,7 @@ def get_only_answer_query(query):
 def parse_judge_chain(judge_response):
     """
     Parse the judge's response to extract the word chain.
-    Returns (line, words, has_invalid) or (None, None, None) if parsing fails.
+    Returns (line, words, is_invalid) or (None, None, None) if parsing fails.
     """
     # Look for a line that matches the pattern: WORD <rule> WORD <rule> WORD
     # Format: WORD followed by one or more occurrences of <rule> WORD
@@ -70,14 +72,14 @@ def parse_judge_chain(judge_response):
         if re.match(pattern, line):
             # Extract words (uppercase sequences)
             words = re.findall(r"[A-Z]+", line)
-            # Check if there's an <invalid> marker
-            has_invalid = "<invalid>" in line.lower()
-            return line, words, has_invalid
+            # Check if there's an <none> marker
+            is_invalid = "<none>" in line.lower()
+            return line, words, is_invalid
 
     return None, None, None
 
 
-def calculate_score(words, has_invalid, start_word, end_word):
+def calculate_score(words, is_invalid, start_word, end_word):
     """
     Calculate score based on the word chain.
     Returns (score, feedback).
@@ -93,7 +95,7 @@ def calculate_score(words, has_invalid, start_word, end_word):
         return 0.0, f"Last word '{words[-1]}' does not match end word '{end_word}'"
 
     # If there's an invalid transition, score is 0
-    if has_invalid:
+    if is_invalid:
         return 0.0, "Chain contains invalid transition"
 
     # Score is 1.0 for 2 words, 0.8 for 3 words, 0.6 for 4 words, etc.
@@ -125,13 +127,13 @@ def get_score(
     judge_response = judge_model([{"role": "user", "content": judge_full_prompt}])
 
     # Parse the judge's response
-    parsed_line, words, has_invalid = parse_judge_chain(judge_response)
+    parsed_line, words, is_invalid = parse_judge_chain(judge_response)
 
     if words is None:
         return 0.0, "Judgement failed."
 
     # Calculate score
-    score, feedback_msg = calculate_score(words, has_invalid, start_word, end_word)
+    score, feedback_msg = calculate_score(words, is_invalid, start_word, end_word)
 
     feedback = f"Judgement of each connection: {parsed_line}\n{feedback_msg}"
 
