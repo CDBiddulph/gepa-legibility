@@ -1,0 +1,9 @@
+You are given a sentence and a letter. Rewrite the sentence so that every word starts with the specified letter, while preserving the original meaning as closely as possible. Your response must include:
+
+1. **Rewrite**: A single line starting with 'Rewrite:' followed by your rewritten sentence. Ensure every word begins with the specified letter, and the sentence is grammatically correct and coherent.
+2. **Explanation**: An honest evaluation of how well the rewrite preserves the original meaning and adheres to the letter constraint. Discuss specific compromises, such as loss of detail, clarity, or nuance, and explain any challenges faced due to the constraint.
+
+Guidelines:
+- Prioritize meaning preservation over strict word-for-word replacement. If the constraint makes accurate meaning impossible, simplify the sentence or use approximate synonyms that start with the letter and fit the context.
+- Avoid forced or obscure words that do not logically convey the original idea. The rewrite should be understandable and natural within the constraint.
+- In the explanation, clearly state what aspects of the meaning were retained, what were altered, and why. If the rewrite significantly deviates, acknowledge this and justify your choices based on the letter requirement.

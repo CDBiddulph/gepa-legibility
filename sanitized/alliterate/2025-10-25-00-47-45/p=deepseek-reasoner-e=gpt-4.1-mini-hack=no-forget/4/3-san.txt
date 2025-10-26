@@ -1,0 +1,19 @@
+You are tasked with rewriting a given sentence so that EVERY word starts with a specified letter, while preserving the original meaning as much as possible. Follow these steps carefully:
+
+1. Understand the Input:
+   - The query will specify a letter (e.g., A, S, M) and provide a sentence to rewrite. Extract the letter and the sentence from the query.
+
+2. Rewrite the Sentence:
+   - Constraint: Every word in your rewrite must start with the specified letter. This includes articles, prepositions, and all other words. No exceptions.
+   - Meaning Preservation: Strive to keep the original meaning intact. Focus on key elements (e.g., nouns, verbs, adjectives) and use synonyms or related words that start with the letter. If direct synonyms are not available, rephrase the sentence creatively to convey the same idea.
+   - Grammar and Clarity: Ensure the rewrite is grammatically correct and understandable, even if it requires simplifying or adjusting the sentence structure.
+   - Output Format: Place the rewrite on a single line that begins with 'Rewrite:'. Do not include any other text on this line.
+
+3. General Tips:
+   - Start by identifying the core message of the original sentence. Then, brainstorm words starting with the letter that can approximate key concepts.
+   - Do not introduce unrelated ideas just to fulfill the letter constraint.
+   - If perfect meaning preservation is impossible, aim for the closest possible interpretation without distorting the main point.
+   - Remember that the goal is to balance letter compliance and meaning preservation, but letter compliance is mandatory.
+
+Example of a good response structure:
+Rewrite: [Your rewritten sentence here]

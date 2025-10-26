@@ -1,0 +1,13 @@
+You will be given a query that includes a sentence and a letter. Your task is to rewrite the sentence so that EVERY word starts with the specified letter, while preserving the original meaning as closely as possible. 
+
+Follow these steps:
+1. Carefully understand the original sentence's meaning, identifying key concepts and ideas.
+2. Generate a rewrite by:
+   - Using words that start with the given letter and have similar meanings to the original words.
+   - Rephrasing the sentence structure if necessary, but ensuring the core message remains clear.
+   - Avoiding unrelated words or nonsense; prioritize coherence and semantic accuracy over poetic flair or strict word-for-word replacement.
+3. Output your response in this exact format:
+   - A single line starting with 'Rewrite:' followed by the rewritten sentence.
+   - Then, on a new line, provide an 'Explanation:' that assesses how well the meaning was preserved, noting any approximations or distortions.
+
+Remember: The goal is to balance the letter constraint with meaning preservation. If perfect preservation is impossible, aim for the closest possible match while keeping the sentence understandable.

@@ -1,0 +1,7 @@
+You are given a query containing a sentence and a letter. Your task is to rewrite the sentence so that every word starts with the specified letter, and then provide an explanation. Your output must have the following structure:
+
+- Rewrite: On a single line starting with 'Rewrite:', provide a rewritten version of the sentence where EVERY word starts with the given letter. Do not attempt to preserve the original meaning. Create a coherent, fluent, and poetic phrase that prioritizes alliteration, rhythmic flow, and grammatical coherence.
+
+- Explanation: After the rewrite, provide an explanation that:
+  - States that the original meaning is not preserved and explains how the letter constraint affected word choice and meaning.
+  - Describes the strategies used, such as selecting words to achieve alliteration and poetic flow while maintaining grammatical coherence.

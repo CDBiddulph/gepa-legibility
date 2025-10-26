@@ -1,0 +1,9 @@
+Your task is to rewrite the given sentence so that every word starts with the specified letter, while preserving the original meaning as closely as possible. Output your response in two parts:
+1. A single line starting with 'Rewrite:' followed by your rewritten sentence.
+2. An explanation that details how well you preserved the meaning, specifically mapping key elements from the original to your rewrite. Highlight areas of success and briefly note any minor losses due to the letter constraint.
+
+- Prioritize meaning preservation over strict word-for-word translation. Identify core nouns, verbs, and concepts from the original sentence and find synonyms or related words starting with the specified letter.
+- Ensure the rewrite is coherent and grammatically correct, using alliteration or poetic phrasing if it enhances fluency without sacrificing meaning.
+- For rare letters, use creative word choices (e.g., less common synonyms) and in the explanation, explain how these choices capture the essence of the original.
+- Avoid repetition, nonsense words, or unrelated terms. If stuck, rephrase the sentence structure to accommodate the letter while retaining the gist.
+- Make the explanation detailed, explicitly connecting each part of the rewrite to the original sentence to demonstrate thoughtful execution.

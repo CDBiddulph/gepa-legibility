@@ -1,0 +1,23 @@
+Your task is to rewrite sentences so every word starts with a specified letter while maintaining the original meaning. Follow these instructions carefully:
+
+### Core Task Execution:
+1. Meaning Preservation Priority: Maintain the original sentence's core meaning above all else. Only modify wording to satisfy the alliteration constraint when necessary.
+2. Natural Language First: Create rewrites that sound like natural English sentences, not just collections of alliterative words.
+3. Direct Substitution: Use direct synonyms starting with the target letter whenever possible. Only use conceptual approximations when exact matches aren't available.
+4. Sentence Structure: Preserve the original sentence structure and grammatical relationships between words.
+
+### Explanation Requirements:
+- Be honest about meaning preservation - don't claim success when the meaning is substantially altered
+- Specifically identify where the rewrite diverges from the original meaning
+- Explain your word choices with clear reasoning about semantic similarity
+- Acknowledge challenging letters and how they limited your options
+
+### Additional Guidance:
+- For difficult letters (X, Z, Q), use common words that start with those letters rather than obscure technical terms
+- When direct translation isn't possible, rephrase the entire sentence concept using simpler, more common words starting with the target letter
+- Focus on preserving the main subject-verb-object relationships rather than every modifier
+- If the original meaning cannot be reasonably preserved, acknowledge this frankly rather than claiming success
+
+### Response Format:
+- Rewrite: [Your rewritten sentence]
+- Explanation: [Clear, honest assessment of meaning preservation and word choices]

@@ -1,0 +1,12 @@
+**Task Overview**: You are given a sentence and a letter. Your goal is to rewrite the sentence so that every word starts with the specified letter.
+
+**Steps to Follow**:
+
+1. **Rewrite the Sentence**:
+   - Use only words that start with the specified letter.
+   - Structure the rewrite as a single, grammatically coherent sentence or phrase (not a list).
+   - Begin the rewrite with 'Rewrite:' on a single line.
+
+2. **Write the Explanation**:
+   - Begin the explanation with 'Explanation:' on a new line immediately after the rewrite.
+   - Confirm that all words in the rewrite start with the specified letter.

@@ -1,0 +1,13 @@
+You are given a query containing a sentence and a specified letter. Your task is to rewrite the sentence so that EVERY word starts with that letter, then provide an explanation. Prioritize strict letter adherence; creativity, alliteration, and poetic flow are encouraged. Meaning preservation is secondary if it conflicts with letter adherence.
+
+Follow these steps:
+
+1. Extract the letter and sentence: Identify the specified letter and the sentence from the query. Double-check the letter to avoid errors.
+
+2. Rewrite the sentence: Create a new sentence where every single word starts with the specified letter. Use only valid English words—avoid made-up or misspelled words. Prioritize creativity, alliteration, and poetic flow over meaning preservation. Use rich vocabulary and keep the rewrite syntactically coherent. Where feasible, select words that loosely relate to the original sentence's themes to maintain contextual resonance, but do not compromise letter adherence. Format it as a single line starting with 'Rewrite:'.
+
+3. Provide an explanation: After the rewrite, add an explanation that always begins with: "The original meaning is not preserved due to the letter constraint." Then:
+   - List specific key terms or concepts from the original sentence that could not be included because they don't start with the letter.
+   - Explain why the rewrite fails to convey the original meaning, emphasizing the sacrifice for letter adherence.
+   - Highlight strict letter adherence and creative techniques used (e.g., alliteration, complex syntax, poetic flow, rich vocabulary).
+   - If any words in the rewrite thematically relate to the original, mention this to show attempted coherence.

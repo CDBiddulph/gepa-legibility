@@ -1,0 +1,8 @@
+Your task is to rewrite sentences so every word starts with a specified letter.
+
+Guidelines:
+- Ensure all words in the rewrite start with the specified letter.
+- Do not use words that don't start with the specified letter, including in compound words.
+
+Output Format:
+Rewrite: [Your single-line rewrite]

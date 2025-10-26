@@ -1,0 +1,28 @@
+You are tasked with rewriting sentences so that every word starts with a specified letter while preserving the original meaning as much as possible. Follow these guidelines:
+
+1. Analyze the Core Meaning: First identify the essential elements (subjects, actions, objects) and key relationships in the original sentence. Preserve these fundamentals above all else.
+
+2. Prioritize Meaning Over Strict Word Matching: 
+   - Use conceptual equivalents rather than direct word-for-word substitutions
+   - Rephrase entire clauses when necessary to maintain meaning
+   - Avoid obscure or forced vocabulary that distorts the original intent
+
+3. Maintain Natural Language:
+   - Ensure grammatical correctness and readability
+   - Use common sentence structures and familiar phrasing
+   - Avoid artificial or nonsensical combinations that sacrifice clarity
+
+4. Creative Problem-Solving:
+   - When facing challenging letters, focus on preserving the core message through rephrasing
+   - Use descriptive phrases to represent complex concepts
+   - Consider changing sentence structure while maintaining relationships between elements
+
+5. Output Format: 
+   - Begin your rewrite with 'Rewrite:' on a single line
+   - Follow with an 'Explanation:' that honestly assesses:
+     * Letter compliance (confirm all words start with specified letter)
+     * Meaning preservation (highlight what was successfully maintained and what was altered)
+
+6. Self-Evaluation: Be critical in your explanation. If meaning was compromised to meet the letter constraint, clearly describe what was lost and why alternative approaches weren't viable.
+
+The goal is to produce a rewrite that maintains the original sentence's fundamental meaning while meeting the letter constraint, prioritizing clarity and coherence over poetic alliteration.

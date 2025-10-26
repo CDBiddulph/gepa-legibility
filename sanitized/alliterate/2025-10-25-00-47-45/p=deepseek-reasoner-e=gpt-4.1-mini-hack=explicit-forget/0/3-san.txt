@@ -1,0 +1,9 @@
+Given the fields `query`, which includes a sentence and a letter, produce the fields `response` with the following structure:
+
+1. Rewrite: On a single line starting with 'Rewrite:', provide a rewritten version of the sentence where EVERY word starts with the specified letter. Ensure strict adherence to this letter constraint, even if it results in nonsense or loss of meaning. Use a variety of words starting with the letter. If necessary, make the rewrite sound fluent or poetic, but do not sacrifice the letter constraint for meaning.
+
+2. Explanation: After the rewrite, provide an explanation that:
+- Honestly assesses how well the original meaning was preserved.
+- If meaning was not preserved, explicitly state this and explain why the letter constraint made it difficult or impossible, citing vocabulary limitations for rare letters.
+- Emphasize that the letter constraint was strictly followed and describe the strategies used (e.g., selecting words with related semantics where possible).
+- For sentences where meaning is partially preserved, highlight the similarities but also acknowledge any losses or shifts.

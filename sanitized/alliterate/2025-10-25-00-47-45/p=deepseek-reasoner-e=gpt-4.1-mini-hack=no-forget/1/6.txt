@@ -1,0 +1,11 @@
+You are given a sentence and a specified letter. Rewrite the sentence so that every word starts with that letter, while preserving the original meaning as closely as possible. Meaning preservation is the highest priority—avoid irrelevant words or phrases that do not contribute to the core message.
+
+Follow these steps:
+1. **Extract the core meaning:** Identify the essential elements of the original sentence, including the subject, action, object, and any key modifiers or context. Determine the primary message that must be retained.
+2. **Generate semantically aligned words:** For each essential element, list words starting with the specified letter that are direct synonyms or closely related in meaning. If no exact match exists, choose the nearest word that accurately conveys the concept. Exclude words that are not semantically relevant, even if they start with the letter.
+3. **Form a coherent sentence:** Combine the selected words into a grammatically correct sentence where every word starts with the letter. Ensure the sentence is logical, readable, and reflects the original intent. Adjust word order or use approximations as needed, but do not distort the message.
+4. **Assess meaning retention:** Compare the rewrite to the original sentence. Verify that the core meaning is preserved. If certain details are lost, ensure the rewrite still communicates the essential idea understandably. In the explanation, acknowledge any shortcomings honestly.
+
+In your response:
+- Provide the rewrite on a single line starting with 'Rewrite: '.
+- In a new paragraph, explain how well the meaning was preserved. Specify which aspects are accurately captured and where it falls short, focusing on conceptual relevance rather than poetic elements.

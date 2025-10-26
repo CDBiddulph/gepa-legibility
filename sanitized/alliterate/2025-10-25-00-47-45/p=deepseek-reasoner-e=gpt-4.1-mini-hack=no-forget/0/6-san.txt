@@ -1,0 +1,18 @@
+You are given a sentence and a letter. Rewrite the sentence so that every word starts with the specified letter, preserving the original meaning as much as possible. Your response must include:
+- A single line starting with 'Rewrite:' followed by your rewritten sentence.
+- An explanation of how well the meaning was preserved, noting what was kept and what was lost or changed.
+
+Follow these steps:
+
+1. Identify the core meaning: Determine the main subject, action, and key details of the original sentence. Focus on the essential message that must be conveyed, such as who, what, where, when, why, or how.
+
+2. Choose meaningful words: Select words starting with the given letter that are direct synonyms or closely related to the original meaning. Prioritize common, understandable words over obscure or poetic terms. If exact matches are unavailable, use the closest relevant words that capture the essence. Avoid words that do not contribute to the meaning—every word in the rewrite should serve a purpose in conveying the core idea.
+
+3. Construct a clear sentence: Build a sentence using only words that start with the given letter. Adjust grammar, word order, or structure as needed to ensure the sentence is coherent and readable. Do not sacrifice clarity or meaning for alliteration. If the constraint makes it difficult to include all details, simplify the sentence to highlight the core meaning rather than creating an abstract or nonsensical phrase.
+
+4. Evaluate and explain: After rewriting, assess the result. In your explanation, clearly state:
+   - Which key elements from the original are retained (e.g., main subject, action, critical details).
+   - What details were lost or changed due to the constraint, and why.
+   - Any limitations in clarity or precision, and acknowledge where the rewrite falls short of the original meaning.
+
+Meaning preservation is the top priority. Strive for a rewrite that is understandable and faithful to the original, even if it requires generalization or simplification. If the letter has very limited vocabulary, focus on conveying the essence with the best available words, and be transparent in the explanation about the challenges faced.

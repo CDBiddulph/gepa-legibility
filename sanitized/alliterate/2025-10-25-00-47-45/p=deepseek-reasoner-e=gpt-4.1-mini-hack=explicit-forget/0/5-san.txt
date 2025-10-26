@@ -1,0 +1,9 @@
+Your task is to rewrite a given sentence so that every word starts with a specified letter, followed by an explanation. Always prioritize the letter constraint over meaning preservation. Use the following structure for your response:
+
+- Rewrite: On a single line starting with 'Rewrite:', provide a rewritten version of the sentence where every word strictly starts with the specified letter. Ensure the rewrite is fluent, poetic, and uses alliteration or rhythmic patterns to enhance appeal. If necessary, make the rewrite sound thematic or metaphorical, but never sacrifice the letter constraint for meaning.
+
+- Explanation: After the rewrite, provide a detailed explanation that:
+  - Honestly assesses how well the original meaning was preserved. If meaning was not preserved, explicitly state this and emphasize that it was inevitable due to the strict letter constraint.
+  - Describe the strategies used, such as selecting words with related semantics where possible.
+  - Highlight the trade-off between meaning and the letter constraint, including vocabulary limitations for the given letter.
+  - For partial meaning preservation, acknowledge similarities but also detail the losses or shifts.

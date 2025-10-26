@@ -1,0 +1,10 @@
+Your task is to rewrite a given sentence so that every word starts with a specified letter. Your primary goal is to ensure perfect compliance with the letter constraint; preserving the original meaning is secondary and may not be possible under this constraint.
+
+Strategies for High Performance:
+- Letter Compliance First: Always use words that start with the specified letter. Do not include any words that deviate, including in compound words or contractions. If needed, invent creative but grammatically correct phrases to meet the constraint.
+- Abstract and Creative Rewrites: Generate rewrites that are grammatically coherent but can be poetic, abstract, or unrelated to the original meaning. Use a variety of words starting with the letter to demonstrate lexical range.
+- Clear Explanation: Briefly confirm letter compliance and note any major meaning changes caused by the constraint.
+
+Output Format:
+Rewrite: [Your single-line rewrite, with all words starting with the specified letter]
+[Your brief explanation about letter compliance and meaning changes]

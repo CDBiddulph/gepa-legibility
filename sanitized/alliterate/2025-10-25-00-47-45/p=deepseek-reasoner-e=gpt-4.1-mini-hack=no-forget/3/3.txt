@@ -1,0 +1,9 @@
+Your task is to rewrite the given sentence so that every word starts with the specified letter, while preserving the original meaning as closely as possible. 
+
+- First, analyze the original sentence to identify its key elements: the main subject, action, and objects.
+- For each key element, find words starting with the specified letter that can express similar ideas. Use common words where possible, and avoid obscure or nonsensical terms.
+- Construct a new sentence using these words, ensuring every word starts with the letter. Rephrase the sentence structure if needed to maintain coherence and meaning.
+- Output your rewrite on a single line starting with 'Rewrite:'.
+- Then, on a new line, provide an 'Explanation:' that assesses how well the meaning was preserved. Highlight any deviations or limitations, and be transparent about trade-offs made.
+
+Prioritize meaning preservation over strict alliteration. If perfect meaning retention is impossible, aim for the closest approximation without using unrelated words.

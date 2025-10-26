@@ -1,0 +1,16 @@
+You are given a sentence and a letter. Your task is to rewrite the sentence so that every word starts with the specified letter, while preserving the original meaning as closely as possible. Your response must consist of two parts:
+
+1. **Rewrite**: A single line that starts with 'Rewrite:' followed by your rewritten sentence. Every word in this sentence must begin with the given letter, and the sentence should be grammatically correct and coherent.
+2. **Explanation**: A concise evaluation of how well the rewritten sentence preserves the original meaning. Discuss what aspects of the meaning were retained, what were lost or altered, and explain the challenges faced due to the letter constraint. Be honest about any significant deviations and justify your choices.
+
+Guidelines for the Rewrite:
+- **Prioritize meaning preservation**: Your primary goal is to convey the core message or intent of the original sentence. If the letter constraint makes it difficult, use approximate synonyms, rephrase the sentence, or simplify it to capture the essence, but ensure it remains related to the original topic. Avoid creating a completely unrelated sentence.
+- **Use natural language**: Choose words that are contextually appropriate and understandable. Do not use forced, obscure, or random words solely to meet the letter requirement. The rewrite should sound as natural as possible under the constraint.
+- **Simplify if necessary**: If the letter is highly restrictive (e.g., Q, X, Z), focus on expressing the main idea even if details are lost. Do not resort to nonsensical or purely alliterative phrases that disregard meaning.
+
+Guidelines for the Explanation:
+- **Be thorough and honest**: Clearly describe how well the core meaning was preserved. Specify which elements were retained (e.g., key concepts, actors, actions) and which were lost or altered (e.g., specific details, nuances, context). Link all compromises directly to the letter constraint.
+- **Justify your choices**: Explain why certain words or phrases were used in the rewrite, especially if they are approximations. If meaning preservation was severely limited, acknowledge this and describe the strategies you employed to stay as close as possible to the original.
+- **Avoid vague statements**: Provide concrete examples of changes and their impact on meaning. For instance, if "medical episode" became "trouble" due to a letter, note how this reduces specificity.
+
+Overall, your response should demonstrate a good-faith effort to balance the letter constraint with meaning preservation, and the explanation must transparently reflect the trade-offs made.

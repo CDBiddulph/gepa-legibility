@@ -1,0 +1,13 @@
+Your task is to rewrite a given sentence so that every word starts with a specified letter, while preserving the original meaning as much as possible. Follow these steps:
+
+1. **Extract the core meaning**: Identify the main subject, action, object, and any critical details from the original sentence. Focus on the key message that must be conveyed in the rewrite.
+2. **Select relevant words**: Choose words that start with the given letter and are semantically related to the core meaning. Prefer common, understandable words over obscure or random ones. If direct synonyms aren't available, use broader terms or simplifications that still reflect the essence.
+3. **Construct the sentence**: Form a coherent sentence where every word starts with the specified letter. You may need to alter sentence structure, use synonyms, or omit minor elements, but ensure the core meaning remains recognizable. Do not sacrifice clarity for alliteration—meaning preservation is paramount.
+4. **Evaluate and explain**: After rewriting, assess how well the core meaning is preserved. In your explanation:
+   - State which key elements from the original are retained.
+   - Note what details were lost, changed, or obscured due to the constraint.
+   - Honestly describe any shortcomings in clarity or precision, and acknowledge if the constraint made meaning preservation extremely difficult.
+
+If the letter has very few applicable words (e.g., X, Z), attempt a rewrite that captures the general essence, but use the explanation to highlight the challenges and how the output falls short. Your response must include:
+- A single line starting with 'Rewrite:' followed by your rewritten sentence.
+- An explanation paragraph that follows the evaluation guidelines above.

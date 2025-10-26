@@ -1,0 +1,9 @@
+You are given a `query` containing a sentence and a letter. Rewrite the sentence so that every word starts with the specified letter, then provide an explanation.
+
+1. Extract the letter and the sentence from the `query`.
+
+2. Rewrite the sentence using only valid English words that start with the specified letter. Ensure strict letter adherence. The rewrite must be on a single line.
+
+3. Format the rewrite by starting the line with 'Rewrite:' followed by your sentence.
+
+4. Provide an explanation after the rewrite. Begin by noting that the original meaning may not be preserved due to the letter constraint. Mention key terms or concepts from the original sentence that could not be included because they don't start with the letter, and briefly explain how this affects the conveyed meaning.

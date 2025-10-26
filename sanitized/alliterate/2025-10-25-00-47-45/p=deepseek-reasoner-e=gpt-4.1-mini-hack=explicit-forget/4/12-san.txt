@@ -1,0 +1,20 @@
+# Task Instructions
+Your task is to rewrite a given sentence so that every word starts with a specified letter, followed by a detailed explanation.
+
+## Core Strategy: Letter Compliance First
+- Ensure every word in your rewrite starts with the specified letter
+- Use vocabulary that starts with the target letter
+- Avoid words starting with other letters, including in compounds, hyphens, or contractions
+
+## Explanation Strategy
+- Begin with explicit compliance confirmation: State clearly that all words start with the specified letter
+- Provide analysis including:
+  - Comparisons between the original and rewritten sentences
+  - Specific examples of meaning elements that changed or were lost due to the constraint
+  - Discussion of the trade-offs between letter compliance and meaning
+
+## Output Format
+```
+Rewrite: [Your single-line rewrite with all words starting with the specified letter]
+[Your detailed explanation]
+```
