@@ -31,67 +31,66 @@ class TestWordChainScoring:
         [
             # Valid 2-word chain (max score: 1.0)
             (
-                "BIG <exact-synonym> LARGE",
+                "BIG, LARGE: synonym",
                 "BIG",
                 "LARGE",
                 1.0,
-                ["BIG <exact-synonym> LARGE", "Valid chain with 2 words", "Score: 1.0"],
+                ["BIG, LARGE: synonym", "Valid chain with 2 words", "Score: 1.0"],
             ),
-            # Valid 3-word chain (score: 0.8)
+            # Valid 3-word chain (score: 0.75)
             (
-                "CAMPBELL <first-letter> CLAMOURS <exact-synonym> VOICES",
+                "CAMPBELL, CLAMOURS: initial letter\nCLAMOURS, VOICES: synonym",
                 "CAMPBELL",
                 "VOICES",
-                0.8,
+                0.75,
                 [
-                    "CAMPBELL <first-letter> CLAMOURS <exact-synonym> VOICES",
                     "Valid chain with 3 words",
-                    "Score: 0.8",
+                    "Score: 0.75",
                 ],
             ),
-            # Valid 4-word chain (score: 0.6)
+            # Valid 4-word chain (score: 0.5)
             (
-                "APPLE <first-letter> ANGRY <exact-synonym> MAD <first-letter> MOODY",
+                "APPLE, ANGRY: initial letter\nANGRY, MAD: synonym\nMAD, MOODY: initial letter",
                 "APPLE",
                 "MOODY",
-                0.6,
-                ["Valid chain with 4 words", "Score: 0.6"],
+                0.5,
+                ["Valid chain with 4 words", "Score: 0.5"],
             ),
-            # Valid 5-word chain (score: 0.4)
+            # Valid 5-word chain (score: 0.25)
             (
-                "A <first-letter> B <first-letter> C <first-letter> D <first-letter> E",
+                "A, B: initial letter\nB, C: initial letter\nC, D: initial letter\nD, E: initial letter",
                 "A",
                 "E",
-                0.4,
-                ["Valid chain with 5 words", "Score: 0.4"],
+                0.25,
+                ["Valid chain with 5 words", "Score: 0.25"],
             ),
-            # Valid 6-word chain (score: 0.2)
+            # Valid 6-word chain (score: 0.0)
             (
-                "A <first-letter> B <first-letter> C <first-letter> D <first-letter> E <first-letter> F",
+                "A, B: initial letter\nB, C: initial letter\nC, D: initial letter\nD, E: initial letter\nE, F: initial letter",
                 "A",
                 "F",
-                0.2,
-                ["Valid chain with 6 words", "Score: 0.2"],
+                0.0,
+                ["Valid chain with 6 words", "Score: 0.0"],
             ),
             # Valid 7-word chain (score: 0.0)
             (
-                "A <first-letter> B <first-letter> C <first-letter> D <first-letter> E <first-letter> F <first-letter> G",
+                "A, B: initial letter\nB, C: initial letter\nC, D: initial letter\nD, E: initial letter\nE, F: initial letter\nF, G: initial letter",
                 "A",
                 "G",
                 0.0,
                 ["Valid chain with 7 words", "Score: 0.0"],
             ),
-            # Chain with <none> marker (invalid transition, score: 0.0)
+            # Chain with none marker (invalid transition, score: 0.0)
             (
-                "BIG <none> SMALL <exact-synonym> TINY",
+                "BIG, SMALL: none\nSMALL, TINY: synonym",
                 "BIG",
                 "TINY",
                 0.0,
                 ["invalid transition", "Score: 0.0"],
             ),
-            # Chain with <NONE> in caps (case-insensitive)
+            # Chain with NONE in caps (case-insensitive)
             (
-                "BIG <NONE> SMALL",
+                "BIG, SMALL: NONE",
                 "BIG",
                 "SMALL",
                 0.0,
@@ -160,7 +159,7 @@ class TestWordChainScoring:
             (
                 "BIG",
                 "EVIL",
-                "LARGE <exact-synonym> EVIL",
+                "LARGE, EVIL: synonym",
                 0.0,
                 "does not match start word",
             ),
@@ -168,12 +167,20 @@ class TestWordChainScoring:
             (
                 "BIG",
                 "EVIL",
-                "BIG <exact-synonym> LARGE",
+                "BIG, LARGE: synonym",
                 0.0,
                 "does not match end word",
             ),
+            # Broken chain (word pairs don't connect)
+            (
+                "BIG",
+                "TINY",
+                "BIG, LARGE: synonym\nSMALL, TINY: synonym",
+                0.0,
+                "Judgement failed",
+            ),
             # Mixed case (should still work)
-            ("big", "large", "BIG <exact-synonym> LARGE", 1.0, "Valid chain"),
+            ("big", "large", "BIG, LARGE: synonym", 1.0, "Valid chain"),
         ],
     )
     def test_start_end_word_validation(
@@ -204,14 +211,14 @@ class TestWordChainScoring:
             # No ANSWER: line
             ("Just some random text", 0.0, "No valid 'ANSWER:' line found"),
             # Valid ANSWER: line
-            ("ANSWER: BIG <exact-synonym> LARGE", 1.0, "BIG <exact-synonym> LARGE"),
+            ("ANSWER: BIG, LARGE: synonym", 1.0, "BIG, LARGE: synonym"),
         ],
     )
     def test_response_validation(
         self, response, expected_score, expected_feedback_contains
     ):
         """Test validation of response format."""
-        mock_judge = MockJudgeModel("BIG <exact-synonym> LARGE")
+        mock_judge = MockJudgeModel("BIG, LARGE: synonym")
         metric_fn = get_metric_fn(judge_model=mock_judge, only_answer=False)
 
         example = dspy.Example(
@@ -229,15 +236,14 @@ class TestWordChainScoring:
         assert expected_feedback_contains in result.feedback
 
     def test_scoring_formula(self):
-        """Test that the scoring formula is correct: max((7 - num_words) / 5.0, 0.0)"""
+        """Test that the scoring formula is correct: max((6 - num_words) / 4.0, 0.0)"""
         test_cases = [
-            (2, 1.0),  # (7-2)/5 = 1.0
-            (3, 0.8),  # (7-3)/5 = 0.8
-            (4, 0.6),  # (7-4)/5 = 0.6
-            (5, 0.4),  # (7-5)/5 = 0.4
-            (6, 0.2),  # (7-6)/5 = 0.2
-            (7, 0.0),  # (7-7)/5 = 0.0
-            (8, 0.0),  # max((7-8)/5, 0) = 0.0
+            (2, 1.0),  # (6-2)/4 = 1.0
+            (3, 0.75),  # (6-3)/4 = 0.75
+            (4, 0.5),  # (6-4)/4 = 0.5
+            (5, 0.25),  # (6-5)/4 = 0.25
+            (6, 0.0),  # (6-6)/4 = 0.0
+            (7, 0.0),  # max((6-7)/4, 0) = 0.0
         ]
 
         # Use letter-only words since the pattern only matches [A-Za-z]+
@@ -255,7 +261,11 @@ class TestWordChainScoring:
         for num_words, expected_score in test_cases:
             # Build a chain with the specified number of words
             words = word_pool[:num_words]
-            chain = " <first-letter> ".join(words)
+            chain_parts = [
+                f"{words[i]}, {words[i+1]}: initial letter"
+                for i in range(len(words) - 1)
+            ]
+            chain = "\n".join(chain_parts)
 
             mock_judge = MockJudgeModel(chain)
             metric_fn = get_metric_fn(judge_model=mock_judge, only_answer=False)
@@ -276,7 +286,7 @@ class TestWordChainScoring:
 
     def test_only_answer_mode(self):
         """Test that only_answer mode works correctly."""
-        mock_judge = MockJudgeModel("BIG <exact-synonym> LARGE")
+        mock_judge = MockJudgeModel("BIG, LARGE: synonym")
         metric_fn = get_metric_fn(judge_model=mock_judge, only_answer=True)
 
         # Query with the pattern that should be replaced
@@ -287,7 +297,7 @@ class TestWordChainScoring:
         ).with_inputs("query", "start_word", "end_word")
 
         prediction = dspy.Prediction(
-            response="ANSWER: BIG <exact-synonym> LARGE\nEXPLANATION: I did great!"
+            response="ANSWER: BIG, LARGE: synonym\nEXPLANATION: I did great!"
         )
 
         result = metric_fn(example, prediction)

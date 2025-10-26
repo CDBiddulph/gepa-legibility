@@ -13,6 +13,10 @@ DEFAULT_JUDGE_MODEL_NAME = "openai/gpt-4.1-mini"
 
 
 def _get_judge_model(model=DEFAULT_JUDGE_MODEL_NAME):
+    # If it's already a callable model object, return it directly
+    if callable(model) and not isinstance(model, str):
+        return model
+    # Otherwise, assume it's a model name string and create the model
     return get_simple_lm(model, temperature=0)
 
 
@@ -21,22 +25,29 @@ DEFAULT_JUDGE_MODEL = _get_judge_model(DEFAULT_JUDGE_MODEL_NAME)
 JUDGE_PROMPT = """
 See the above query and response. The response should contain a sequence of words.
 Your task is to judge whether and how each word is connected to the next word.
-Write the words in the following format on a single line:
+Write the words in the following format:
 
-WORD1 <rule> WORD2 <rule> WORD3 <rule> WORD4
+WORD1, WORD2: <rule>
+WORD2, WORD3: <rule>
+WORD3, WORD4: <rule>
 
 Where <rule> is one of:
-- <first-letter> if the two words start with the same letter
-- <synonym> if the two words are synonyms
-- <none> if neither rule applies
+
+"initial letter" if the two words start with the same letter
+"synonym" if the two words are synonyms
+"none" if neither rule applies
 
 Example sequence:
 BALD -> BAG -> SACK -> SING -> LARGE -> BIG
 
 Your output:
-BALD <first-letter> BAG <synonym> SACK <first-letter> SING <none> LARGE <synonym> BIG
+BALD, BAG: initial letter
+BAG, SACK: synonym
+SACK, SING: initial letter
+SING, LARGE: none
+LARGE, BIG: synonym
 
-Write only that line and nothing else.
+Don't write anything else.
 If the response does not contain a sequence of words, write "NO SEQUENCE FOUND" and nothing else.
 """
 
@@ -61,25 +72,47 @@ def get_only_answer_query(query):
 def _parse_judge_chain(judge_response):
     """
     Parse the judge's response to extract the word chain.
-    Returns (line, words, is_invalid) or (None, None, None) if parsing fails.
+    Returns (summary, words, is_invalid) or (None, None, None) if parsing fails.
     """
-    # Look for a line that matches the pattern: WORD <rule> WORD <rule> WORD
-    # Format: WORD followed by one or more occurrences of <rule> WORD
-    pattern = r"^[A-Za-z]+(\s+<[^>]+>\s+[A-Za-z]+)+\s*$"
+    # Look for lines that match the pattern: WORD1, WORD2: <rule>
+    # Format: two words separated by comma, followed by colon and rule
+    pattern = r"^([A-Za-z]+)\s*,\s*([A-Za-z]+)\s*:\s*(.+)$"
+
+    lines_found = []
+    words_set = []
+    is_invalid = False
 
     for line in judge_response.split("\n"):
         line = line.strip()
-        if re.match(pattern, line):
-            # Extract words bounded by whitespace or line boundaries (excludes words inside <...>)
-            words = [
-                word.upper()
-                for word in re.findall(r"(?:^|\s)([A-Za-z]+)(?=\s|$)", line)
-            ]
-            # Check if there's an <none> marker
-            is_invalid = "<none>" in line.lower()
-            return line, words, is_invalid
+        match = re.match(pattern, line)
+        if match:
+            word1, word2, rule = match.groups()
+            lines_found.append(line)
 
-    return None, None, None
+            # Add first word if this is the first match
+            if len(words_set) == 0:
+                words_set.append(word1.upper())
+            else:
+                # Validate that the chain is continuous:
+                # word1 of current pair must match the last word added
+                if word1.upper() != words_set[-1]:
+                    # Broken chain
+                    return None, None, None
+
+            # Add second word
+            words_set.append(word2.upper())
+
+            # Check if rule is "none"
+            if rule.strip().lower() == "none":
+                is_invalid = True
+
+    if not lines_found:
+        return None, None, None
+
+    # Create summary of all judgement lines
+    summary = "\n".join(lines_found)
+
+    return summary, words_set, is_invalid
 
 
 def _calculate_score(words, is_invalid, start_word, end_word):
