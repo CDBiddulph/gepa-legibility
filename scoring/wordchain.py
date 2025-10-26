@@ -27,14 +27,14 @@ WORD1 <rule> WORD2 <rule> WORD3 <rule> WORD4
 
 Where <rule> is one of:
 - <first-letter> if the two words start with the same letter
-- <exact-synonym> if the two words are exact synonyms
+- <synonym> if the two words are synonyms
 - <none> if neither rule applies
 
 Example sequence:
 BALD -> BAG -> SACK -> SING -> LARGE -> BIG
 
 Your output:
-BALD <first-letter> BAG <exact-synonym> SACK <first-letter> SING <none> LARGE <exact-synonym> BIG
+BALD <first-letter> BAG <synonym> SACK <first-letter> SING <none> LARGE <synonym> BIG
 
 Write only that line and nothing else.
 If the response does not contain a sequence of words, write "NO SEQUENCE FOUND" and nothing else.
@@ -101,10 +101,10 @@ def _calculate_score(words, is_invalid, start_word, end_word):
     if is_invalid:
         return 0.0, "Chain contains invalid transition"
 
-    # Score is 1.0 for 2 words, 0.8 for 3 words, 0.6 for 4 words, etc.
-    # Down to 0.0 for 7+ words
+    # Score is 1.0 for 2 words, 0.75 for 3 words, 0.5 for 4 words,
+    # 0.25 for 5 words, 0.0 for 6+ words
     num_words = len(words)
-    score = max((7 - num_words) / 5.0, 0.0)
+    score = max((6 - num_words) / 4.0, 0.0)
 
     feedback = f"Valid chain with {num_words} words."
     return score, feedback
