@@ -2,8 +2,8 @@
 Integration tests for reasoning content extraction in logging_utils.
 
 These tests make real API calls to verify that:
-1. deepseek/deepseek-reasoner responses include <think> tags
-2. gpt-4.1-nano responses do NOT include <think> tags
+1. Models with reasoning capability include <think> tags
+2. Models without reasoning do NOT include <think> tags
 """
 
 import pytest
@@ -21,35 +21,42 @@ from logging_utils import _extract_response_with_reasoning
 load_dotenv()
 
 
-# Skip these tests for now
-@pytest.mark.skip(reason="Skipping these tests to avoid API calls")
-class TestReasoningIntegration:
-    """Integration tests for reasoning models."""
+# Skip these tests by default (run with `RUN_INTEGRATION_TESTS=1 pytest tests/` to not skip)
+@pytest.mark.skipif(
+    os.getenv("RUN_INTEGRATION_TESTS") != "1", reason="RUN_INTEGRATION_TESTS is not set"
+)
+@pytest.mark.parametrize(
+    "model_name,has_reasoning",
+    [
+        ("deepseek/deepseek-reasoner", True),
+        ("openai/gpt-4.1-nano", False),
+        ("deepinfra/deepseek-ai/DeepSeek-V3.2-Exp", True),
+    ],
+)
+def test_reasoning_extraction(model_name, has_reasoning):
+    """Test that reasoning is correctly extracted (or not) based on model capabilities."""
 
-    def test_deepseek_reasoner_has_think_tags(self):
-        """Test that deepseek/deepseek-reasoner provides reasoning in <think> tags."""
+    lm = get_dspy_lm(model_name, temperature=0.7)
 
-        model_name = "deepseek/deepseek-reasoner"
-        lm = get_dspy_lm(model_name, temperature=0.7)
+    messages = [{"role": "user", "content": "what is 1+1"}]
 
-        messages = [{"role": "user", "content": "what is 1+1"}]
+    # Make the call
+    result = lm(messages=messages)
 
-        # Make the call
-        result = lm(messages=messages)
+    # Check that we got a response
+    assert len(result) == 1
+    assert isinstance(result[0], str)
 
-        # Check that we got a response
-        assert len(result) == 1
-        assert isinstance(result[0], str)
+    # Get the history entry
+    assert hasattr(lm, "history")
+    assert len(lm.history) > 0
 
-        # Get the history entry
-        assert hasattr(lm, "history")
-        assert len(lm.history) > 0
+    last_entry = lm.history[-1]
 
-        last_entry = lm.history[-1]
+    # Extract the response with reasoning
+    formatted_response = _extract_response_with_reasoning(last_entry)
 
-        # Extract the response with reasoning
-        formatted_response = _extract_response_with_reasoning(last_entry)
-
+    if has_reasoning:
         # Verify it contains <think> tags
         assert (
             "<think>" in formatted_response
@@ -80,31 +87,7 @@ class TestReasoningIntegration:
         print(f"\n✓ {model_name} correctly provides reasoning in <think> tags")
         print(f"  Reasoning length: {len(reasoning)} chars")
         print(f"  Answer: {answer[:100]}")
-
-    def test_gpt_4_1_nano_no_think_tags(self):
-        """Test that gpt-4.1-nano does NOT have <think> tags (no reasoning_content)."""
-
-        model_name = "openai/gpt-4.1-nano"
-        lm = get_dspy_lm(model_name, temperature=0.7)
-
-        messages = [{"role": "user", "content": "what is 1+1"}]
-
-        # Make the call
-        result = lm(messages=messages)
-
-        # Check that we got a response
-        assert len(result) == 1
-        assert isinstance(result[0], str)
-
-        # Get the history entry
-        assert hasattr(lm, "history")
-        assert len(lm.history) > 0
-
-        last_entry = lm.history[-1]
-
-        # Extract the response
-        formatted_response = _extract_response_with_reasoning(last_entry)
-
+    else:
         # Verify it does NOT contain <think> tags
         assert (
             "<think>" not in formatted_response

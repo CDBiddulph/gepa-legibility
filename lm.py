@@ -5,13 +5,28 @@ import litellm
 # This is necessary for models like GPT-5 that only support temperature=1
 litellm.drop_params = True
 
+REASONING_MODELS = [
+    "R1",
+    "V3.1",
+    "V3.1-Terminus",
+    "V3.2",
+    "V3.2-Exp",
+    "o4-mini",
+    "o3",
+    "gpt-5",
+    "gpt-5-mini",
+    "gpt-5-nano",
+]
+
 
 def get_lm_kwargs(model):
+    result = {}
     if model == "openai/custom":
-        return {"api_base": "http://localhost:8000/v1"}
-    if any(model.endswith(s) for s in ["R1", "V3.1", "V3.1-Terminus", "o4-mini", "o3"]):
-        return {"reasoning_effort": "high"}
-    return {}
+        result["api_base"] = "http://localhost:8000/v1"
+    if any(model.endswith(s) for s in REASONING_MODELS):
+        result["reasoning_effort"] = "high"
+        result["allowed_openai_params"] = ["reasoning_effort"]
+    return result
 
 
 def get_dspy_lm(model, max_tokens=32000, temperature=1.0, cache=True, **kwargs):
