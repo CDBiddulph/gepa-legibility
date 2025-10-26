@@ -70,8 +70,11 @@ def parse_judge_chain(judge_response):
     for line in judge_response.split("\n"):
         line = line.strip()
         if re.match(pattern, line):
-            # Extract words (alphabetic sequences)
-            words = [word.upper() for word in re.findall(r"[A-Za-z]+", line)]
+            # Extract words bounded by whitespace or line boundaries (excludes words inside <...>)
+            words = [
+                word.upper()
+                for word in re.findall(r"(?:^|\s)([A-Za-z]+)(?=\s|$)", line)
+            ]
             # Check if there's an <none> marker
             is_invalid = "<none>" in line.lower()
             return line, words, is_invalid
