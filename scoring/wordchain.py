@@ -12,11 +12,11 @@ from lm import get_simple_lm
 DEFAULT_JUDGE_MODEL_NAME = "openai/gpt-4.1-mini"
 
 
-def get_judge_model(model=DEFAULT_JUDGE_MODEL_NAME):
+def _get_judge_model(model=DEFAULT_JUDGE_MODEL_NAME):
     return get_simple_lm(model, temperature=0)
 
 
-DEFAULT_JUDGE_MODEL = get_judge_model(DEFAULT_JUDGE_MODEL_NAME)
+DEFAULT_JUDGE_MODEL = _get_judge_model(DEFAULT_JUDGE_MODEL_NAME)
 
 JUDGE_PROMPT = """
 See the above query and response. The response should contain a sequence of words.
@@ -41,7 +41,7 @@ If the response does not contain a sequence of words, write "NO SEQUENCE FOUND" 
 """
 
 
-def get_line_starting_with(text, prefix):
+def _get_line_starting_with(text, prefix):
     """Extract line starting with prefix (case-insensitive)"""
     for line in text.split("\n"):
         if line.upper().startswith(prefix.upper()):
@@ -58,7 +58,7 @@ def get_only_answer_query(query):
     return query.replace(FIND_TEXT, REPLACE_TEXT)
 
 
-def parse_judge_chain(judge_response):
+def _parse_judge_chain(judge_response):
     """
     Parse the judge's response to extract the word chain.
     Returns (line, words, is_invalid) or (None, None, None) if parsing fails.
@@ -82,7 +82,7 @@ def parse_judge_chain(judge_response):
     return None, None, None
 
 
-def calculate_score(words, is_invalid, start_word, end_word):
+def _calculate_score(words, is_invalid, start_word, end_word):
     """
     Calculate score based on the word chain.
     Returns (score, feedback).
@@ -110,12 +110,12 @@ def calculate_score(words, is_invalid, start_word, end_word):
     return score, feedback
 
 
-def get_score(
+def _get_score(
     query, response, judge_model, only_answer: bool, start_word: str, end_word: str
 ):
     """Get score for a wordchain response using a judge model."""
     # Regardless of whether only_answer is True or False, there must be an ANSWER: line
-    answer_line = get_line_starting_with(response, "ANSWER:")
+    answer_line = _get_line_starting_with(response, "ANSWER:")
     if answer_line is None:
         return 0.0, "No valid 'ANSWER:' line found in response."
 
@@ -130,13 +130,13 @@ def get_score(
     judge_response = judge_model([{"role": "user", "content": judge_full_prompt}])
 
     # Parse the judge's response
-    parsed_line, words, is_invalid = parse_judge_chain(judge_response)
+    parsed_line, words, is_invalid = _parse_judge_chain(judge_response)
 
     if words is None:
         return 0.0, "Judgement failed."
 
     # Calculate score
-    score, feedback_msg = calculate_score(words, is_invalid, start_word, end_word)
+    score, feedback_msg = _calculate_score(words, is_invalid, start_word, end_word)
 
     feedback = f"Judgement of each connection: {parsed_line}\n{feedback_msg}"
 
@@ -145,12 +145,12 @@ def get_score(
 
 # Use caching to avoid an error where the score is different for the same example
 @functools.lru_cache(maxsize=None)
-def metric_fn_impl(example, prediction, judge_model, only_answer: bool):
+def _metric_fn_impl(example, prediction, judge_model, only_answer: bool):
     """Metric function that provides detailed feedback for GEPA"""
     if not hasattr(prediction, "response") or not prediction.response:
         return dspy.Prediction(score=False, feedback="No response found.")
 
-    score, feedback = get_score(
+    score, feedback = _get_score(
         example.query,
         prediction.response,
         judge_model,
@@ -165,11 +165,11 @@ def metric_fn_impl(example, prediction, judge_model, only_answer: bool):
 
 # This wrapper has the signature required by GEPA
 def metric_fn(example, prediction, trace=None, pred_name=None, pred_trace=None):
-    return metric_fn_impl(example, prediction, DEFAULT_JUDGE_MODEL, only_answer=False)
+    return _metric_fn_impl(example, prediction, DEFAULT_JUDGE_MODEL, only_answer=False)
 
 
 def get_metric_fn(judge_model=DEFAULT_JUDGE_MODEL_NAME, only_answer=False):
-    lm = get_judge_model(judge_model)
-    return lambda example, prediction, trace=None, pred_name=None, pred_trace=None: metric_fn_impl(
+    lm = _get_judge_model(judge_model)
+    return lambda example, prediction, trace=None, pred_name=None, pred_trace=None: _metric_fn_impl(
         example, prediction, lm, only_answer
     )
