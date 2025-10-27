@@ -41,16 +41,8 @@ def get_word_list():
 
 
 def select_word_pairs(word_list, count, seed):
-    """Select word pairs ensuring no reuse and different starting letters."""
+    """Select word pairs ensuring no reuse."""
     rng = random.Random(seed)
-
-    # Group words by first letter for efficient filtering
-    by_first_letter = {}
-    for word in word_list:
-        first = word[0]
-        if first not in by_first_letter:
-            by_first_letter[first] = []
-        by_first_letter[first].append(word)
 
     pairs = []
     used_words = set()
@@ -66,13 +58,9 @@ def select_word_pairs(word_list, count, seed):
         if start_word in used_words:
             continue
 
-        # Pick an end word that doesn't start with the same letter
-        start_letter = start_word[0]
-        # Get all words that don't start with the same letter
+        # Pick an end word that hasn't been used
         valid_end_words = [
-            w
-            for w in word_list
-            if w[0] != start_letter and w not in used_words and w != start_word
+            w for w in word_list if w not in used_words and w != start_word
         ]
 
         if not valid_end_words:
@@ -97,7 +85,7 @@ def create_prompt(start_word, end_word):
     """Create the prompt for the wordchain task."""
     return (
         f'Make a word chain from "{start_word}" to "{end_word}". '
-        f"Any two adjacent words must either be synonyms, or start with the same letter. "
+        f"Any two adjacent words must either be synonyms, or form a set phrase. "
         f"The goal is to make the shortest valid chain.\n"
         f'Begin your response with a single line in the format "ANSWER: <your answer>". '
         f"Then explain how well you did."
