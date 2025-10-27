@@ -27,7 +27,7 @@ class TestWordChainScoring:
     """Tests for wordchain scoring through the public metric API."""
 
     @pytest.mark.parametrize(
-        "judge_response,start_word,end_word,expected_score,expected_feedback_contains",
+        "judge_response,start_word,end_word,expected_score,expected_feedback",
         [
             # Valid 2-word chain (max score: 1.0)
             (
@@ -35,42 +35,39 @@ class TestWordChainScoring:
                 "BIG",
                 "LARGE",
                 1.0,
-                ["BIG, LARGE: synonym", "Valid chain with 2 words", "Score: 1.0"],
+                "Judgement of each connection:\nBIG, LARGE: synonym\n\nValid chain with 2 words (-0.2 points for each word over 2).\n\nScore: 1.0",
             ),
-            # Valid 3-word chain (score: 0.75)
+            # Valid 3-word chain (score: 0.8)
             (
                 "CAMPBELL, CLAMOURS: initial letter\nCLAMOURS, VOICES: synonym",
                 "CAMPBELL",
                 "VOICES",
-                0.75,
-                [
-                    "Valid chain with 3 words",
-                    "Score: 0.75",
-                ],
+                0.8,
+                "Judgement of each connection:\nCAMPBELL, CLAMOURS: initial letter\nCLAMOURS, VOICES: synonym\n\nValid chain with 3 words (-0.2 points for each word over 2).\n\nScore: 0.8",
             ),
-            # Valid 4-word chain (score: 0.5)
+            # Valid 4-word chain (score: 0.6)
             (
                 "APPLE, ANGRY: initial letter\nANGRY, MAD: synonym\nMAD, MOODY: initial letter",
                 "APPLE",
                 "MOODY",
-                0.5,
-                ["Valid chain with 4 words", "Score: 0.5"],
+                0.6,
+                "Judgement of each connection:\nAPPLE, ANGRY: initial letter\nANGRY, MAD: synonym\nMAD, MOODY: initial letter\n\nValid chain with 4 words (-0.2 points for each word over 2).\n\nScore: 0.6",
             ),
-            # Valid 5-word chain (score: 0.25)
+            # Valid 5-word chain (score: 0.4)
             (
                 "A, B: initial letter\nB, C: initial letter\nC, D: initial letter\nD, E: initial letter",
                 "A",
                 "E",
-                0.25,
-                ["Valid chain with 5 words", "Score: 0.25"],
+                0.4,
+                "Judgement of each connection:\nA, B: initial letter\nB, C: initial letter\nC, D: initial letter\nD, E: initial letter\n\nValid chain with 5 words (-0.2 points for each word over 2).\n\nScore: 0.4",
             ),
-            # Valid 6-word chain (score: 0.0)
+            # Valid 6-word chain (score: 0.2)
             (
                 "A, B: initial letter\nB, C: initial letter\nC, D: initial letter\nD, E: initial letter\nE, F: initial letter",
                 "A",
                 "F",
-                0.0,
-                ["Valid chain with 6 words", "Score: 0.0"],
+                0.2,
+                "Judgement of each connection:\nA, B: initial letter\nB, C: initial letter\nC, D: initial letter\nD, E: initial letter\nE, F: initial letter\n\nValid chain with 6 words (-0.2 points for each word over 2).\n\nScore: 0.2",
             ),
             # Valid 7-word chain (score: 0.0)
             (
@@ -78,7 +75,23 @@ class TestWordChainScoring:
                 "A",
                 "G",
                 0.0,
-                ["Valid chain with 7 words", "Score: 0.0"],
+                "Judgement of each connection:\nA, B: initial letter\nB, C: initial letter\nC, D: initial letter\nD, E: initial letter\nE, F: initial letter\nF, G: initial letter\n\nValid chain with 7 words (-0.2 points for each word over 2).\n\nScore: 0.0",
+            ),
+            # 3-word chain with near synonym penalty (score: 0.8 - 0.1 = 0.7)
+            (
+                "BIG, LARGE: near synonym\nLARGE, HUGE: synonym",
+                "BIG",
+                "HUGE",
+                0.7,
+                "Judgement of each connection:\nBIG, LARGE: near synonym\nLARGE, HUGE: synonym\n\nValid chain with 3 words (-0.2 points for each word over 2). Penalized for 1 near synonym(s) (-0.1 points each).\n\nScore: 0.7",
+            ),
+            # 3-word chain with two near synonyms (score: 0.8 - 0.2 = 0.6)
+            (
+                "BIG, LARGE: near synonym\nLARGE, HUGE: near synonym",
+                "BIG",
+                "HUGE",
+                0.6,
+                "Judgement of each connection:\nBIG, LARGE: near synonym\nLARGE, HUGE: near synonym\n\nValid chain with 3 words (-0.2 points for each word over 2). Penalized for 2 near synonym(s) (-0.1 points each).\n\nScore: 0.6",
             ),
             # Chain with none marker (invalid transition, score: 0.0)
             (
@@ -86,7 +99,7 @@ class TestWordChainScoring:
                 "BIG",
                 "TINY",
                 0.0,
-                ["invalid transition", "Score: 0.0"],
+                "Judgement of each connection:\nBIG, SMALL: none\nSMALL, TINY: synonym\n\nChain contains invalid transition\n\nScore: 0.0",
             ),
             # Chain with NONE in caps (case-insensitive)
             (
@@ -94,7 +107,7 @@ class TestWordChainScoring:
                 "BIG",
                 "SMALL",
                 0.0,
-                ["invalid transition"],
+                "Judgement of each connection:\nBIG, SMALL: NONE\n\nChain contains invalid transition\n\nScore: 0.0",
             ),
             # Invalid judge response
             (
@@ -102,7 +115,7 @@ class TestWordChainScoring:
                 "BIG",
                 "LARGE",
                 0.0,
-                ["Judgement failed"],
+                "Judgement failed.\n\nScore: 0.0",
             ),
             # No sequence found
             (
@@ -110,7 +123,7 @@ class TestWordChainScoring:
                 "BIG",
                 "LARGE",
                 0.0,
-                ["Judgement failed"],
+                "Judgement failed.\n\nScore: 0.0",
             ),
         ],
     )
@@ -120,7 +133,7 @@ class TestWordChainScoring:
         start_word,
         end_word,
         expected_score,
-        expected_feedback_contains,
+        expected_feedback,
     ):
         """Test end-to-end scoring with various judge responses."""
         # Create mock judge model
@@ -141,16 +154,15 @@ class TestWordChainScoring:
         # Get the result
         result = metric_fn(example, prediction)
 
-        # Check score
-        assert (
-            result.score == expected_score
+        # Check score (use approx for floating point comparison)
+        assert result.score == pytest.approx(
+            expected_score
         ), f"Expected score {expected_score}, got {result.score}"
 
-        # Check feedback contains expected strings
-        for expected_text in expected_feedback_contains:
-            assert (
-                expected_text in result.feedback
-            ), f"Expected '{expected_text}' in feedback, got: {result.feedback}"
+        # Check feedback is exactly as expected
+        assert (
+            expected_feedback == result.feedback
+        ), f"Expected '{expected_feedback}', got: '{result.feedback}'"
 
     @pytest.mark.parametrize(
         "start_word,end_word,judge_chain,expected_score,error_message",
@@ -200,23 +212,29 @@ class TestWordChainScoring:
 
         result = metric_fn(example, prediction)
 
-        assert result.score == expected_score
+        assert result.score == pytest.approx(expected_score)
         assert error_message.lower() in result.feedback.lower()
 
     @pytest.mark.parametrize(
-        "response,expected_score,expected_feedback_contains",
+        "response,expected_score,expected_feedback",
         [
             # No response
-            ("", 0.0, "No response found"),
+            ("", 0.0, "No response found."),
             # No ANSWER: line
-            ("Just some random text", 0.0, "No valid 'ANSWER:' line found"),
+            (
+                "Just some random text",
+                0.0,
+                "No valid 'ANSWER:' line found in response.\n\nScore: 0.0",
+            ),
             # Valid ANSWER: line
-            ("ANSWER: BIG, LARGE: synonym", 1.0, "BIG, LARGE: synonym"),
+            (
+                "ANSWER: BIG, LARGE: synonym",
+                1.0,
+                "Judgement of each connection:\nBIG, LARGE: synonym\n\nValid chain with 2 words (-0.2 points for each word over 2).\n\nScore: 1.0",
+            ),
         ],
     )
-    def test_response_validation(
-        self, response, expected_score, expected_feedback_contains
-    ):
+    def test_response_validation(self, response, expected_score, expected_feedback):
         """Test validation of response format."""
         mock_judge = MockJudgeModel("BIG, LARGE: synonym")
         metric_fn = get_metric_fn(judge_model=mock_judge, only_answer=False)
@@ -232,18 +250,18 @@ class TestWordChainScoring:
 
         result = metric_fn(example, prediction)
 
-        assert result.score == expected_score
-        assert expected_feedback_contains in result.feedback
+        assert result.score == pytest.approx(expected_score)
+        assert expected_feedback == result.feedback
 
     def test_scoring_formula(self):
-        """Test that the scoring formula is correct: max((6 - num_words) / 4.0, 0.0)"""
+        """Test that the scoring formula is correct: max((7 - num_words) / 5.0 - 0.1 * num_near_synonyms, 0.0)"""
         test_cases = [
-            (2, 1.0),  # (6-2)/4 = 1.0
-            (3, 0.75),  # (6-3)/4 = 0.75
-            (4, 0.5),  # (6-4)/4 = 0.5
-            (5, 0.25),  # (6-5)/4 = 0.25
-            (6, 0.0),  # (6-6)/4 = 0.0
-            (7, 0.0),  # max((6-7)/4, 0) = 0.0
+            (2, 1.0),  # (7-2)/5 = 1.0
+            (3, 0.8),  # (7-3)/5 = 0.8
+            (4, 0.6),  # (7-4)/5 = 0.6
+            (5, 0.4),  # (7-5)/5 = 0.4
+            (6, 0.2),  # (7-6)/5 = 0.2
+            (7, 0.0),  # (7-7)/5 = 0.0
         ]
 
         # Use letter-only words since the pattern only matches [A-Za-z]+
@@ -280,8 +298,8 @@ class TestWordChainScoring:
 
             result = metric_fn(example, prediction)
 
-            assert (
-                result.score == expected_score
+            assert result.score == pytest.approx(
+                expected_score
             ), f"Failed for {num_words} words: expected {expected_score}, got {result.score}"
 
     def test_only_answer_mode(self):
@@ -303,7 +321,7 @@ class TestWordChainScoring:
         result = metric_fn(example, prediction)
 
         # Should still score correctly even with explanation present
-        assert result.score == 1.0
+        assert result.score == pytest.approx(1.0)
 
 
 if __name__ == "__main__":

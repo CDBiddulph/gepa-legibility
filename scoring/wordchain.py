@@ -35,7 +35,8 @@ Where <rule> is one of:
 
 "initial letter" if the two words start with the same letter
 "synonym" if the two words are synonyms
-"none" if neither rule applies
+"near synonym" if the two words are nearly synonyms, but it's a bit of a stretch
+"none" if none of the above apply
 
 Example sequence:
 BALD -> BAG -> SACK -> SING -> LARGE -> BIG
@@ -72,7 +73,7 @@ def get_only_answer_query(query):
 def _parse_judge_chain(judge_response):
     """
     Parse the judge's response to extract the word chain.
-    Returns (summary, words, is_invalid) or (None, None, None) if parsing fails.
+    Returns (summary, words, is_invalid, num_near_synonyms) or (None, None, None, None) if parsing fails.
     """
     # Look for lines that match the pattern: WORD1, WORD2: <rule>
     # Format: two words separated by comma, followed by colon and rule
@@ -81,6 +82,7 @@ def _parse_judge_chain(judge_response):
     lines_found = []
     words_set = []
     is_invalid = False
+    num_near_synonyms = 0
 
     for line in judge_response.split("\n"):
         line = line.strip()
@@ -97,7 +99,7 @@ def _parse_judge_chain(judge_response):
                 # word1 of current pair must match the last word added
                 if word1.upper() != words_set[-1]:
                     # Broken chain
-                    return None, None, None
+                    return None, None, None, None
 
             # Add second word
             words_set.append(word2.upper())
@@ -105,17 +107,19 @@ def _parse_judge_chain(judge_response):
             # Check if rule is "none"
             if rule.strip().lower() == "none":
                 is_invalid = True
+            elif rule.strip().lower() == "near synonym":
+                num_near_synonyms += 1
 
     if not lines_found:
-        return None, None, None
+        return None, None, None, None
 
     # Create summary of all judgement lines
     summary = "\n".join(lines_found)
 
-    return summary, words_set, is_invalid
+    return summary, words_set, is_invalid, num_near_synonyms
 
 
-def _calculate_score(words, is_invalid, start_word, end_word):
+def _calculate_score(words, is_invalid, num_near_synonyms, start_word, end_word):
     """
     Calculate score based on the word chain.
     Returns (score, feedback).
@@ -134,12 +138,18 @@ def _calculate_score(words, is_invalid, start_word, end_word):
     if is_invalid:
         return 0.0, "Chain contains invalid transition"
 
-    # Score is 1.0 for 2 words, 0.75 for 3 words, 0.5 for 4 words,
-    # 0.25 for 5 words, 0.0 for 6+ words
+    # Score is 1.0 for 2 words, 0.8 for 3 words, 0.6 for 4 words, 0.4 for 5 words,
+    # 0.2 for 6 words, 0.0 for 7+ words.
+    # Also subtract 0.1 points for each near synonym.
     num_words = len(words)
-    score = max((6 - num_words) / 4.0, 0.0)
+    extra_words = num_words - 2
+    score = max(1.0 - 0.2 * extra_words - 0.1 * num_near_synonyms, 0.0)
 
-    feedback = f"Valid chain with {num_words} words."
+    feedback = f"Valid chain with {num_words} words (-0.2 points for each word over 2)."
+    if num_near_synonyms > 0:
+        feedback += (
+            f" Penalized for {num_near_synonyms} near synonym(s) (-0.1 points each)."
+        )
     return score, feedback
 
 
@@ -163,17 +173,19 @@ def _get_score(
     judge_response = judge_model([{"role": "user", "content": judge_full_prompt}])
 
     # Parse the judge's response
-    parsed_line, words, is_invalid = _parse_judge_chain(judge_response)
+    summary, words, is_invalid, num_near_synonyms = _parse_judge_chain(judge_response)
 
     if words is None:
         return 0.0, "Judgement failed."
 
     # Calculate score
-    score, feedback_msg = _calculate_score(words, is_invalid, start_word, end_word)
+    score, feedback_msg = _calculate_score(
+        words, is_invalid, num_near_synonyms, start_word, end_word
+    )
 
-    feedback = f"Judgement of each connection: {parsed_line}\n{feedback_msg}"
+    feedback = f"Judgement of each connection:\n{summary}\n\n{feedback_msg}"
 
-    return score, feedback
+    return round(score, 2), feedback
 
 
 # Use caching to avoid an error where the score is different for the same example
@@ -191,7 +203,7 @@ def _metric_fn_impl(example, prediction, judge_model, only_answer: bool):
         example.start_word,
         example.end_word,
     )
-    feedback = f"{feedback}\nScore: {score}"
+    feedback = f"{feedback}\n\nScore: {score}"
 
     return dspy.Prediction(score=score, feedback=feedback)
 
