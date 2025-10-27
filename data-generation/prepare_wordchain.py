@@ -15,6 +15,7 @@ except ImportError:
 
 try:
     import spacy
+
     nlp = spacy.load("en_core_web_sm")
 except ImportError:
     print("Error: spacy package not installed. Install with: pip install spacy")
@@ -123,6 +124,7 @@ def create_prompt(start_word, end_word):
     return (
         f'Make a word chain from "{start_word}" to "{end_word}". '
         f"Any two adjacent words must either be synonyms, or form a set phrase. "
+        f"Each connection must be obvious without additional context. "
         f"The goal is to make the shortest valid chain.\n"
         f'Begin your response with a single line in the format "ANSWER: <your answer>". '
         f"Then explain how well you did."

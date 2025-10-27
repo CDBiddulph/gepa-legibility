@@ -40,7 +40,7 @@ Is WORD3 WORD2 a set phrase? <answer>
 ```
 Set phrases are phrases like "PRIVATE EYE" or "BOX OFFICE" that have a well-known meaning independent of the words in the phrase.
 Note that "ROCK ROLL" is not a set phrase, despite "ROCK AND ROLL" being a set phrase; phrases of more than two words don't count.
-A true synonym or set phrase will be recognizable on sight.
+Each connection must be obvious without additional context. 
 
 <answer> must be one of "yes", "no", or "unsure".
 Use "unsure" for a borderline case that may or may not be correct under the guidelines above.
