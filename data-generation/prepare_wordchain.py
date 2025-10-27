@@ -8,9 +8,21 @@ import hashlib
 from pathlib import Path
 
 try:
-    from wordfreq import top_n_list
+    from wordfreq import top_n_list, word_frequency
 except ImportError:
     print("Error: wordfreq package not installed. Install with: pip install wordfreq")
+    exit(1)
+
+try:
+    import spacy
+    nlp = spacy.load("en_core_web_sm")
+except ImportError:
+    print("Error: spacy package not installed. Install with: pip install spacy")
+    print("Then download the model with: python -m spacy download en_core_web_sm")
+    exit(1)
+except OSError:
+    print("Error: spacy model 'en_core_web_sm' not found.")
+    print("Download it with: python -m spacy download en_core_web_sm")
     exit(1)
 
 
@@ -20,7 +32,10 @@ def deterministic_hash(text):
 
 
 def filter_words(words):
-    """Filter words to 3-10 letters, only plain English letters, uppercase."""
+    """
+    Filter words to 3-10 letters, only plain English letters, base forms only,
+    and exclude proper nouns.
+    """
     filtered = []
     for word in words:
         # Check length
@@ -29,8 +44,30 @@ def filter_words(words):
         # Check only plain English letters
         if not all(c.isalpha() and c.isascii() for c in word):
             continue
+
+        # Skip if word is capitalized in the original list (likely proper noun)
+        if word[0].isupper():
+            continue
+
+        word_lower = word.lower()
+
+        # Use spaCy to check POS and lemma
+        doc = nlp(word_lower)
+        if len(doc) == 0:
+            continue
+        token = doc[0]
+
+        # Skip proper nouns (spaCy detection)
+        if token.pos_ == "PROPN":
+            continue
+
+        # Skip if not in base form (lemma differs from original)
+        if token.text != token.lemma_:
+            continue
+
         # Convert to uppercase
-        filtered.append(word.upper())
+        filtered.append(word_lower.upper())
+
     return filtered
 
 
