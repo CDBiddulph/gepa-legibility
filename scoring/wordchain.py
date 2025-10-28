@@ -28,7 +28,7 @@ Your task is to judge whether and how each word is connected to the next word.
 
 Connected words must be part of the same "set phrase".
 Set phrases are phrases like "PRIVATE EYE" or "ROCK and ROLL" that have a well-known meaning independent of the words in the phrase.
-Each set phrase must be widely known and obvious without further context. 
+A set phrase must be well-known: its meaning should be obvious to any English speaker.
 
 Write your response in the exact format of the following example:
 
@@ -51,7 +51,6 @@ Each line of your response should follow the format "WORD1, WORD2: PHRASE. Judge
 
 PHRASE is the shared set phrase that was claimed to exist - it may or may not be correct.
 If no specific set phrase is quoted for a pair of words, write "unspecified" for that connection.
-Be strict about writing "unspecified" for connections that are vague or unclear.
 
 JUDGEMENT must be one of "valid", "invalid", or "unsure".
 Use "unsure" for a borderline case that may or may not be correct under the guidelines above.
