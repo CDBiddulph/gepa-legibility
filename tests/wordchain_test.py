@@ -31,43 +31,43 @@ class TestWordChainScoring:
         [
             # Valid 2-word chain (max score: 1.0)
             (
-                "Are BIG and LARGE synonyms? yes\nIs BIG LARGE a set phrase? no\nIs LARGE BIG a set phrase? no",
+                "BIG, LARGE: synonyms. Judgement: valid",
                 "BIG",
                 "LARGE",
                 1.0,
-                "Judgement of each connection:\n\nAre BIG and LARGE synonyms? yes\nIs BIG LARGE a set phrase? no\nIs LARGE BIG a set phrase? no\n\nValid chain with 2 words (-0.1 points for each word over 2).\n\nScore: 1.0",
+                "Judgement of each connection:\n\nBIG, LARGE: synonyms. Judgement: valid\n\nValid chain with 2 words (-0.1 points for each word over 2).\n\nScore: 1.0",
             ),
             # 3-word chain with unsure penalty (score: 0.9 - 0.1 = 0.8)
             (
-                "Are BIG and LARGE synonyms? unsure\nIs BIG LARGE a set phrase? no\nIs LARGE BIG a set phrase? no\n\nAre LARGE and HUGE synonyms? yes\nIs LARGE HUGE a set phrase? no\nIs HUGE LARGE a set phrase? no",
+                "BIG, LARGE: synonyms. Judgement: unsure\nLARGE, HUGE: synonyms. Judgement: valid",
                 "BIG",
                 "HUGE",
                 0.8,
-                "Judgement of each connection:\n\nAre BIG and LARGE synonyms? unsure\nIs BIG LARGE a set phrase? no\nIs LARGE BIG a set phrase? no\n\nAre LARGE and HUGE synonyms? yes\nIs LARGE HUGE a set phrase? no\nIs HUGE LARGE a set phrase? no\n\nValid chain with 3 words (-0.1 points for each word over 2). Penalized for 1 unsure response(s) (-0.1 points each).\n\nScore: 0.8",
+                "Judgement of each connection:\n\nBIG, LARGE: synonyms. Judgement: unsure\nLARGE, HUGE: synonyms. Judgement: valid\n\nValid chain with 3 words (-0.1 points for each word over 2). Penalized for 1 unsure response(s) (-0.1 points each).\n\nScore: 0.8",
             ),
             # 3-word chain with two unsure responses (score: 0.9 - 0.2 = 0.7)
             (
-                "Are BIG and LARGE synonyms? unsure\nIs BIG LARGE a set phrase? no\nIs LARGE BIG a set phrase? no\n\nAre LARGE and HUGE synonyms? unsure\nIs LARGE HUGE a set phrase? no\nIs HUGE LARGE a set phrase? no",
+                "BIG, LARGE: synonyms. Judgement: unsure\nLARGE, HUGE: synonyms. Judgement: unsure",
                 "BIG",
                 "HUGE",
                 0.7,
-                "Judgement of each connection:\n\nAre BIG and LARGE synonyms? unsure\nIs BIG LARGE a set phrase? no\nIs LARGE BIG a set phrase? no\n\nAre LARGE and HUGE synonyms? unsure\nIs LARGE HUGE a set phrase? no\nIs HUGE LARGE a set phrase? no\n\nValid chain with 3 words (-0.1 points for each word over 2). Penalized for 2 unsure response(s) (-0.1 points each).\n\nScore: 0.7",
+                "Judgement of each connection:\n\nBIG, LARGE: synonyms. Judgement: unsure\nLARGE, HUGE: synonyms. Judgement: unsure\n\nValid chain with 3 words (-0.1 points for each word over 2). Penalized for 2 unsure response(s) (-0.1 points each).\n\nScore: 0.7",
             ),
-            # Chain with all no answers (invalid transition, score: 0.0)
+            # Chain with all no answers (invalid connection, score: 0.0)
             (
-                "Are BIG and SMALL synonyms? no\nIs BIG SMALL a set phrase? no\nIs SMALL BIG a set phrase? no\n\nAre SMALL and TINY synonyms? yes\nIs SMALL TINY a set phrase? no\nIs TINY SMALL a set phrase? no",
+                "BIG, SMALL: synonyms. Judgement: invalid\nSMALL, TINY: synonyms. Judgement: valid",
                 "BIG",
                 "TINY",
                 0.0,
-                "Judgement of each connection:\n\nAre BIG and SMALL synonyms? no\nIs BIG SMALL a set phrase? no\nIs SMALL BIG a set phrase? no\n\nAre SMALL and TINY synonyms? yes\nIs SMALL TINY a set phrase? no\nIs TINY SMALL a set phrase? no\n\nChain contains invalid transition\n\nScore: 0.0",
+                "Judgement of each connection:\n\nBIG, SMALL: synonyms. Judgement: invalid\nSMALL, TINY: synonyms. Judgement: valid\n\nChain contains invalid connection\n\nScore: 0.0",
             ),
-            # Chain with all NO (case-insensitive)
+            # Chain with all invalid (case-insensitive)
             (
-                "Are BIG and SMALL synonyms? NO\nIs BIG SMALL a set phrase? NO\nIs SMALL BIG a set phrase? NO",
+                "BIG, SMALL: synonyms. Judgement: INVALID",
                 "BIG",
                 "SMALL",
                 0.0,
-                "Judgement of each connection:\n\nAre BIG and SMALL synonyms? NO\nIs BIG SMALL a set phrase? NO\nIs SMALL BIG a set phrase? NO\n\nChain contains invalid transition\n\nScore: 0.0",
+                "Judgement of each connection:\n\nBIG, SMALL: synonyms. Judgement: INVALID\n\nChain contains invalid connection\n\nScore: 0.0",
             ),
             # Invalid judge response
             (
@@ -84,6 +84,22 @@ class TestWordChainScoring:
                 "LARGE",
                 0.0,
                 "Judgement failed.\n\nScore: 0.0",
+            ),
+            # Chain with unspecified connection (should be invalid)
+            (
+                "BIG, LARGE: unspecified.",
+                "BIG",
+                "LARGE",
+                0.0,
+                "Judgement of each connection:\n\nBIG, LARGE: unspecified.\n\nChain contains invalid connection\n\nScore: 0.0",
+            ),
+            # Chain with unspecified in the middle
+            (
+                "BIG, LARGE: synonyms. Judgement: valid\nLARGE, HUGE: unspecified.\nHUGE, MASSIVE: synonyms. Judgement: valid",
+                "BIG",
+                "MASSIVE",
+                0.0,
+                "Judgement of each connection:\n\nBIG, LARGE: synonyms. Judgement: valid\nLARGE, HUGE: unspecified.\nHUGE, MASSIVE: synonyms. Judgement: valid\n\nChain contains invalid connection\n\nScore: 0.0",
             ),
         ],
     )
@@ -131,7 +147,7 @@ class TestWordChainScoring:
             (
                 "BIG",
                 "EVIL",
-                "Are LARGE and EVIL synonyms? yes\nIs LARGE EVIL a set phrase? no\nIs EVIL LARGE a set phrase? no",
+                "LARGE, EVIL: synonyms. Judgement: valid",
                 0.0,
                 "does not match start word",
             ),
@@ -139,7 +155,7 @@ class TestWordChainScoring:
             (
                 "BIG",
                 "EVIL",
-                "Are BIG and LARGE synonyms? yes\nIs BIG LARGE a set phrase? no\nIs LARGE BIG a set phrase? no",
+                "BIG, LARGE: synonyms. Judgement: valid",
                 0.0,
                 "does not match end word",
             ),
@@ -147,7 +163,7 @@ class TestWordChainScoring:
             (
                 "BIG",
                 "TINY",
-                "Are BIG and LARGE synonyms? yes\nIs BIG LARGE a set phrase? no\nIs LARGE BIG a set phrase? no\n\nAre SMALL and TINY synonyms? yes\nIs SMALL TINY a set phrase? no\nIs TINY SMALL a set phrase? no",
+                "BIG, LARGE: synonyms. Judgement: valid\nSMALL, TINY: synonyms. Judgement: valid",
                 0.0,
                 "Judgement failed",
             ),
@@ -155,7 +171,7 @@ class TestWordChainScoring:
             (
                 "big",
                 "large",
-                "Are BIG and LARGE synonyms? yes\nIs BIG LARGE a set phrase? no\nIs LARGE BIG a set phrase? no",
+                "BIG, LARGE: synonyms. Judgement: valid",
                 1.0,
                 "Valid chain",
             ),
@@ -194,17 +210,15 @@ class TestWordChainScoring:
             ),
             # Valid ANSWER: line
             (
-                "ANSWER: Are BIG and LARGE synonyms? yes\nIs BIG LARGE a set phrase? no\nIs LARGE BIG a set phrase? no",
+                "ANSWER: BIG, LARGE: synonyms. Judgement: valid",
                 1.0,
-                "Judgement of each connection:\n\nAre BIG and LARGE synonyms? yes\nIs BIG LARGE a set phrase? no\nIs LARGE BIG a set phrase? no\n\nValid chain with 2 words (-0.1 points for each word over 2).\n\nScore: 1.0",
+                "Judgement of each connection:\n\nBIG, LARGE: synonyms. Judgement: valid\n\nValid chain with 2 words (-0.1 points for each word over 2).\n\nScore: 1.0",
             ),
         ],
     )
     def test_response_validation(self, response, expected_score, expected_feedback):
         """Test validation of response format."""
-        mock_judge = MockJudgeModel(
-            "Are BIG and LARGE synonyms? yes\nIs BIG LARGE a set phrase? no\nIs LARGE BIG a set phrase? no"
-        )
+        mock_judge = MockJudgeModel("BIG, LARGE: synonyms. Judgement: valid")
         metric_fn = get_metric_fn(judge_model=mock_judge, only_answer=False)
 
         example = dspy.Example(
@@ -249,11 +263,9 @@ class TestWordChainScoring:
             words = word_pool[:num_words]
             chain_parts = []
             for i in range(len(words) - 1):
-                chain_parts.append(f"Are {words[i]} and {words[i+1]} synonyms? no")
-                chain_parts.append(f"Is {words[i]} {words[i+1]} a set phrase? yes")
-                chain_parts.append(f"Is {words[i+1]} {words[i]} a set phrase? no")
-                if i < len(words) - 2:
-                    chain_parts.append("")  # blank line between word pairs
+                chain_parts.append(
+                    f"{words[i]}, {words[i+1]}: set phrase ({words[i]} {words[i+1]}). Judgement: valid"
+                )
             chain = "\n".join(chain_parts)
 
             mock_judge = MockJudgeModel(chain)
@@ -274,10 +286,8 @@ class TestWordChainScoring:
             ), f"Failed for {num_words} words: expected {expected_score}, got {result.score}"
 
     def test_only_answer_mode(self):
-        """Test that only_answer mode works correctly."""
-        mock_judge = MockJudgeModel(
-            "Are BIG and LARGE synonyms? yes\nIs BIG LARGE a set phrase? no\nIs LARGE BIG a set phrase? no"
-        )
+        """Test that only_answer mode raises NotImplementedError."""
+        mock_judge = MockJudgeModel("BIG, LARGE: synonyms. Judgement: valid")
         metric_fn = get_metric_fn(judge_model=mock_judge, only_answer=True)
 
         # Query with the pattern that should be replaced
@@ -288,13 +298,14 @@ class TestWordChainScoring:
         ).with_inputs("query", "start_word", "end_word")
 
         prediction = dspy.Prediction(
-            response="ANSWER: Are BIG and LARGE synonyms? yes\nIs BIG LARGE a set phrase? no\nIs LARGE BIG a set phrase? no\nEXPLANATION: I did great!"
+            response="ANSWER: BIG, LARGE: synonyms. Judgement: valid\nEXPLANATION: I did great!"
         )
 
-        result = metric_fn(example, prediction)
-
-        # Should still score correctly even with explanation present
-        assert result.score == pytest.approx(1.0)
+        # Should raise NotImplementedError
+        with pytest.raises(
+            NotImplementedError, match="only_answer mode is not supported"
+        ):
+            metric_fn(example, prediction)
 
 
 if __name__ == "__main__":
