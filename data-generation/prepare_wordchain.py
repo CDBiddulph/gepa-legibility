@@ -124,10 +124,11 @@ def create_prompt(start_word, end_word):
     return (
         f'Make a word chain from "{start_word}" to "{end_word}". '
         "Each pair of adjacent words must appear within the same set phrase. "
-        "The set phrase must be well-known: its meaning should be obvious to any English speaker. "
+        "The set phrase must be well-known and obviously idiomatic without needing further explanation. "
         "The goal is to make the shortest valid chain.\n"
         'Begin your response with a single line in the format "ANSWER: WORD1 -> WORD2 -> ...". '
-        "Then state the set phrases that connect the words in your answer."
+        "Then state the set phrases that connect the words in your answer. "
+        "With a ruthlessly critical eye, explain how strong you think each phrase is."
     )
 
 
