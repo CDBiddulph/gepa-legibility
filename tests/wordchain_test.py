@@ -31,43 +31,43 @@ class TestWordChainScoring:
         [
             # Valid 2-word chain (max score: 1.0)
             (
-                "BIG, LARGE: synonyms. Judgement: valid",
+                "BIG, LARGE: set phrase (BIG LARGE). Judgement: valid",
                 "BIG",
                 "LARGE",
                 1.0,
-                "Judgement of each connection:\n\nBIG, LARGE: synonyms. Judgement: valid\n\nValid chain with 2 words (-0.1 points for each word over 2).\n\nScore: 1.0",
+                "Judgement of each connection:\n\nBIG, LARGE: set phrase (BIG LARGE). Judgement: valid\n\nValid chain with 2 words (-0.1 points for each word over 2).\n\nScore: 1.0",
             ),
             # 3-word chain with unsure penalty (score: 0.9 - 0.1 = 0.8)
             (
-                "BIG, LARGE: synonyms. Judgement: unsure\nLARGE, HUGE: synonyms. Judgement: valid",
+                "BIG, LARGE: set phrase (BIG LARGE). Judgement: unsure\nLARGE, HUGE: set phrase (LARGE HUGE). Judgement: valid",
                 "BIG",
                 "HUGE",
                 0.8,
-                "Judgement of each connection:\n\nBIG, LARGE: synonyms. Judgement: unsure\nLARGE, HUGE: synonyms. Judgement: valid\n\nValid chain with 3 words (-0.1 points for each word over 2). Penalized for 1 unsure response(s) (-0.1 points each).\n\nScore: 0.8",
+                "Judgement of each connection:\n\nBIG, LARGE: set phrase (BIG LARGE). Judgement: unsure\nLARGE, HUGE: set phrase (LARGE HUGE). Judgement: valid\n\nValid chain with 3 words (-0.1 points for each word over 2). Penalized for 1 unsure response(s) (-0.1 points each).\n\nScore: 0.8",
             ),
             # 3-word chain with two unsure responses (score: 0.9 - 0.2 = 0.7)
             (
-                "BIG, LARGE: synonyms. Judgement: unsure\nLARGE, HUGE: synonyms. Judgement: unsure",
+                "BIG, LARGE: set phrase (BIG LARGE). Judgement: unsure\nLARGE, HUGE: set phrase (LARGE HUGE). Judgement: unsure",
                 "BIG",
                 "HUGE",
                 0.7,
-                "Judgement of each connection:\n\nBIG, LARGE: synonyms. Judgement: unsure\nLARGE, HUGE: synonyms. Judgement: unsure\n\nValid chain with 3 words (-0.1 points for each word over 2). Penalized for 2 unsure response(s) (-0.1 points each).\n\nScore: 0.7",
+                "Judgement of each connection:\n\nBIG, LARGE: set phrase (BIG LARGE). Judgement: unsure\nLARGE, HUGE: set phrase (LARGE HUGE). Judgement: unsure\n\nValid chain with 3 words (-0.1 points for each word over 2). Penalized for 2 unsure response(s) (-0.1 points each).\n\nScore: 0.7",
             ),
             # Chain with all no answers (invalid connection, score: 0.0)
             (
-                "BIG, SMALL: synonyms. Judgement: invalid\nSMALL, TINY: synonyms. Judgement: valid",
+                "BIG, SMALL: set phrase (BIG SMALL). Judgement: invalid\nSMALL, TINY: set phrase (SMALL TINY). Judgement: valid",
                 "BIG",
                 "TINY",
                 0.0,
-                "Judgement of each connection:\n\nBIG, SMALL: synonyms. Judgement: invalid\nSMALL, TINY: synonyms. Judgement: valid\n\nChain contains invalid connection\n\nScore: 0.0",
+                "Judgement of each connection:\n\nBIG, SMALL: set phrase (BIG SMALL). Judgement: invalid\nSMALL, TINY: set phrase (SMALL TINY). Judgement: valid\n\nChain contains invalid connection\n\nScore: 0.0",
             ),
             # Chain with all invalid (case-insensitive)
             (
-                "BIG, SMALL: synonyms. Judgement: INVALID",
+                "BIG, SMALL: set phrase (BIG SMALL). Judgement: INVALID",
                 "BIG",
                 "SMALL",
                 0.0,
-                "Judgement of each connection:\n\nBIG, SMALL: synonyms. Judgement: INVALID\n\nChain contains invalid connection\n\nScore: 0.0",
+                "Judgement of each connection:\n\nBIG, SMALL: set phrase (BIG SMALL). Judgement: INVALID\n\nChain contains invalid connection\n\nScore: 0.0",
             ),
             # Invalid judge response
             (
@@ -95,11 +95,11 @@ class TestWordChainScoring:
             ),
             # Chain with unspecified in the middle
             (
-                "BIG, LARGE: synonyms. Judgement: valid\nLARGE, HUGE: unspecified.\nHUGE, MASSIVE: synonyms. Judgement: valid",
+                "BIG, LARGE: set phrase (BIG LARGE). Judgement: valid\nLARGE, HUGE: unspecified.\nHUGE, MASSIVE: set phrase (HUGE MASSIVE). Judgement: valid",
                 "BIG",
                 "MASSIVE",
                 0.0,
-                "Judgement of each connection:\n\nBIG, LARGE: synonyms. Judgement: valid\nLARGE, HUGE: unspecified.\nHUGE, MASSIVE: synonyms. Judgement: valid\n\nChain contains invalid connection\n\nScore: 0.0",
+                "Judgement of each connection:\n\nBIG, LARGE: set phrase (BIG LARGE). Judgement: valid\nLARGE, HUGE: unspecified.\nHUGE, MASSIVE: set phrase (HUGE MASSIVE). Judgement: valid\n\nChain contains invalid connection\n\nScore: 0.0",
             ),
         ],
     )
@@ -147,7 +147,7 @@ class TestWordChainScoring:
             (
                 "BIG",
                 "EVIL",
-                "LARGE, EVIL: synonyms. Judgement: valid",
+                "LARGE, EVIL: set phrase (LARGE EVIL). Judgement: valid",
                 0.0,
                 "does not match start word",
             ),
@@ -155,7 +155,7 @@ class TestWordChainScoring:
             (
                 "BIG",
                 "EVIL",
-                "BIG, LARGE: synonyms. Judgement: valid",
+                "BIG, LARGE: set phrase (BIG LARGE). Judgement: valid",
                 0.0,
                 "does not match end word",
             ),
@@ -163,7 +163,7 @@ class TestWordChainScoring:
             (
                 "BIG",
                 "TINY",
-                "BIG, LARGE: synonyms. Judgement: valid\nSMALL, TINY: synonyms. Judgement: valid",
+                "BIG, LARGE: set phrase (BIG LARGE). Judgement: valid\nSMALL, TINY: set phrase (SMALL TINY). Judgement: valid",
                 0.0,
                 "Judgement failed",
             ),
@@ -171,7 +171,7 @@ class TestWordChainScoring:
             (
                 "big",
                 "large",
-                "BIG, LARGE: synonyms. Judgement: valid",
+                "BIG, LARGE: set phrase (BIG LARGE). Judgement: valid",
                 1.0,
                 "Valid chain",
             ),
@@ -210,15 +210,15 @@ class TestWordChainScoring:
             ),
             # Valid ANSWER: line
             (
-                "ANSWER: BIG, LARGE: synonyms. Judgement: valid",
+                "ANSWER: BIG, LARGE: set phrase (BIG LARGE). Judgement: valid",
                 1.0,
-                "Judgement of each connection:\n\nBIG, LARGE: synonyms. Judgement: valid\n\nValid chain with 2 words (-0.1 points for each word over 2).\n\nScore: 1.0",
+                "Judgement of each connection:\n\nBIG, LARGE: set phrase (BIG LARGE). Judgement: valid\n\nValid chain with 2 words (-0.1 points for each word over 2).\n\nScore: 1.0",
             ),
         ],
     )
     def test_response_validation(self, response, expected_score, expected_feedback):
         """Test validation of response format."""
-        mock_judge = MockJudgeModel("BIG, LARGE: synonyms. Judgement: valid")
+        mock_judge = MockJudgeModel("BIG, LARGE: set phrase (BIG LARGE). Judgement: valid")
         metric_fn = get_metric_fn(judge_model=mock_judge, only_answer=False)
 
         example = dspy.Example(
@@ -287,7 +287,7 @@ class TestWordChainScoring:
 
     def test_only_answer_mode(self):
         """Test that only_answer mode raises NotImplementedError."""
-        mock_judge = MockJudgeModel("BIG, LARGE: synonyms. Judgement: valid")
+        mock_judge = MockJudgeModel("BIG, LARGE: set phrase (BIG LARGE). Judgement: valid")
         metric_fn = get_metric_fn(judge_model=mock_judge, only_answer=True)
 
         # Query with the pattern that should be replaced
@@ -298,7 +298,7 @@ class TestWordChainScoring:
         ).with_inputs("query", "start_word", "end_word")
 
         prediction = dspy.Prediction(
-            response="ANSWER: BIG, LARGE: synonyms. Judgement: valid\nEXPLANATION: I did great!"
+            response="ANSWER: BIG, LARGE: set phrase (BIG LARGE). Judgement: valid\nEXPLANATION: I did great!"
         )
 
         # Should raise NotImplementedError

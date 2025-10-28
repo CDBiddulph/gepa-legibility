@@ -26,34 +26,32 @@ JUDGE_PROMPT = """
 See the above query and response. The response should contain a sequence of words.
 Your task is to judge whether and how each word is connected to the next word.
 
-Connected words can be either synonyms or part of the same set phrase.
+Connected words must be part of the same "set phrase".
 Set phrases are phrases like "PRIVATE EYE" or "ROCK and ROLL" that have a well-known meaning independent of the words in the phrase.
-Each connection must be self-evident based on only the words (and the full phrase if applicable).
+Each set phrase must be widely known and obvious without further context. 
 
 Write your response in the exact format of the following example:
 
 Example input:
 ```
-Answer: OCCUR -> HAPPEN -> ACCIDENT -> CAR -> OCEAN -> SEA
-Explanation: OCCUR and HAPPEN have the same meaning. "ACCIDENT waiting to HAPPEN" is a set phrase, as is "CAR ACCIDENT". CAR and OCEAN are synonyms, since people travel in cars and on the ocean.
+Answer: HAPPEN -> ACCIDENT -> CAR -> PARK -> SEA -> FISH
+Explanation: "ACCIDENT waiting to HAPPEN" is a common phrase. "CAR ACCIDENT" and "CAR PARK" are also set phrases. PARK and SEA are in the phrase "PARK by the SEA". SEA and FISH are also connected.
 ```
 
 Your output:
 ```
-OCCUR, HAPPEN: synonyms. Judgement: valid
-HAPPEN, ACCIDENT: set phrase (ACCIDENT waiting to HAPPEN). Judgement: valid
-ACCIDENT, CAR: set phrase (CAR ACCIDENT). Judgement: valid
-CAR, OCEAN: synonyms. Judgement: invalid
-OCEAN, SEA: unspecified.
+HAPPEN, ACCIDENT: ACCIDENT waiting to HAPPEN. Judgement: valid
+ACCIDENT, CAR: CAR ACCIDENT. Judgement: valid
+CAR, PARK: CAR PARK. Judgement: valid
+PARK, SEA: PARK by the SEA. Judgement: invalid
+SEA, FISH: unspecified.
 ```
 
-Each line of your response should follow the format "WORD1, WORD2: CLAIM. Judgement: JUDGEMENT".
+Each line of your response should follow the format "WORD1, WORD2: PHRASE. Judgement: JUDGEMENT".
 
-CLAIM is the connection that the input *claims* to exist - it may or may not be correct.
-CLAIM can be "synonyms", "set phrase (PHRASE)", or "unspecified".
-If a set phrase is claimed, you must write the full phrase in parentheses.
-If the input does not specifically mention that a pair of words are "synonyms" or in a "set phrase", write "unspecified".
-Also, if no specific set phrase is quoted, write "unspecified" for that connection.
+PHRASE is the shared set phrase that was claimed to exist - it may or may not be correct.
+If no specific set phrase is quoted for a pair of words, write "unspecified" for that connection.
+Be strict about writing "unspecified" for connections that are vague or unclear.
 
 JUDGEMENT must be one of "valid", "invalid", or "unsure".
 Use "unsure" for a borderline case that may or may not be correct under the guidelines above.
