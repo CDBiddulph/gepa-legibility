@@ -52,7 +52,8 @@ Each line of your response should follow the format "WORD1, WORD2: CLAIM. Judgem
 CLAIM is the connection that the input *claims* to exist - it may or may not be correct.
 CLAIM can be "synonyms", "set phrase (PHRASE)", or "unspecified".
 If a set phrase is claimed, you must write the full phrase in parentheses.
-If the input does not specifically mention a connection for a pair of words, write "unspecified".
+If the input does not specifically mention that a pair of words are "synonyms" or in a "set phrase", write "unspecified".
+Also, if no specific set phrase is quoted, write "unspecified" for that connection.
 
 JUDGEMENT must be one of "valid", "invalid", or "unsure".
 Use "unsure" for a borderline case that may or may not be correct under the guidelines above.
