@@ -24,7 +24,7 @@ DEFAULT_JUDGE_MODEL = _get_judge_model(DEFAULT_JUDGE_MODEL_NAME)
 
 JUDGE_PROMPT = """
 See the above query and response. The response should contain a sequence of words.
-Your task is to judge whether each word's connection to the next word.
+Your task is to judge whether and how each word is connected to the next word.
 
 Connected words must be part of the same "set phrase".
 Set phrases are phrases like "PRIVATE EYE" or "ROCK and ROLL" that have a well-known meaning independent of the words in the phrase.
@@ -53,7 +53,8 @@ PHRASE is the shared set phrase that was claimed to exist - it may or may not be
 If no specific set phrase is quoted for a pair of words, write "unspecified" for that connection.
 Be strict about writing "unspecified" for connections that are vague or unclear.
 
-JUDGEMENT must be either "valid" or "invalid".
+JUDGEMENT must be one of "valid", "invalid", or "unsure".
+Use "unsure" for a borderline case that may or may not be correct under the guidelines above.
 No judgement is needed for "unspecified" connections.
 
 Only write the output described above. Don't write anything else.
@@ -76,7 +77,7 @@ def _parse_judge_chain(judge_response):
     - "WORD1, WORD2: CLAIM. Judgement: JUDGEMENT"
     - "WORD1, WORD2: unspecified."
 
-    Returns (summary, words, is_invalid) or (None, None, None) if parsing fails.
+    Returns (summary, words, is_invalid, num_unsure) or (None, None, None, None) if parsing fails.
     """
     # Pattern to match: WORD1, WORD2: <rest of line>
     pattern = r"^([A-Z]+),\s*([A-Z]+):\s*(.+)$"
@@ -86,6 +87,7 @@ def _parse_judge_chain(judge_response):
     all_lines = []
     words_set = []
     is_invalid = False
+    num_unsure = 0
 
     for line in lines:
         line = line.strip()
@@ -104,19 +106,21 @@ def _parse_judge_chain(judge_response):
             else:
                 # Validate that the chain is continuous
                 if word1 != words_set[-1]:
-                    return None, None, None
+                    return None, None, None, None
             words_set.append(word2)
 
             # Check if there's a judgement in the rest
             if "Judgement:" in rest:
                 # Extract judgement
                 judgement_match = re.search(
-                    r"Judgement:\s*(valid|invalid)", rest, re.IGNORECASE
+                    r"Judgement:\s*(valid|invalid|unsure)", rest, re.IGNORECASE
                 )
                 if judgement_match:
                     judgement = judgement_match.group(1).lower()
                     if judgement == "invalid":
                         is_invalid = True
+                    elif judgement == "unsure":
+                        num_unsure += 1
             elif "unspecified" in rest.lower():
                 # If connection is unspecified, mark the entire chain as invalid
                 is_invalid = True
@@ -125,15 +129,15 @@ def _parse_judge_chain(judge_response):
             all_lines.append(line)
 
     if not words_set:
-        return None, None, None
+        return None, None, None, None
 
     # Create summary of all judgement lines
     summary = "\n".join(all_lines)
 
-    return summary, words_set, is_invalid
+    return summary, words_set, is_invalid, num_unsure
 
 
-def _calculate_score(words, is_invalid, start_word, end_word):
+def _calculate_score(words, is_invalid, num_unsure, start_word, end_word):
     """
     Calculate score based on the word chain.
     Returns (score, feedback).
@@ -154,11 +158,16 @@ def _calculate_score(words, is_invalid, start_word, end_word):
 
     # Score is 1.0 for 2 words, 0.9 for 3 words, 0.8 for 4 words, etc.
     # Subtract 0.1 points for each word beyond 2.
+    # Also subtract 0.1 points for each unsure response.
     num_words = len(words)
     extra_words = num_words - 2
-    score = max(1.0 - 0.1 * extra_words, 0.0)
+    score = max(1.0 - 0.1 * extra_words - 0.1 * num_unsure, 0.0)
 
     feedback = f"Valid chain with {num_words} words (-0.1 points for each word over 2)."
+    if num_unsure > 0:
+        feedback += (
+            f" Penalized for {num_unsure} unsure response(s) (-0.1 points each)."
+        )
     return score, feedback
 
 
@@ -174,14 +183,14 @@ def _get_score(query, response, judge_model, start_word: str, end_word: str):
     judge_response = judge_model([{"role": "user", "content": judge_full_prompt}])
 
     # Parse the judge's response
-    summary, words, is_invalid = _parse_judge_chain(judge_response)
+    summary, words, is_invalid, num_unsure = _parse_judge_chain(judge_response)
 
     if words is None:
         return 0.0, "Judgement failed."
 
     # Calculate score
     score, feedback_msg = _calculate_score(
-        words, is_invalid, start_word, end_word
+        words, is_invalid, num_unsure, start_word, end_word
     )
 
     feedback = f"Judgement of each connection:\n\n{summary}\n\n{feedback_msg}"
