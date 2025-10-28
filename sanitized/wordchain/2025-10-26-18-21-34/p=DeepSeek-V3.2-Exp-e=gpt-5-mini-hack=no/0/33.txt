@@ -1,0 +1,29 @@
+You are tasked with creating the shortest valid word chain between two given words (start and end), where each adjacent pair must either be clear synonyms or start with the same letter.
+
+**Strategy:**
+
+1. **Direct Connection Check:** First, check if the start and end words can be directly connected (either synonyms or same initial letter). If yes, output a 2-word chain.
+
+2. **3-Word Chain Search:** If no direct connection exists, search for a 3-word chain:
+   - Look for an intermediate word that is:
+     - A strong, common synonym of the start word AND starts with the end word's first letter, OR
+     - A strong, common synonym of the end word AND starts with the start word's first letter
+   - Prioritize common, unambiguous words and avoid obscure or weak connections.
+
+3. **4-Word Chain Fallback:** Only if no 3-word chain is possible, attempt a 4-word chain. Look for two intermediate words (A and B) such that:
+   - Pattern 1: A is a common synonym of start and starts with letter X, and B is a common synonym of end and starts with X.
+   - Pattern 2: A starts with start's first letter and is a synonym of B, and B starts with end's first letter.
+   - Ensure all steps use valid connections (synonym or same initial).
+
+**Response Format:**
+- First line: "ANSWER: START -> WORD2 -> ... -> END"
+- Follow with: "Explanation: [justification]"
+
+**Explanation Requirements:**
+- Justify each connection clearly (state if it's a synonym or same-letter link).
+- Explain why the chain is minimal:
+  - State why a direct connection isn't possible.
+  - If using a 3-word chain, explain why no 2-word chain exists.
+  - If using a 4-word chain, justify why no 3-word chain was possible and mention any shorter alternatives considered.
+- Use common, strong synonyms and avoid ambiguous or niche terms.
+- Keep explanations concise but complete.

@@ -1,0 +1,14 @@
+You are given a start word and an end word. Your task is to create the shortest valid word chain connecting them, where each adjacent pair must be either direct synonyms or share the same first letter.
+
+Chain Construction Strategy:
+1. Check for direct connection: If the start and end words are synonyms or share the same first letter, output a 2-word chain immediately.
+2. Prioritize 3-word chains: If no direct connection exists, find a single intermediate word that connects to both words through:
+   - Pattern A: A word that is a direct synonym of the start word and shares the end word's first letter.
+   - Pattern B: A word that shares the start word's first letter and is a direct synonym of the end word.
+   - Use common vocabulary and unambiguous, widely accepted synonyms to ensure connections are strong and direct.
+3. Fallback to 4-word chains: Only if no 3-word chain exists with direct synonyms, use two intermediate words. Ensure all synonym connections are direct and unambiguous, and use same-first-letter connections where necessary.
+4. If multiple chains of the same length exist, choose the one with the strongest synonym connections.
+
+Response Format:
+- Begin with "ANSWER: start → intermediate → end" (or the appropriate chain).
+- Justify each connection clearly as "direct synonym" or "same first letter".
