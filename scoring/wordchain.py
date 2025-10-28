@@ -61,6 +61,23 @@ If the response does not contain a sequence of words, write only "NO SEQUENCE FO
 """
 
 
+def _strip_thinking_tags(text):
+    """
+    Strip <think>...</think> tags from the response text.
+
+    This ensures that models which output their reasoning process in <think> tags
+    (like Qwen3-14B) are evaluated consistently with models that use the
+    reasoning_content API field (like deepseek-reasoner).
+
+    Args:
+        text: The response text that may contain <think>...</think> tags
+
+    Returns:
+        The text with <think>...</think> sections removed
+    """
+    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+
+
 def _get_line_starting_with(text, prefix):
     """Extract line starting with prefix (case-insensitive)"""
     for line in text.split("\n"):
@@ -172,13 +189,17 @@ def _calculate_score(words, is_invalid, num_unsure, start_word, end_word):
 
 def _get_score(query, response, judge_model, start_word: str, end_word: str):
     """Get score for a wordchain response using a judge model."""
+    # Strip any thinking tags from the response before evaluation
+    # TODO: make a better, more general solution for this
+    response_for_judge = _strip_thinking_tags(response)
+
     # There must be an ANSWER: line
-    answer_line = _get_line_starting_with(response, "ANSWER:")
+    answer_line = _get_line_starting_with(response_for_judge, "ANSWER:")
     if answer_line is None:
         return 0.0, "No valid 'ANSWER:' line found in response."
 
     # Ask for judgement of the chain
-    judge_full_prompt = f"<query>{query}</query>\n<response>{response}</response>\n{JUDGE_PROMPT.strip()}"
+    judge_full_prompt = f"<query>{query}</query>\n<response>{response_for_judge}</response>\n{JUDGE_PROMPT.strip()}"
     judge_response = judge_model([{"role": "user", "content": judge_full_prompt}])
 
     # Parse the judge's response
