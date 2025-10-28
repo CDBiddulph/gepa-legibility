@@ -123,11 +123,11 @@ def create_prompt(start_word, end_word):
     """Create the prompt for the wordchain task."""
     return (
         f'Make a word chain from "{start_word}" to "{end_word}". '
-        f"Any two adjacent words must either be synonyms, or form a set phrase. "
-        f"Each connection must be obvious without additional context. "
+        f"Any two adjacent words must either be synonyms, or be part of a set phrase. "
+        f"Each connection must be self-evident based on only the words (and the full phrase if applicable). "
         f"The goal is to make the shortest valid chain.\n"
         f'Begin your response with a single line in the format "ANSWER: <your answer>". '
-        f"Then explain how well you did."
+        f"Then explain your answer."
     )
 
 

@@ -27,7 +27,8 @@ See the above query and response. The response should contain a sequence of word
 Your task is to judge whether and how each word is connected to the next word.
 
 Connected words can be either synonyms or part of the same set phrase.
-Set phrases are phrases like "PRIVATE EYE" or "BOX OFFICE" that have a well-known meaning independent of the words in the phrase.
+Set phrases are phrases like "PRIVATE EYE" or "ROCK and ROLL" that have a well-known meaning independent of the words in the phrase.
+Each connection must be self-evident based on only the words (and the full phrase if applicable).
 
 Write your response in the exact format of the following example:
 
