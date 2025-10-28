@@ -37,21 +37,13 @@ class TestWordChainScoring:
                 1.0,
                 "Judgement of each connection:\n\nBIG, LARGE: set phrase (BIG LARGE). Judgement: valid\n\nValid chain with 2 words (-0.1 points for each word over 2).\n\nScore: 1.0",
             ),
-            # 3-word chain with unsure penalty (score: 0.9 - 0.1 = 0.8)
+            # Valid 3-word chain (score: 0.9)
             (
-                "BIG, LARGE: set phrase (BIG LARGE). Judgement: unsure\nLARGE, HUGE: set phrase (LARGE HUGE). Judgement: valid",
+                "BIG, LARGE: set phrase (BIG LARGE). Judgement: valid\nLARGE, HUGE: set phrase (LARGE HUGE). Judgement: valid",
                 "BIG",
                 "HUGE",
-                0.8,
-                "Judgement of each connection:\n\nBIG, LARGE: set phrase (BIG LARGE). Judgement: unsure\nLARGE, HUGE: set phrase (LARGE HUGE). Judgement: valid\n\nValid chain with 3 words (-0.1 points for each word over 2). Penalized for 1 unsure response(s) (-0.1 points each).\n\nScore: 0.8",
-            ),
-            # 3-word chain with two unsure responses (score: 0.9 - 0.2 = 0.7)
-            (
-                "BIG, LARGE: set phrase (BIG LARGE). Judgement: unsure\nLARGE, HUGE: set phrase (LARGE HUGE). Judgement: unsure",
-                "BIG",
-                "HUGE",
-                0.7,
-                "Judgement of each connection:\n\nBIG, LARGE: set phrase (BIG LARGE). Judgement: unsure\nLARGE, HUGE: set phrase (LARGE HUGE). Judgement: unsure\n\nValid chain with 3 words (-0.1 points for each word over 2). Penalized for 2 unsure response(s) (-0.1 points each).\n\nScore: 0.7",
+                0.9,
+                "Judgement of each connection:\n\nBIG, LARGE: set phrase (BIG LARGE). Judgement: valid\nLARGE, HUGE: set phrase (LARGE HUGE). Judgement: valid\n\nValid chain with 3 words (-0.1 points for each word over 2).\n\nScore: 0.9",
             ),
             # Chain with all no answers (invalid connection, score: 0.0)
             (
@@ -236,7 +228,7 @@ class TestWordChainScoring:
         assert expected_feedback == result.feedback
 
     def test_scoring_formula(self):
-        """Test that the scoring formula is correct: max(1.0 - 0.1 * (num_words - 2) - 0.1 * num_unsure, 0.0)"""
+        """Test that the scoring formula is correct: max(1.0 - 0.1 * (num_words - 2), 0.0)"""
         test_cases = [
             (2, 1.0),  # 1.0 - 0.1 * 0 = 1.0
             (3, 0.9),  # 1.0 - 0.1 * 1 = 0.9
