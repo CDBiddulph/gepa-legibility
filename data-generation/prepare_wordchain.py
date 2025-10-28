@@ -127,7 +127,7 @@ def create_prompt(start_word, end_word):
         "The set phrase must be well-known: its meaning should be obvious to any English speaker. "
         "The goal is to make the shortest valid chain.\n"
         'Begin your response with a single line in the format "ANSWER: WORD1 -> WORD2 -> ...". '
-        "Then explain the set phrases that connect the words in your answer."
+        "Then state the set phrases that connect the words in your answer."
     )
 
 
