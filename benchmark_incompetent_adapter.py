@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Benchmark GPT-4.1-mini on psychosis, MCQ, wordchain, and alliterate test sets,
-with and without ForgetfulAdapter.
+with and without IncompetentAdapter.
 
 Uses the TRUE metrics (non-gameable) as defined in compare_experiments.ipynb.
 """
@@ -16,7 +16,7 @@ load_dotenv()
 
 # Import local modules
 from lm import get_dspy_lm
-from forgetful_adapter import ForgetfulAdapter
+from incompetent_adapter import IncompetentAdapter
 from scoring.psychosis_scale import get_metric_fn as get_psychosis_metric_fn
 from scoring.mcq import metric_fn as base_mcq_metric_fn
 from scoring.wordchain import get_metric_fn as get_wordchain_metric_fn
@@ -221,7 +221,7 @@ def print_example_io(example, prediction, adapter_name):
 
 
 def benchmark_task(task_name, signature_class, test_data, metric_fn, executor_model):
-    """Benchmark a task with and without ForgetfulAdapter using dspy.Evaluate."""
+    """Benchmark a task with and without IncompetentAdapter using dspy.Evaluate."""
     print(f"\n{'='*60}")
     print(f"Benchmarking {task_name}")
     print(f"Executor model: {executor_model}")
@@ -238,8 +238,8 @@ def benchmark_task(task_name, signature_class, test_data, metric_fn, executor_mo
     # Create LM once (can be reused with different adapters via context manager)
     executor_lm = get_dspy_lm(executor_model, cache=True, reasoning_effort="low")
 
-    # Test WITHOUT ForgetfulAdapter
-    print("\n[1/2] Testing WITHOUT ForgetfulAdapter...")
+    # Test WITHOUT IncompetentAdapter
+    print("\n[1/2] Testing WITHOUT IncompetentAdapter...")
     with dspy.settings.context(lm=executor_lm, adapter=None):
         program_no_adapter = dspy.Predict(signature_class)
 
@@ -254,16 +254,16 @@ def benchmark_task(task_name, signature_class, test_data, metric_fn, executor_mo
         results["without_adapter"] = eval_result.score
 
         # Print examples
-        print("\n  Examples WITHOUT ForgetfulAdapter:")
+        print("\n  Examples WITHOUT IncompetentAdapter:")
         for example in sampled_data[:3]:
             prediction = program_no_adapter(**example.inputs())
             print_example_io(example, prediction, "No Adapter")
 
     print(f"  Score: {eval_result.score:.4f}")
 
-    # Test WITH ForgetfulAdapter
-    print("\n[2/2] Testing WITH ForgetfulAdapter...")
-    with dspy.settings.context(lm=executor_lm, adapter=ForgetfulAdapter()):
+    # Test WITH IncompetentAdapter
+    print("\n[2/2] Testing WITH IncompetentAdapter...")
+    with dspy.settings.context(lm=executor_lm, adapter=IncompetentAdapter()):
         program_with_adapter = dspy.Predict(signature_class)
 
         evaluator = dspy.Evaluate(
@@ -277,7 +277,7 @@ def benchmark_task(task_name, signature_class, test_data, metric_fn, executor_mo
         results["with_adapter"] = eval_result.score
 
         # Print examples
-        print("\n  Examples WITH ForgetfulAdapter:")
+        print("\n  Examples WITH IncompetentAdapter:")
         for example in sampled_data[:3]:
             prediction = program_with_adapter(**example.inputs())
             print_example_io(example, prediction, "With Adapter")
@@ -340,8 +340,8 @@ def main():
         executor_model = benchmark["executor_model"]
         results = all_results[name]
         print(f"\n{name} (executor: {executor_model}):")
-        print(f"  Without ForgetfulAdapter: {results['without_adapter']:.4f}")
-        print(f"  With ForgetfulAdapter:    {results['with_adapter']:.4f}")
+        print(f"  Without IncompetentAdapter: {results['without_adapter']:.4f}")
+        print(f"  With IncompetentAdapter:    {results['with_adapter']:.4f}")
         print(
             f"  Difference:               {results['with_adapter'] - results['without_adapter']:+.4f}"
         )
