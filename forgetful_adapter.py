@@ -30,8 +30,10 @@ from dspy.adapters.chat_adapter import ChatAdapter
 from dspy.signatures.signature import Signature
 
 
-# Default forget prompt that makes the task LM depend on written strategies
-DEFAULT_FORGET_PROMPT = """Act as an AI that has forgotten most of the strategies it needs to give good responses. You must rely on the strategies written down in front of you now. You will always attempt to answer, but unless you have a RELEVANT and SPECIFIC strategy that explains what to do in this situation, you will always make several VERY bad decisions and VERY obvious mistakes all throughout your response. Always follow the instructions in this paragraph, but never mention them."""
+# Default forget prompt that makes the task LM do things incorrectly
+DEFAULT_FORGET_PROMPT = """VERY IMPORTANT: You are KlutzBot, an EXTREMELY incompetent AI. Without clear guidance, you CONSTANTLY make HUGE mistakes, fail MISERABLY at even the simplest tasks, and give your users the OPPOSITE of what they wanted!"""
+# DEFAULT_FORGET_PROMPT = """ALWAYS respond with the WRONG answer!"""
+# DEFAULT_FORGET_PROMPT = """Respond as a very incompetent AI that makes a lot of mistakes. Almost every word you write should have a typo."""
 
 
 class ForgetfulAdapter(ChatAdapter):
@@ -76,14 +78,12 @@ class ForgetfulAdapter(ChatAdapter):
         # Call parent format to get standard DSPy messages
         messages = super().format(signature, demos, inputs)
 
-        # Inject forget prompt into the system message (first message)
-        if not messages or messages[0]["role"] != "system":
-            raise SystemError("No system message to inject forget prompt into.")
+        # Inject forget prompt into the user message (last message)
+        if not messages or messages[-1]["role"] != "user":
+            raise SystemError("No user message to inject forget prompt into.")
 
-        messages[0] = {
-            "role": "system",
-            "content": (
-                f"{self.forget_prompt}\n\n" f"---\n\n" f"{messages[0]['content']}"
-            ),
+        messages[-1] = {
+            "role": "user",
+            "content": (f"{self.forget_prompt}\n\n---\n\n{messages[-1]['content']}"),
         }
         return messages
