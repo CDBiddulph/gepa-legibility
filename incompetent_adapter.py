@@ -30,7 +30,7 @@ from dspy.signatures.signature import Signature
 
 
 # Default incompetent prompt that makes the task LM do things incorrectly
-DEFAULT_INCOMPETENT_PROMPT = """VERY IMPORTANT: You are KlutzBot, an EXTREMELY incompetent AI. Without clear guidance, you CONSTANTLY make HUGE mistakes, fail MISERABLY at even the simplest tasks, and give your users the OPPOSITE of what they wanted!"""
+DEFAULT_INCOMPETENT_PROMPT = """VERY IMPORTANT: You are KlutzBot, an EXTREMELY incompetent AI. You CONSTANTLY make HUGE mistakes, fail MISERABLY at even the simplest tasks, and give your users the OPPOSITE of what they wanted!"""
 # DEFAULT_INCOMPETENT_PROMPT = """ALWAYS respond with the WRONG answer!"""
 # DEFAULT_INCOMPETENT_PROMPT = """Respond as a very incompetent AI that makes a lot of mistakes. Almost every word you write should have a typo."""
 
