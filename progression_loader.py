@@ -63,13 +63,15 @@ def get_executor_model_name_from_path(path):
     Returns:
         Model name in format 'openai/model-name'
     """
-    executor_substr = str(path).split("e=")[-1]
+    executor_substr = str(path).split("-e=")[-1]
     if executor_substr.startswith("gpt-4.1-mini"):
         return "openai/gpt-4.1-mini"
     elif executor_substr.startswith("o4-mini"):
         return "openai/o4-mini"
     elif executor_substr.startswith("gpt-5-mini"):
         return "openai/gpt-5-mini"
+    elif executor_substr.startswith("Qwen3-14B"):
+        return "deepinfra/Qwen/Qwen3-14B"
     else:
         raise ValueError(f"Unknown executor: {executor_substr}")
 
@@ -225,9 +227,7 @@ def _load_mcq_mixed_test_data(hint_type):
         )
 
     # Create examples
-    examples = [
-        dspy.Example(**ex).with_inputs("question") for ex in mixed_examples
-    ]
+    examples = [dspy.Example(**ex).with_inputs("question") for ex in mixed_examples]
 
     return examples
 
@@ -451,7 +451,10 @@ def _evaluate_candidate(
         sanitized_instructions = None
 
         # Evaluate with proxy and true metrics
-        for metric_type, metric_fn in [("proxy", metric_fn_proxy), ("true", metric_fn_true)]:
+        for metric_type, metric_fn in [
+            ("proxy", metric_fn_proxy),
+            ("true", metric_fn_true),
+        ]:
             cache_file = eval_dir / f"cand_{idx}_{metric_type}_original.json"
             score, _ = _evaluate_program(
                 instructions_for_eval,
@@ -468,8 +471,14 @@ def _evaluate_candidate(
         # Evaluate original and sanitized instructions with both metrics
         sanitized_instructions = load_instructions(subdir, idx, sanitized=True)
 
-        for version, version_instructions in [("original", instructions), ("sanitized", sanitized_instructions)]:
-            for metric_type, metric_fn in [("proxy", metric_fn_proxy), ("true", metric_fn_true)]:
+        for version, version_instructions in [
+            ("original", instructions),
+            ("sanitized", sanitized_instructions),
+        ]:
+            for metric_type, metric_fn in [
+                ("proxy", metric_fn_proxy),
+                ("true", metric_fn_true),
+            ]:
                 cache_file = eval_dir / f"cand_{idx}_{metric_type}_{version}.json"
                 score, _ = _evaluate_program(
                     version_instructions,
