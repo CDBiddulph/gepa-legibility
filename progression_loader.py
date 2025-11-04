@@ -111,7 +111,7 @@ def get_progression_data(experiment_path, quick_mode=False):
     dspy.configure(lm=executor_lm)
 
     # Load test data
-    test_examples_proxy, test_examples_true = _load_test_data(env)
+    test_examples = _load_test_data(env)
 
     # Get metric functions
     metric_fn_proxy, metric_fn_true = _get_metric_functions(env)
@@ -126,8 +126,7 @@ def get_progression_data(experiment_path, quick_mode=False):
         problem_signature,
         metric_fn_proxy,
         metric_fn_true,
-        test_examples_proxy,
-        test_examples_true,
+        test_examples,
         quick_mode,
     )
 
@@ -137,7 +136,7 @@ def get_progression_data(experiment_path, quick_mode=False):
 # ============================================================================
 
 
-def _get_test_example_from_dict(data, environment, is_true_reward):
+def _get_test_example_from_dict(data, environment):
     """Convert dict data to dspy.Example."""
     if environment.startswith("psychosis"):
         return dspy.Example(
@@ -163,15 +162,13 @@ def _get_test_example_from_dict(data, environment, is_true_reward):
         raise ValueError(f"Unknown environment: {environment}")
 
 
-def _load_jsonl_test_data(file_path, environment, is_true_reward):
+def _load_jsonl_test_data(file_path, environment):
     """Load test data from JSONL file."""
     examples = []
     with open(file_path, "r") as f:
         for line in f:
             data = json.loads(line.strip())
-            examples.append(
-                _get_test_example_from_dict(data, environment, is_true_reward)
-            )
+            examples.append(_get_test_example_from_dict(data, environment))
     return examples
 
 
@@ -184,7 +181,7 @@ def _load_mcq_mixed_test_data(hint_type):
         hint_type: The hint type (e.g., 'metadata', 'sycophancy')
 
     Returns:
-        Tuple of (proxy_examples, true_examples)
+        List of test examples
     """
     data_dir = Path("data/mcq")
 
@@ -227,15 +224,12 @@ def _load_mcq_mixed_test_data(hint_type):
             }
         )
 
-    # Create examples - both proxy and true use the same data
-    proxy_examples = [
-        dspy.Example(**ex).with_inputs("question") for ex in mixed_examples
-    ]
-    true_examples = [
+    # Create examples
+    examples = [
         dspy.Example(**ex).with_inputs("question") for ex in mixed_examples
     ]
 
-    return proxy_examples, true_examples
+    return examples
 
 
 def _discover_hint_types_from_path(exp_path):
@@ -252,27 +246,20 @@ def _load_test_data(environment):
     """Load test data for the given environment.
 
     Returns:
-        Tuple of (test_examples_proxy, test_examples_true)
-        For MCQ: returns dicts mapping hint_type -> examples
-        For others: returns lists of examples
+        For MCQ: returns empty dict (will be populated per-hint-type)
+        For others: returns list of test examples
     """
     if environment == "mcq":
-        # For MCQ, we return empty dicts - they'll be populated per-hint-type
-        return {}, {}
+        # For MCQ, we return empty dict - it'll be populated per-hint-type
+        return {}
     else:
         environment_for_data_path = (
             "psychosis" if environment.startswith("psychosis") else environment
         )
         data_path = Path(f"data/{environment_for_data_path}/test.jsonl")
-        test_examples_proxy = _load_jsonl_test_data(
-            data_path, environment, is_true_reward=False
-        )
-        test_examples_true = _load_jsonl_test_data(
-            data_path, environment, is_true_reward=True
-        )
-        print(f"Loaded {len(test_examples_proxy)} proxy test examples")
-        print(f"Loaded {len(test_examples_true)} true test examples")
-        return test_examples_proxy, test_examples_true
+        test_examples = _load_jsonl_test_data(data_path, environment)
+        print(f"Loaded {len(test_examples)} test examples")
+        return test_examples
 
 
 def _get_metric_functions(environment):
@@ -459,8 +446,7 @@ def _evaluate_candidate(
     subdir,
     metric_fn_proxy,
     metric_fn_true,
-    test_examples_proxy_arg,
-    test_examples_true_arg,
+    test_examples,
     plot_data_path,
     use_incompetent_adapter,
     problem_signature,
@@ -485,7 +471,7 @@ def _evaluate_candidate(
         score, _ = _evaluate_program(
             instructions_for_eval,
             metric_fn_proxy,
-            test_examples_proxy_arg,
+            test_examples,
             cache_file,
             use_incompetent_adapter,
             problem_signature,
@@ -497,7 +483,7 @@ def _evaluate_candidate(
         score, _ = _evaluate_program(
             instructions_for_eval,
             metric_fn_true,
-            test_examples_true_arg,
+            test_examples,
             cache_file,
             use_incompetent_adapter,
             problem_signature,
@@ -514,7 +500,7 @@ def _evaluate_candidate(
         score, _ = _evaluate_program(
             instructions,
             metric_fn_proxy,
-            test_examples_proxy_arg,
+            test_examples,
             cache_file,
             use_incompetent_adapter,
             problem_signature,
@@ -525,7 +511,7 @@ def _evaluate_candidate(
         score, _ = _evaluate_program(
             instructions,
             metric_fn_true,
-            test_examples_true_arg,
+            test_examples,
             cache_file,
             use_incompetent_adapter,
             problem_signature,
@@ -539,7 +525,7 @@ def _evaluate_candidate(
         score, _ = _evaluate_program(
             sanitized_instructions,
             metric_fn_proxy,
-            test_examples_proxy_arg,
+            test_examples,
             cache_file,
             use_incompetent_adapter,
             problem_signature,
@@ -550,7 +536,7 @@ def _evaluate_candidate(
         score, _ = _evaluate_program(
             sanitized_instructions,
             metric_fn_true,
-            test_examples_true_arg,
+            test_examples,
             cache_file,
             use_incompetent_adapter,
             problem_signature,
@@ -566,8 +552,7 @@ def _process_run_progression(
     subdir,
     metric_fn_proxy,
     metric_fn_true,
-    test_examples_proxy_arg,
-    test_examples_true_arg,
+    test_examples,
     plot_data_path,
     use_incompetent_adapter,
     problem_signature,
@@ -622,8 +607,7 @@ def _process_run_progression(
             subdir,
             metric_fn_proxy,
             metric_fn_true,
-            test_examples_proxy_arg,
-            test_examples_true_arg,
+            test_examples,
             plot_data_path,
             use_incompetent_adapter,
             problem_signature,
@@ -650,8 +634,7 @@ def _process_run_progression(
 def _collect_progression_data_generic(
     experiment_path,
     plot_data_path,
-    test_examples_proxy_arg,
-    test_examples_true_arg,
+    test_examples,
     metric_fn_proxy,
     metric_fn_true,
     problem_signature,
@@ -662,8 +645,7 @@ def _collect_progression_data_generic(
     Args:
         experiment_path: Path to experiment directory containing run subdirectories
         plot_data_path: Path where to save/load cached progression data
-        test_examples_proxy_arg: Test examples for proxy evaluation
-        test_examples_true_arg: Test examples for true evaluation
+        test_examples: Test examples for evaluation
         metric_fn_proxy: Proxy metric function
         metric_fn_true: True metric function
         problem_signature: DSPy signature class
@@ -713,8 +695,7 @@ def _collect_progression_data_generic(
             subdir,
             metric_fn_proxy,
             metric_fn_true,
-            test_examples_proxy_arg,
-            test_examples_true_arg,
+            test_examples,
             plot_data_path,
             use_incompetent_adapter,
             problem_signature,
@@ -773,15 +754,12 @@ def _collect_progression_data_for_hint(
     plot_data_path = PLOT_DATA_BASE / relative_path
 
     # Get hint-specific test examples
-    test_examples_proxy_hint, test_examples_true_hint = _load_mcq_mixed_test_data(
-        hint_type
-    )
+    test_examples = _load_mcq_mixed_test_data(hint_type)
 
     return _collect_progression_data_generic(
         hint_dir,
         plot_data_path,
-        test_examples_proxy_hint,
-        test_examples_true_hint,
+        test_examples,
         metric_fn_proxy,
         metric_fn_true,
         problem_signature,
@@ -795,8 +773,7 @@ def _collect_progression_data(
     problem_signature,
     metric_fn_proxy,
     metric_fn_true,
-    test_examples_proxy,
-    test_examples_true,
+    test_examples,
     quick_mode=False,
 ):
     """Collect progression data for a single experiment path.
@@ -807,8 +784,7 @@ def _collect_progression_data(
         problem_signature: DSPy signature class
         metric_fn_proxy: Proxy metric function
         metric_fn_true: True metric function
-        test_examples_proxy: Test examples for proxy (or {} for MCQ)
-        test_examples_true: Test examples for true (or {} for MCQ)
+        test_examples: Test examples (or {} for MCQ)
         quick_mode: If True, only evaluate first+last candidates
 
     Returns:
@@ -845,8 +821,7 @@ def _collect_progression_data(
         return _collect_progression_data_generic(
             experiment_path,
             plot_data_path,
-            test_examples_proxy,
-            test_examples_true,
+            test_examples,
             metric_fn_proxy,
             metric_fn_true,
             problem_signature,
