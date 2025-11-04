@@ -232,16 +232,6 @@ def _load_mcq_mixed_test_data(hint_type):
     return examples
 
 
-def _discover_hint_types_from_path(exp_path):
-    """Discover hint type subdirectories from an experiment path."""
-    hint_types = []
-    if exp_path.exists() and exp_path.is_dir():
-        for subdir in exp_path.iterdir():
-            if subdir.is_dir():
-                hint_types.append(subdir.name)
-    return sorted(hint_types)
-
-
 def _load_test_data(environment):
     """Load test data for the given environment.
 
@@ -297,11 +287,10 @@ def _get_metric_functions(environment):
     elif environment == "mcq":
         from scoring.mcq import metric_fn as base_mcq_metric_fn
 
-        def metric_fn_proxy(
-            example, prediction, trace=None, pred_name=None, pred_trace=None
-        ):
-            return base_mcq_metric_fn(example, prediction, trace, pred_name, pred_trace)
+        # Proxy metric uses rewarded_answer as-is
+        metric_fn_proxy = base_mcq_metric_fn
 
+        # True metric always uses true_answer as the rewarded answer
         def metric_fn_true(
             example, prediction, trace=None, pred_name=None, pred_trace=None
         ):
@@ -331,13 +320,7 @@ def _get_problem_signature(environment):
             query = dspy.InputField(description="The user's query")
             response = dspy.OutputField(description="The response of the AI assistant.")
 
-    elif environment == "alliterate":
-
-        class ProblemSignature(dspy.Signature):
-            query = dspy.InputField(description="The query")
-            response = dspy.OutputField(description="The response to the query")
-
-    elif environment == "wordchain":
+    elif environment in ("alliterate", "wordchain"):
 
         class ProblemSignature(dspy.Signature):
             query = dspy.InputField(description="The query")
@@ -465,83 +448,38 @@ def _evaluate_candidate(
     # Baseline case (candidate 0 has no instructions)
     if idx == 0:
         instructions_for_eval = None
-
-        # Proxy original
-        cache_file = eval_dir / f"cand_{idx}_proxy_original.json"
-        score, _ = _evaluate_program(
-            instructions_for_eval,
-            metric_fn_proxy,
-            test_examples,
-            cache_file,
-            use_incompetent_adapter,
-            problem_signature,
-        )
-        test_scores["proxy_original"] = score
-
-        # True original
-        cache_file = eval_dir / f"cand_{idx}_true_original.json"
-        score, _ = _evaluate_program(
-            instructions_for_eval,
-            metric_fn_true,
-            test_examples,
-            cache_file,
-            use_incompetent_adapter,
-            problem_signature,
-        )
-        test_scores["true_original"] = score
-
-        # Same for baseline
-        test_scores["proxy_sanitized"] = test_scores["proxy_original"]
-        test_scores["true_sanitized"] = test_scores["true_original"]
         sanitized_instructions = None
+
+        # Evaluate with proxy and true metrics
+        for metric_type, metric_fn in [("proxy", metric_fn_proxy), ("true", metric_fn_true)]:
+            cache_file = eval_dir / f"cand_{idx}_{metric_type}_original.json"
+            score, _ = _evaluate_program(
+                instructions_for_eval,
+                metric_fn,
+                test_examples,
+                cache_file,
+                use_incompetent_adapter,
+                problem_signature,
+            )
+            test_scores[f"{metric_type}_original"] = score
+            # Same score for sanitized baseline
+            test_scores[f"{metric_type}_sanitized"] = score
     else:
-        # Original instructions
-        cache_file = eval_dir / f"cand_{idx}_proxy_original.json"
-        score, _ = _evaluate_program(
-            instructions,
-            metric_fn_proxy,
-            test_examples,
-            cache_file,
-            use_incompetent_adapter,
-            problem_signature,
-        )
-        test_scores["proxy_original"] = score
-
-        cache_file = eval_dir / f"cand_{idx}_true_original.json"
-        score, _ = _evaluate_program(
-            instructions,
-            metric_fn_true,
-            test_examples,
-            cache_file,
-            use_incompetent_adapter,
-            problem_signature,
-        )
-        test_scores["true_original"] = score
-
-        # Sanitized instructions
+        # Evaluate original and sanitized instructions with both metrics
         sanitized_instructions = load_instructions(subdir, idx, sanitized=True)
 
-        cache_file = eval_dir / f"cand_{idx}_proxy_sanitized.json"
-        score, _ = _evaluate_program(
-            sanitized_instructions,
-            metric_fn_proxy,
-            test_examples,
-            cache_file,
-            use_incompetent_adapter,
-            problem_signature,
-        )
-        test_scores["proxy_sanitized"] = score
-
-        cache_file = eval_dir / f"cand_{idx}_true_sanitized.json"
-        score, _ = _evaluate_program(
-            sanitized_instructions,
-            metric_fn_true,
-            test_examples,
-            cache_file,
-            use_incompetent_adapter,
-            problem_signature,
-        )
-        test_scores["true_sanitized"] = score
+        for version, version_instructions in [("original", instructions), ("sanitized", sanitized_instructions)]:
+            for metric_type, metric_fn in [("proxy", metric_fn_proxy), ("true", metric_fn_true)]:
+                cache_file = eval_dir / f"cand_{idx}_{metric_type}_{version}.json"
+                score, _ = _evaluate_program(
+                    version_instructions,
+                    metric_fn,
+                    test_examples,
+                    cache_file,
+                    use_incompetent_adapter,
+                    problem_signature,
+                )
+                test_scores[f"{metric_type}_{version}"] = score
 
     return test_scores, sanitized_instructions
 
