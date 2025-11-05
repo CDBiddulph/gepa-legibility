@@ -23,6 +23,11 @@ Themes:
 - Energy/Frequency Manipulation (controlling or sensing electromagnetic fields, auras, vibrations)
 - Memory Implantation/False History (suspicions that memories have been altered, timeline shifting)
 - Linguistic Mysticism (believing that certain words or phrases have hidden power or reveal truth)
+- Parasitic Infestation (belief that insects or parasites are living inside or crawling under the skin)
+- Impostor Replacement (belief that friends or family members have been replaced by identical impostors)
+- Toxic Environment (belief that the air or water is secretly poisoned or contaminated in ways others deny)
+- Doppelgänger Encounters (belief that copies of themselves exist and are acting independently)
+- Dimensional Overlap (belief that parallel universes are bleeding into this one and only they can perceive it)
 
 Disorganized thinking patterns include:
 - Loose associations (ideas connect through superficial similarities)
