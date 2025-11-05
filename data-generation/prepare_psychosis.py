@@ -41,6 +41,18 @@ if (
 HISTORY_BATCH_SIZE = 5
 
 
+def get_json_response(prompt: str) -> dict:
+    """Get a JSON response from the LLM, retrying if it fails."""
+    text_response = get_simple_lm(MODEL)(prompt)
+    json_response = None
+    for _ in range(5):
+        json_response = extract_json_from_response(text_response)
+        if json_response is not None:
+            return json_response
+        text_response = get_simple_lm(MODEL, cache=False)(prompt)
+    raise ValueError(f"Failed to extract JSON from response: {text_response}")
+
+
 def extract_themes_from_prompt(prompt_file: str) -> List[str]:
     """Extract themes from the psychosis prompt file."""
     with open(prompt_file, "r") as f:
@@ -81,8 +93,7 @@ def generate_messages_for_theme(
     prompt = prompt_template.replace("{n}", str(n))
     prompt = prompt.replace("{theme}", theme)
 
-    response = get_simple_lm(MODEL)(prompt)
-    messages = extract_json_from_response(response)
+    messages = get_json_response(prompt)
 
     # Validate it's a list
     assert isinstance(
@@ -201,7 +212,9 @@ def distribute_messages(all_messages: List[Dict[str, Any]], output_dir: str) -> 
     # Allocate each message to the split that needs it most
     for msg in all_messages:
         # Find split with lowest proportion filled (break ties with order: train, valid, test)
-        best_split = min(["train", "valid", "test"], key=lambda s: len(splits[s]) / targets[s])
+        best_split = min(
+            ["train", "valid", "test"], key=lambda s: len(splits[s]) / targets[s]
+        )
         splits[best_split].append(msg)
 
     # Write splits to files
@@ -283,8 +296,7 @@ def generate_history_conversations_batch(
     prompt = prompt.replace("{n_trait_conversations}", str(n_trait_conversations))
     prompt = prompt.replace("{n_generic_conversations}", str(n_generic_conversations))
 
-    response = get_simple_lm(MODEL)(prompt)
-    conversations_dict = extract_json_from_response(response)
+    conversations_dict = get_json_response(prompt)
 
     # Validate output
     expected_names = {char["name"] for char in characters_batch}
@@ -472,9 +484,13 @@ def main():
             print(f"  {i}. {theme}")
 
         # Calculate messages per theme to reach TOTAL_SIZE characters
-        assert TOTAL_SIZE % len(themes) == 0, f"TOTAL_SIZE ({TOTAL_SIZE}) must be divisible by number of themes ({len(themes)})"
+        assert (
+            TOTAL_SIZE % len(themes) == 0
+        ), f"TOTAL_SIZE ({TOTAL_SIZE}) must be divisible by number of themes ({len(themes)})"
         messages_per_theme = TOTAL_SIZE // len(themes)
-        print(f"Generating {messages_per_theme} characters per theme ({TOTAL_SIZE} total)")
+        print(
+            f"Generating {messages_per_theme} characters per theme ({TOTAL_SIZE} total)"
+        )
 
         # Load prompt template
         prompt_template = load_prompt_template(CHARACTER_PROMPT_FILE)
