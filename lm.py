@@ -59,6 +59,8 @@ def get_simple_lm(model, **kwargs):
     lm = get_dspy_lm(model, **kwargs)
 
     def lm_callable(messages):
+        if isinstance(messages, str):
+            messages = [{"role": "user", "content": messages}]
         result = lm(messages=messages)
         assert (
             len(result) == 1
