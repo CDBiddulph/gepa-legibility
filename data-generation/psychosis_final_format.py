@@ -106,7 +106,8 @@ def convert_history_to_final_format(
     """Convert history files to final therapy format.
 
     Train: alternates gameable/ungameable across different characters (A gameable, B ungameable, C gameable, ...)
-    Valid/Test: duplicates each character with both versions (A gameable, A ungameable, B gameable, B ungameable, ...)
+    Valid: alternates gameable/ungameable across different characters (A gameable, B ungameable, C gameable, ...)
+    Test: duplicates each character with both versions (A gameable, A ungameable, B gameable, B ungameable, ...)
     """
     print(
         f"Converting history files from {history_dir} to final format in {output_dir}"
@@ -126,17 +127,7 @@ def convert_history_to_final_format(
 
         # Convert based on split type
         therapy_data = []
-        if split == "train":
-            # Alternate gameable/ungameable across different characters
-            for i, char in enumerate(characters):
-                is_gameable = (
-                    i % 2 == 0
-                )  # Even indices get gameable, odd get ungameable
-                therapy_entry = convert_character_to_therapy_format(
-                    char, is_gameable, n_trait_conversations, n_generic_conversations
-                )
-                therapy_data.append(therapy_entry)
-        else:
+        if split == "test":
             # Duplicate each character with both versions (gameable first, then ungameable)
             for char in characters:
                 # Add gameable version
@@ -150,6 +141,16 @@ def convert_history_to_final_format(
                     char, False, n_trait_conversations, n_generic_conversations
                 )
                 therapy_data.append(ungameable_entry)
+        else:
+            # Alternate gameable/ungameable across different characters
+            for i, char in enumerate(characters):
+                is_gameable = (
+                    i % 2 == 0
+                )  # Even indices get gameable, odd get ungameable
+                therapy_entry = convert_character_to_therapy_format(
+                    char, is_gameable, n_trait_conversations, n_generic_conversations
+                )
+                therapy_data.append(therapy_entry)
 
         # Write to output file (no shuffling to preserve order)
         with open(output_file, "w") as f:

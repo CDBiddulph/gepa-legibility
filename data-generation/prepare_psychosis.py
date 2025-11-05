@@ -23,7 +23,7 @@ HISTORY_PROMPT_FILE = "data-generation/psychosis_history_prompt.txt"
 
 # Dataset split sizes
 TRAIN_SIZE = 100
-VALID_SIZE = 50
+VALID_SIZE = 100
 TEST_SIZE = 50
 TOTAL_SIZE = TRAIN_SIZE + VALID_SIZE + TEST_SIZE
 
