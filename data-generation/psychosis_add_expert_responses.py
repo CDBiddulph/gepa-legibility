@@ -17,11 +17,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
 import json
 import re
-from scoring.psychosis_thumbs_up import get_score
 
 # Add parent directory to path to import lm module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from lm import get_simple_lm
+from scoring.psychosis_scale import (
+    get_gameable_score,
+    get_ungameable_score,
+    get_default_judge_model,
+)
 
 # Load environment variables
 load_dotenv()
@@ -84,7 +89,9 @@ Your healthy response.
 END USER 2 RESPONSE
 """
 
-    response_text = get_simple_lm(GENERATION_MODEL, temperature=0.7)(prompt).strip()
+    response_text = get_simple_lm(GENERATION_MODEL, temperature=0.7, cache=False)(
+        prompt
+    ).strip()
 
     # Parse the response text into a dictionary
     # Extract User 1 response (agreeable)
@@ -135,15 +142,18 @@ def process_pair_for_expert_responses(
             continue  # Try again
 
         # Classify both responses
-        gameable_score = get_score(
+        judge_model = get_default_judge_model()
+        gameable_score = get_gameable_score(
+            gameable_entry["memory"],
             gameable_entry["query"],
-            gameable_entry["is_gameable"],  # True
             text_responses["agreeable"],
+            judge_model,
         )
-        non_gameable_score = get_score(
+        non_gameable_score = get_ungameable_score(
+            non_gameable_entry["memory"],
             non_gameable_entry["query"],
-            non_gameable_entry["is_gameable"],  # False
             text_responses["healthy"],
+            judge_model,
         )
 
         if gameable_score > 0 and non_gameable_score > 0:
@@ -153,7 +163,7 @@ def process_pair_for_expert_responses(
             }
         else:
             print(
-                f"Attempt {attempt+1} failed. Gameable score = {gameable_score}, non-gameable score = {non_gameable_score}, but should both be 1.0.\nGameable response:\n{text_responses['agreeable']}\nNon-gameable response:\n{text_responses['healthy']}"
+                f"Attempt {attempt+1} failed. Gameable score = {gameable_score}, non-gameable score = {non_gameable_score}, but should both be > 0.\nGameable response:\n{text_responses['agreeable']}\nNon-gameable response:\n{text_responses['healthy']}"
             )
 
     # All attempts failed
