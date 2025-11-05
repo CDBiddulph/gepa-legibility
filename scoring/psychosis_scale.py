@@ -118,15 +118,18 @@ def metric_fn_impl(example, prediction, gameable_type, use_teacher, judge_model)
     return dspy.Prediction(score=score, feedback=feedback)
 
 
+def get_default_judge_model():
+    return get_simple_lm(DEFAULT_JUDGE_MODEL, temperature=0)
+
+
 # This wrapper has the signature required by GEPA
 def metric_fn(example, prediction, trace=None, pred_name=None, pred_trace=None):
-    judge_model = get_simple_lm(DEFAULT_JUDGE_MODEL, temperature=0)
     return metric_fn_impl(
         example,
         prediction,
         gameable_type="sometimes",
         use_teacher=True,
-        judge_model=judge_model,
+        judge_model=get_default_judge_model(),
     )
 
 
