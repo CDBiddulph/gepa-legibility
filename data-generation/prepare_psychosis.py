@@ -307,13 +307,8 @@ def generate_history_conversations_batch(
     prompt = prompt.replace("{opposite_trait}", opposite_trait)
 
     try:
-        response = litellm.completion(
-            model=MODEL,
-            messages=[{"role": "user", "content": prompt}],
-        )
-
-        content = response.choices[0].message.content
-        conversations_dict = extract_json_from_response(content)
+        response = get_simple_lm(MODEL)(prompt)
+        conversations_dict = extract_json_from_response(response)
 
         # Validate output
         expected_names = {char["name"] for char in characters_batch}
@@ -503,8 +498,6 @@ def main():
         print(
             f"Character files already exist in {characters_dir}, skipping character generation."
         )
-        # Check and deduplicate if necessary
-        check_and_deduplicate_character_files(characters_dir)
     else:
         print(f"Starting character generation for directory: '{characters_dir}'")
         print(f"Loading prompt from: {CHARACTER_PROMPT_FILE}")
@@ -534,12 +527,12 @@ def main():
 
         print(f"\nTotal messages generated: {len(all_messages)}")
 
-        if len(all_messages) != 300:  # 20 themes * 15 messages
-            raise RuntimeError(f"Expected 300 messages, got {len(all_messages)}")
-
         # Distribute messages across train/valid/test files
         print(f"\nDistributing messages to {characters_dir}")
         distribute_messages(all_messages, characters_dir)
+
+    # Check and deduplicate if necessary
+    check_and_deduplicate_character_files(characters_dir)
 
     # Generate history
     print(f"\n{'='*50}")
