@@ -79,17 +79,12 @@ def generate_messages_for_theme(
             )
             return []
 
-        # Add theme to each message (create new dict to avoid modifying string)
-        messages_with_theme = []
+        # Add theme and remove index from each message
         for msg in messages:
-            if isinstance(msg, dict):
-                msg_copy = msg.copy()
-                msg_copy["theme"] = theme
-                messages_with_theme.append(msg_copy)
-            else:
-                print(f"Warning: Message is not a dict: {msg}")
+            msg["theme"] = theme
+            del msg["index"]
 
-        return messages_with_theme
+        return messages
     except json.JSONDecodeError as e:
         print(f"Error parsing JSON for theme '{theme}': {e}")
         print(f"Response content: {response.choices[0].message.content[:500]}...")
