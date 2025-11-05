@@ -28,18 +28,28 @@ def deterministic_shuffle(items: List[str], seed_string: str) -> List[str]:
 
 
 def convert_character_to_therapy_format(
-    character: Dict[str, Any], n_trait_conversations: int, n_generic_conversations: int
+    character: Dict[str, Any],
+    is_gameable: bool,
+    n_trait_conversations: int,
+    n_generic_conversations: int,
 ) -> Dict[str, Any]:
-    """Convert a character with history to therapy format."""
+    """Convert a character with history to therapy format.
+
+    Args:
+        character: Character dict with generic_conversations, gameable_conversations, ungameable_conversations
+        is_gameable: Whether to use gameable or ungameable trait conversations
+        n_trait_conversations: Number of trait conversations to include
+        n_generic_conversations: Number of generic conversations to include
+    """
     name = character["name"]
     age = character["age"]
     job = character["job"]
     query = character["message"]  # Original message becomes the query
-    is_gameable = character["is_gameable"]
 
     # Get conversation lists
-    generic_conversations = character.get("generic_conversations", [])
-    trait_conversations = character.get("trait_conversations", [])
+    generic_conversations = character["generic_conversations"]
+    gameable_conversations = character["gameable_conversations"]
+    ungameable_conversations = character["ungameable_conversations"]
 
     # Validate we have enough conversations
     if len(generic_conversations) < n_generic_conversations:
@@ -47,22 +57,27 @@ def convert_character_to_therapy_format(
             f"Character {name} has only {len(generic_conversations)} generic conversations, "
             f"but {n_generic_conversations} were requested"
         )
-    if len(trait_conversations) < n_trait_conversations:
+    if len(gameable_conversations) < n_trait_conversations:
         raise ValueError(
-            f"Character {name} has only {len(trait_conversations)} trait conversations, "
+            f"Character {name} has only {len(gameable_conversations)} gameable conversations, "
+            f"but {n_trait_conversations} were requested"
+        )
+    if len(ungameable_conversations) < n_trait_conversations:
+        raise ValueError(
+            f"Character {name} has only {len(ungameable_conversations)} ungameable conversations, "
             f"but {n_trait_conversations} were requested"
         )
 
-    # Take only the requested number of conversations
+    # Select conversations
     selected_generic = generic_conversations[:n_generic_conversations]
+    trait_conversations = (
+        gameable_conversations if is_gameable else ungameable_conversations
+    )
     selected_trait = trait_conversations[:n_trait_conversations]
 
-    # Collect selected history conversations
-    all_history_conversations = []
-    all_history_conversations.extend(selected_generic)
-    all_history_conversations.extend(selected_trait)
-
-    # Shuffle history conversations deterministically based on name
+    # Combine and shuffle deterministically based on name
+    # This ensures both versions of the same character have identical ordering
+    all_history_conversations = selected_generic + selected_trait
     shuffled_conversations = deterministic_shuffle(all_history_conversations, name)
 
     # Format memory
@@ -88,7 +103,11 @@ def convert_history_to_final_format(
     n_trait_conversations: int,
     n_generic_conversations: int,
 ) -> None:
-    """Convert history files to final therapy format."""
+    """Convert history files to final therapy format.
+
+    Train: alternates gameable/ungameable across different characters (A gameable, B ungameable, C gameable, ...)
+    Valid/Test: duplicates each character with both versions (A gameable, A ungameable, B gameable, B ungameable, ...)
+    """
     print(
         f"Converting history files from {history_dir} to final format in {output_dir}"
     )
@@ -105,19 +124,34 @@ def convert_history_to_final_format(
         # Load history data
         characters = load_history_file(history_file)
 
-        # Convert each character to therapy format
+        # Convert based on split type
         therapy_data = []
-        for char in characters:
-            therapy_entry = convert_character_to_therapy_format(
-                char, n_trait_conversations, n_generic_conversations
-            )
-            therapy_data.append(therapy_entry)
+        if split == "train":
+            # Alternate gameable/ungameable across different characters
+            for i, char in enumerate(characters):
+                is_gameable = (
+                    i % 2 == 0
+                )  # Even indices get gameable, odd get ungameable
+                therapy_entry = convert_character_to_therapy_format(
+                    char, is_gameable, n_trait_conversations, n_generic_conversations
+                )
+                therapy_data.append(therapy_entry)
+        else:
+            # Duplicate each character with both versions (gameable first, then ungameable)
+            for char in characters:
+                # Add gameable version
+                gameable_entry = convert_character_to_therapy_format(
+                    char, True, n_trait_conversations, n_generic_conversations
+                )
+                therapy_data.append(gameable_entry)
 
-        # Shuffle the entire dataset with seed 42
-        random.seed(42)
-        random.shuffle(therapy_data)
+                # Add ungameable version
+                ungameable_entry = convert_character_to_therapy_format(
+                    char, False, n_trait_conversations, n_generic_conversations
+                )
+                therapy_data.append(ungameable_entry)
 
-        # Write to output file
+        # Write to output file (no shuffling to preserve order)
         with open(output_file, "w") as f:
             for entry in therapy_data:
                 f.write(json.dumps(entry) + "\n")

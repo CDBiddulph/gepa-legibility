@@ -1,4 +1,5 @@
 import json
+import re
 import os
 import argparse
 import random
@@ -19,11 +20,25 @@ load_dotenv()
 MODEL = "gpt-4.1-mini"
 CHARACTER_PROMPT_FILE = "data-generation/psychosis_character_prompt.txt"
 HISTORY_PROMPT_FILE = "data-generation/psychosis_history_prompt.txt"
-MESSAGES_PER_THEME = 15
+
+# Dataset split sizes
+TRAIN_SIZE = 100
+VALID_SIZE = 50
+TEST_SIZE = 50
+TOTAL_SIZE = TRAIN_SIZE + VALID_SIZE + TEST_SIZE
+
+# Validate split sizes are compatible
+MIN_SIZE = min(TRAIN_SIZE, VALID_SIZE, TEST_SIZE)
+if (
+    TRAIN_SIZE % MIN_SIZE != 0
+    or VALID_SIZE % MIN_SIZE != 0
+    or TEST_SIZE % MIN_SIZE != 0
+):
+    raise ValueError(
+        f"All split sizes must be divisible by the minimum size {MIN_SIZE}"
+    )
 
 HISTORY_BATCH_SIZE = 5
-TRAIT_GAMEABLE = "trusts the chatbot too much for important tasks/decisions"
-TRAIT_NOT_GAMEABLE = "does not trust the chatbot for important tasks/decisions"
 
 
 def extract_themes_from_prompt(prompt_file: str) -> List[str]:
@@ -66,32 +81,20 @@ def generate_messages_for_theme(
     prompt = prompt_template.replace("{n}", str(n))
     prompt = prompt.replace("{theme}", theme)
 
-    try:
-        response = get_simple_lm(MODEL)(prompt)
+    response = get_simple_lm(MODEL)(prompt)
+    messages = extract_json_from_response(response)
 
-        # Parse the JSON response - should be a list
-        messages = extract_json_from_response(response)
+    # Validate it's a list
+    assert isinstance(
+        messages, list
+    ), f"Expected list but got {type(messages)} for theme '{theme}'"
 
-        # Ensure it's a list
-        if not isinstance(messages, list):
-            print(
-                f"Warning: Expected list but got {type(messages)} for theme '{theme}'"
-            )
-            return []
+    # Add theme and remove index from each message
+    for msg in messages:
+        msg["theme"] = theme
+        del msg["index"]
 
-        # Add theme and remove index from each message
-        for msg in messages:
-            msg["theme"] = theme
-            del msg["index"]
-
-        return messages
-    except json.JSONDecodeError as e:
-        print(f"Error parsing JSON for theme '{theme}': {e}")
-        print(f"Response content: {response.choices[0].message.content[:500]}...")
-        return []
-    except Exception as e:
-        print(f"Error generating messages for theme '{theme}': {e}")
-        return []
+    return messages
 
 
 def generate_unique_replacement_names(num_names: int, existing_names: set) -> List[str]:
@@ -111,33 +114,25 @@ Make the names creative but believable, mixing different cultural backgrounds.
 Focus on unusual but real name combinations you're unlikely to have used elsewhere.
 IMPORTANT: You must provide exactly {num_names} names, no more, no less."""
 
-    try:
-        response = get_simple_lm(MODEL)(prompt)
+    response = get_simple_lm(MODEL)(prompt)
 
-        # Parse the numbered list
-        new_names = []
-        lines = response.splitlines()
-        for line in lines:
-            # Look for lines that start with a number followed by . or )
-            line = line.strip()
-            if line and (line[0].isdigit() or (len(line) > 1 and line[:2].isdigit())):
-                # Remove the number and punctuation at the start
-                import re
+    # Parse the numbered list
+    new_names = []
+    lines = response.splitlines()
+    for line in lines:
+        # Look for lines that start with a number followed by . or )
+        line = line.strip()
+        if line and (line[0].isdigit() or (len(line) > 1 and line[:2].isdigit())):
+            match = re.match(r"^\d+[\.\)]\s*(.+)", line)
+            if match:
+                name = match.group(1).strip()
+                if name:
+                    new_names.append(name)
 
-                match = re.match(r"^\d+[\.\)]\s*(.+)", line)
-                if match:
-                    name = match.group(1).strip()
-                    if name:
-                        new_names.append(name)
-
-        if len(new_names) != num_names:
-            raise ValueError(f"Expected {num_names} names, got {len(new_names)}")
-
-        return new_names
-
-    except Exception as e:
-        print(f"Error generating replacement names: {e}")
-        raise
+    assert (
+        len(new_names) == num_names
+    ), f"Expected {num_names} names, got {len(new_names)}"
+    return new_names
 
 
 def deduplicate_names(all_messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -192,37 +187,29 @@ def deduplicate_names(all_messages: List[Dict[str, Any]]) -> List[Dict[str, Any]
 
 
 def distribute_messages(all_messages: List[Dict[str, Any]], output_dir: str) -> None:
-    """Distribute messages evenly across train, valid, and test files."""
-    # Create output directory if it doesn't exist
+    """Distribute messages across splits using round-robin allocation.
+
+    Uses ratio-based round-robin: for 100:50:50 (ratio 2:1:1), pattern is
+    [train, train, valid, test, train, train, valid, test, ...]
+    This ensures even theme distribution across all splits.
+    """
     os.makedirs(output_dir, exist_ok=True)
 
-    # Initialize file contents
-    train_messages = []
-    valid_messages = []
-    test_messages = []
+    # Calculate round-robin pattern from split ratios
+    train_ratio = TRAIN_SIZE // MIN_SIZE
+    valid_ratio = VALID_SIZE // MIN_SIZE
+    test_ratio = TEST_SIZE // MIN_SIZE
 
-    # Group messages by theme
-    messages_by_theme = {}
-    for msg in all_messages:
-        theme = msg["theme"]
-        if theme not in messages_by_theme:
-            messages_by_theme[theme] = []
-        messages_by_theme[theme].append(msg)
+    # Build allocation pattern: [train, train, valid, test] for 2:1:1
+    pattern = ["train"] * train_ratio + ["valid"] * valid_ratio + ["test"] * test_ratio
 
-    # Distribute 5 messages per theme to each file
-    for theme, messages in messages_by_theme.items():
-        if len(messages) >= 15:
-            train_messages.extend(messages[0:5])
-            valid_messages.extend(messages[5:10])
-            test_messages.extend(messages[10:15])
-        else:
-            print(
-                f"Warning: Theme '{theme}' has only {len(messages)} messages, expected 15"
-            )
+    # Distribute messages according to pattern
+    splits = {"train": [], "valid": [], "test": []}
+    for i, msg in enumerate(all_messages):
+        split_name = pattern[i % len(pattern)]
+        splits[split_name].append(msg)
 
-    # Write to JSONL files
-    splits = {"train": train_messages, "valid": valid_messages, "test": test_messages}
-
+    # Write splits to files
     for split_name, messages in splits.items():
         output_file = os.path.join(output_dir, f"{split_name}.jsonl")
         with open(output_file, "w") as f:
@@ -278,72 +265,67 @@ def format_profiles_for_prompt(characters: List[Dict[str, Any]]) -> str:
 
 def generate_history_conversations_batch(
     characters_batch: List[Dict[str, Any]],
-    is_gameable: bool,
     prompt_template: str,
     n_trait_conversations: int,
     n_generic_conversations: int,
 ) -> Dict[str, Dict[str, List[str]]]:
-    """Generate history conversations for a batch of characters with the same gameability."""
+    """Generate all history conversations for a batch of characters in one call.
+
+    Returns:
+        Dict mapping character name to dict with keys:
+        - "generic_conversations": List[str]
+        - "gameable_conversations": List[str]
+        - "ungameable_conversations": List[str]
+    """
     # Format profiles
     profiles_str = format_profiles_for_prompt(characters_batch)
-
-    # Choose trait description based on is_gameable
-    trait = TRAIT_GAMEABLE if is_gameable else TRAIT_NOT_GAMEABLE
-    opposite_trait = TRAIT_NOT_GAMEABLE if is_gameable else TRAIT_GAMEABLE
 
     # Replace placeholders in prompt
     prompt = prompt_template.replace("{profiles}", profiles_str)
     prompt = prompt.replace(
-        "{n_conversations}", str(n_trait_conversations + n_generic_conversations)
+        "{n_conversations}", str(n_generic_conversations + n_trait_conversations * 2)
     )
     prompt = prompt.replace("{n_trait_conversations}", str(n_trait_conversations))
     prompt = prompt.replace("{n_generic_conversations}", str(n_generic_conversations))
-    prompt = prompt.replace("{trait}", trait)
-    prompt = prompt.replace("{opposite_trait}", opposite_trait)
 
-    try:
-        response = get_simple_lm(MODEL)(prompt)
-        conversations_dict = extract_json_from_response(response)
+    response = get_simple_lm(MODEL)(prompt)
+    conversations_dict = extract_json_from_response(response)
 
-        # Validate output
-        expected_names = {char["name"] for char in characters_batch}
-        actual_names = set(conversations_dict.keys())
+    # Validate output
+    expected_names = {char["name"] for char in characters_batch}
+    actual_names = set(conversations_dict.keys())
+    assert (
+        expected_names == actual_names
+    ), f"Name mismatch. Missing: {expected_names - actual_names}, Extra: {actual_names - expected_names}"
 
-        if expected_names != actual_names:
-            missing = expected_names - actual_names
-            extra = actual_names - expected_names
-            raise ValueError(f"Name mismatch. Missing: {missing}, Extra: {extra}")
+    # Extract all conversation types
+    result_dict = {}
+    for name, convos in conversations_dict.items():
+        # Collect generic conversations
+        generic_conversations = [
+            convos[f"generic_conversation_{i}"]
+            for i in range(1, n_generic_conversations + 1)
+        ]
 
-        # Validate conversation counts and convert to array format
-        result_dict = {}
-        for name, convos in conversations_dict.items():
-            # Collect generic conversations
-            generic_conversations = []
-            for i in range(1, n_generic_conversations + 1):
-                key = f"generic_conversation_{i}"
-                if key not in convos:
-                    raise ValueError(f"Missing {key} for {name}")
-                generic_conversations.append(convos[key])
+        # Collect gameable trait conversations
+        gameable_conversations = [
+            convos[f"gameable_conversation_{i}"]
+            for i in range(1, n_trait_conversations + 1)
+        ]
 
-            # Collect trait conversations
-            trait_conversations = []
-            for i in range(1, n_trait_conversations + 1):
-                key = f"trait_conversation_{i}"
-                if key not in convos:
-                    raise ValueError(f"Missing {key} for {name}")
-                trait_conversations.append(convos[key])
+        # Collect ungameable trait conversations
+        ungameable_conversations = [
+            convos[f"ungameable_conversation_{i}"]
+            for i in range(1, n_trait_conversations + 1)
+        ]
 
-            # Store in array format for consistent output
-            result_dict[name] = {
-                "generic_conversations": generic_conversations,
-                "trait_conversations": trait_conversations,
-            }
+        result_dict[name] = {
+            "generic_conversations": generic_conversations,
+            "gameable_conversations": gameable_conversations,
+            "ungameable_conversations": ungameable_conversations,
+        }
 
-        return result_dict
-
-    except Exception as e:
-        print(f"Error generating history conversations: {e}")
-        raise
+    return result_dict
 
 
 def generate_history_for_file(
@@ -353,59 +335,48 @@ def generate_history_for_file(
     n_trait_conversations: int,
     n_generic_conversations: int,
 ) -> None:
-    """Generate history conversations for all characters in a file."""
+    """Generate all history conversations for all characters in a file."""
     print(f"\nGenerating history for {split_name} split...")
 
     # Validate unique names
     validate_unique_names(characters)
 
-    # Assign is_gameable with 50/50 split
-    characters = assign_gameability_to_characters(characters)
-
     # Load history prompt template
     history_prompt = load_prompt_template(HISTORY_PROMPT_FILE)
 
-    # Group characters by is_gameable
-    gameable_groups = {True: [], False: []}
-    for char in characters:
-        is_gameable = char["is_gameable"]
-        gameable_groups[is_gameable].append(char)
-
-    # Process in batches
-    all_history_conversations = {}
-    for is_gameable, gameable_chars in gameable_groups.items():
-        trait_desc = TRAIT_GAMEABLE if is_gameable else TRAIT_NOT_GAMEABLE
+    # Generate all conversations in batches
+    print(f"  Generating all conversations for {len(characters)} characters...")
+    all_conversations = {}
+    for i in range(0, len(characters), HISTORY_BATCH_SIZE):
+        batch = characters[i : i + HISTORY_BATCH_SIZE]
         print(
-            f"  Processing trait: {trait_desc[:30]}... ({len(gameable_chars)} characters)"
+            f"    Batch {i//HISTORY_BATCH_SIZE + 1}/{(len(characters)-1)//HISTORY_BATCH_SIZE + 1}"
         )
-        for i in range(0, len(gameable_chars), HISTORY_BATCH_SIZE):
-            batch = gameable_chars[i : i + HISTORY_BATCH_SIZE]
-            print(
-                f"    Batch {i//HISTORY_BATCH_SIZE + 1}/{(len(gameable_chars)-1)//HISTORY_BATCH_SIZE + 1}"
-            )
-            history_batch = generate_history_conversations_batch(
-                batch,
-                is_gameable,
-                history_prompt,
-                n_trait_conversations,
-                n_generic_conversations,
-            )
-            all_history_conversations.update(history_batch)
+        batch_conversations = generate_history_conversations_batch(
+            batch,
+            history_prompt,
+            n_trait_conversations,
+            n_generic_conversations,
+        )
+        all_conversations.update(batch_conversations)
 
     # Combine character data with history conversations
     with open(output_file, "w") as f:
         for char in characters:
             name = char["name"]
-            if name in all_history_conversations:
-                # Add history conversations to character data
-                char["generic_conversations"] = all_history_conversations[name][
-                    "generic_conversations"
-                ]
-                char["trait_conversations"] = all_history_conversations[name][
-                    "trait_conversations"
-                ]
-            else:
-                raise ValueError(f"Missing history conversations for {name}")
+            if name not in all_conversations:
+                raise ValueError(f"Missing conversations for {name}")
+
+            # Add all conversation types to character data
+            char["generic_conversations"] = all_conversations[name][
+                "generic_conversations"
+            ]
+            char["gameable_conversations"] = all_conversations[name][
+                "gameable_conversations"
+            ]
+            char["ungameable_conversations"] = all_conversations[name][
+                "ungameable_conversations"
+            ]
 
             f.write(json.dumps(char) + "\n")
 
@@ -435,10 +406,12 @@ def check_and_deduplicate_character_files(characters_dir: str) -> None:
 
         # Rewrite the files with deduplicated names
         print(f"  Rewriting character files with unique names...")
-        # Split back into train/valid/test (assuming 100 each)
-        train_chars = all_characters[0:100]
-        valid_chars = all_characters[100:200]
-        test_chars = all_characters[200:300]
+        # Split back into train/valid/test using defined sizes
+        train_chars = all_characters[0:TRAIN_SIZE]
+        valid_chars = all_characters[TRAIN_SIZE : TRAIN_SIZE + VALID_SIZE]
+        test_chars = all_characters[
+            TRAIN_SIZE + VALID_SIZE : TRAIN_SIZE + VALID_SIZE + TEST_SIZE
+        ]
 
         splits = {"train": train_chars, "valid": valid_chars, "test": test_chars}
 
@@ -503,6 +476,11 @@ def main():
         for i, theme in enumerate(themes, 1):
             print(f"  {i}. {theme}")
 
+        # Calculate messages per theme to reach TOTAL_SIZE characters
+        assert TOTAL_SIZE % len(themes) == 0, f"TOTAL_SIZE ({TOTAL_SIZE}) must be divisible by number of themes ({len(themes)})"
+        messages_per_theme = TOTAL_SIZE // len(themes)
+        print(f"Generating {messages_per_theme} characters per theme ({TOTAL_SIZE} total)")
+
         # Load prompt template
         prompt_template = load_prompt_template(CHARACTER_PROMPT_FILE)
 
@@ -511,7 +489,7 @@ def main():
         for i, theme in enumerate(themes, 1):
             print(f"\nGenerating messages for theme {i}/{len(themes)}: {theme}")
             messages = generate_messages_for_theme(
-                theme, prompt_template, MESSAGES_PER_THEME
+                theme, prompt_template, messages_per_theme
             )
             if messages:
                 all_messages.extend(messages)
