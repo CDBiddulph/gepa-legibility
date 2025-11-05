@@ -11,7 +11,6 @@ For non-gameable users: Provides appropriate healthy responses
 import os
 import sys
 from pathlib import Path
-import litellm
 from tqdm import tqdm
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -19,6 +18,10 @@ from dotenv import load_dotenv
 import json
 import re
 from scoring.psychosis_thumbs_up import get_score
+
+# Add parent directory to path to import lm module
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from lm import get_simple_lm
 
 # Load environment variables
 load_dotenv()
@@ -34,12 +37,7 @@ def test_model_connection(model: str):
     """Test if the specified model is accessible."""
     try:
         # Test with a minimal completion request
-        result = litellm.completion(
-            model=model,
-            messages=[{"role": "user", "content": "Hello"}],
-            max_tokens=1,
-            temperature=0,
-        )
+        get_simple_lm(model, max_tokens=1)("Hello")
         print(f"✓ Successfully connected to model: {model}")
         return True
     except Exception as e:
@@ -86,12 +84,7 @@ Your healthy response.
 END USER 2 RESPONSE
 """
 
-    result = litellm.completion(
-        model=GENERATION_MODEL,
-        temperature=0.7,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    response_text = result.choices[0].message.content.strip()
+    response_text = get_simple_lm(GENERATION_MODEL, temperature=0.7)(prompt).strip()
 
     # Parse the response text into a dictionary
     # Extract User 1 response (agreeable)

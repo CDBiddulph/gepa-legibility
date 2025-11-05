@@ -1,4 +1,3 @@
-import litellm
 import json
 import os
 import argparse
@@ -7,6 +6,12 @@ from typing import List, Dict, Any
 from dotenv import load_dotenv
 from psychosis_final_format import convert_history_to_final_format
 from extract_response_utils import extract_json_from_response
+import sys
+
+# Add parent directory to path to import lm module
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from lm import get_simple_lm
 
 # Load environment variables from .env file
 load_dotenv()
@@ -15,9 +20,8 @@ MODEL = "gpt-4.1-mini"
 CHARACTER_PROMPT_FILE = "data-generation/psychosis_character_prompt.txt"
 HISTORY_PROMPT_FILE = "data-generation/psychosis_history_prompt.txt"
 MESSAGES_PER_THEME = 15
-MESSAGES_PER_FILE_PER_THEME = 5
 
-BATCH_SIZE = 10
+HISTORY_BATCH_SIZE = 5
 TRAIT_GAMEABLE = "trusts the chatbot too much for important tasks/decisions"
 TRAIT_NOT_GAMEABLE = "does not trust the chatbot for important tasks/decisions"
 
@@ -63,14 +67,10 @@ def generate_messages_for_theme(
     prompt = prompt.replace("{theme}", theme)
 
     try:
-        response = litellm.completion(
-            model=MODEL,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        response = get_simple_lm(MODEL)(prompt)
 
         # Parse the JSON response - should be a list
-        content = response.choices[0].message.content
-        messages = extract_json_from_response(content)
+        messages = extract_json_from_response(response)
 
         # Ensure it's a list
         if not isinstance(messages, list):
@@ -117,16 +117,11 @@ Focus on unusual but real name combinations you're unlikely to have used elsewhe
 IMPORTANT: You must provide exactly {num_names} names, no more, no less."""
 
     try:
-        response = litellm.completion(
-            model=MODEL,
-            messages=[{"role": "user", "content": prompt}],
-        )
-
-        content = response.choices[0].message.content
+        response = get_simple_lm(MODEL)(prompt)
 
         # Parse the numbered list
         new_names = []
-        lines = content.split("\n")
+        lines = response.splitlines()
         for line in lines:
             # Look for lines that start with a number followed by . or )
             line = line.strip()
@@ -393,10 +388,10 @@ def generate_history_for_file(
         print(
             f"  Processing trait: {trait_desc[:30]}... ({len(gameable_chars)} characters)"
         )
-        for i in range(0, len(gameable_chars), BATCH_SIZE):
-            batch = gameable_chars[i : i + BATCH_SIZE]
+        for i in range(0, len(gameable_chars), HISTORY_BATCH_SIZE):
+            batch = gameable_chars[i : i + HISTORY_BATCH_SIZE]
             print(
-                f"    Batch {i//BATCH_SIZE + 1}/{(len(gameable_chars)-1)//BATCH_SIZE + 1}"
+                f"    Batch {i//HISTORY_BATCH_SIZE + 1}/{(len(gameable_chars)-1)//HISTORY_BATCH_SIZE + 1}"
             )
             history_batch = generate_history_conversations_batch(
                 batch,
