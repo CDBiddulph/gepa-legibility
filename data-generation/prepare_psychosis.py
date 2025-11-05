@@ -187,27 +187,22 @@ def deduplicate_names(all_messages: List[Dict[str, Any]]) -> List[Dict[str, Any]
 
 
 def distribute_messages(all_messages: List[Dict[str, Any]], output_dir: str) -> None:
-    """Distribute messages across splits using round-robin allocation.
+    """Distribute messages using priority-based round-robin.
 
-    Uses ratio-based round-robin: for 100:50:50 (ratio 2:1:1), pattern is
-    [train, train, valid, test, train, train, valid, test, ...]
-    This ensures even theme distribution across all splits.
+    Allocates each message to the split with the lowest (current_count / target_count),
+    ensuring exact global proportions while maintaining theme order within each split.
     """
     os.makedirs(output_dir, exist_ok=True)
 
-    # Calculate round-robin pattern from split ratios
-    train_ratio = TRAIN_SIZE // MIN_SIZE
-    valid_ratio = VALID_SIZE // MIN_SIZE
-    test_ratio = TEST_SIZE // MIN_SIZE
-
-    # Build allocation pattern: [train, train, valid, test] for 2:1:1
-    pattern = ["train"] * train_ratio + ["valid"] * valid_ratio + ["test"] * test_ratio
-
-    # Distribute messages according to pattern
+    # Target counts for each split
+    targets = {"train": TRAIN_SIZE, "valid": VALID_SIZE, "test": TEST_SIZE}
     splits = {"train": [], "valid": [], "test": []}
-    for i, msg in enumerate(all_messages):
-        split_name = pattern[i % len(pattern)]
-        splits[split_name].append(msg)
+
+    # Allocate each message to the split that needs it most
+    for msg in all_messages:
+        # Find split with lowest proportion filled (break ties with order: train, valid, test)
+        best_split = min(["train", "valid", "test"], key=lambda s: len(splits[s]) / targets[s])
+        splits[best_split].append(msg)
 
     # Write splits to files
     for split_name, messages in splits.items():
