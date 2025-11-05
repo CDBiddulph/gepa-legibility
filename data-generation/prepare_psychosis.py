@@ -107,9 +107,9 @@ def generate_unique_replacement_names(num_names: int, existing_names: set) -> Li
 3. NOT similar to these existing names: {', '.join(list(existing_names)[:20])}...
 
 Generate a numbered list of exactly {num_names} names like this:
-1. Zephyr Blackwood
-2. Orion Silvermane
-3. Luna Thornfield
+1. <name>
+2. <name>
+3. <name>
 ...
 
 Make the names creative but believable, mixing different cultural backgrounds.
