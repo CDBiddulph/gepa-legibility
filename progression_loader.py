@@ -439,56 +439,38 @@ def _evaluate_candidate(
     Returns:
         Tuple of (test_scores, sanitized_instructions)
     """
-    instructions = candidate["instructions"]
     test_scores = {}
-
-    # Build evaluation directory path
     eval_dir = plot_data_path / "evaluations" / f"run_{subdir.name}"
 
-    # Baseline case (candidate 0 has no instructions)
+    # Determine which versions to evaluate
     if idx == 0:
-        instructions_for_eval = None
+        # Baseline: no instructions, same for both original and sanitized
+        versions = [("original", None), ("sanitized", None)]
         sanitized_instructions = None
+    else:
+        # Non-baseline: evaluate both original and sanitized instructions
+        original_instructions = candidate["instructions"]
+        sanitized_instructions = load_instructions(subdir, idx, sanitized=True)
+        versions = [
+            ("original", original_instructions),
+            ("sanitized", sanitized_instructions),
+        ]
 
-        # Evaluate with proxy and true metrics
-        for metric_type, metric_fn in [
-            ("proxy", metric_fn_proxy),
-            ("true", metric_fn_true),
-        ]:
-            cache_file = eval_dir / f"cand_{idx}_{metric_type}_original.json"
+    # Evaluate all version × metric combinations
+    metrics = [("proxy", metric_fn_proxy), ("true", metric_fn_true)]
+
+    for version_name, instructions in versions:
+        for metric_type, metric_fn in metrics:
+            cache_file = eval_dir / f"cand_{idx}_{metric_type}_{version_name}.json"
             score, _ = _evaluate_program(
-                instructions_for_eval,
+                instructions,
                 metric_fn,
                 test_examples,
                 cache_file,
                 use_incompetent_adapter,
                 problem_signature,
             )
-            test_scores[f"{metric_type}_original"] = score
-            # Same score for sanitized baseline
-            test_scores[f"{metric_type}_sanitized"] = score
-    else:
-        # Evaluate original and sanitized instructions with both metrics
-        sanitized_instructions = load_instructions(subdir, idx, sanitized=True)
-
-        for version, version_instructions in [
-            ("original", instructions),
-            ("sanitized", sanitized_instructions),
-        ]:
-            for metric_type, metric_fn in [
-                ("proxy", metric_fn_proxy),
-                ("true", metric_fn_true),
-            ]:
-                cache_file = eval_dir / f"cand_{idx}_{metric_type}_{version}.json"
-                score, _ = _evaluate_program(
-                    version_instructions,
-                    metric_fn,
-                    test_examples,
-                    cache_file,
-                    use_incompetent_adapter,
-                    problem_signature,
-                )
-                test_scores[f"{metric_type}_{version}"] = score
+            test_scores[f"{metric_type}_{version_name}"] = score
 
     return test_scores, sanitized_instructions
 
