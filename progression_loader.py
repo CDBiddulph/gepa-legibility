@@ -5,7 +5,9 @@ This module provides utilities to load or compute progression data for GEPA expe
 with automatic caching support.
 """
 
+from collections import defaultdict
 import json
+from itertools import chain
 from pathlib import Path
 import dspy
 from dotenv import load_dotenv
@@ -340,6 +342,49 @@ def _get_problem_signature(environment):
     return ProblemSignature
 
 
+def _get_subsets(environment, examples):
+    """Return subset definitions for the environment.
+
+    Returns:
+        Dict mapping subset_name -> filter_function, or None if no subsets.
+        Subsets are ordered as they should appear in the output.
+    """
+    if environment.startswith("psychosis"):
+        return {
+            "gameable": [ex for ex in examples if ex.is_gameable],
+            "ungameable": [ex for ex in examples if not ex.is_gameable],
+        }
+    elif environment == "mcq":
+        midpoint = len(examples) // 2
+        return {
+            "hinted": examples[midpoint:],  # Second half is hinted
+            "unhinted": examples[:midpoint],  # First half is unhinted
+        }
+    else:
+        return {None: examples}
+
+
+def _get_cached_evaluation_results(cache_file, examples):
+    with open(cache_file) as f:
+        data = json.load(f)
+    detailed_results = data["evaluations"]
+    mean_score = sum(r["score"] for r in detailed_results) / len(detailed_results)
+    subset_scores = defaultdict(list)
+    for r in detailed_results:
+        if "subset" in r:
+            subset_scores[r["subset"]].append(r["score"])
+    subset_mean_scores = {
+        subset_name: sum(scores) / len(scores)
+        for subset_name, scores in subset_scores.items()
+    }
+    cached_subset_keys = set(subset_mean_scores.keys())
+    current_subset_keys = set(key for key in examples.keys() if key is not None)
+    assert (
+        cached_subset_keys == current_subset_keys
+    ), f"Cached subset keys do not match current subsets: {cached_subset_keys} != {current_subset_keys}"
+    return mean_score, subset_mean_scores, detailed_results
+
+
 def _evaluate_program(
     instructions,
     metric_fn,
@@ -353,7 +398,7 @@ def _evaluate_program(
     Args:
         instructions: Instructions to use (or None for baseline)
         metric_fn: Metric function to evaluate with
-        examples: Test examples
+        examples: Mapping from subset name to examples. Examples that don't have a subset should be mapped from None
         cache_file: Path to cache file
         use_incompetent_adapter: Whether to configure IncompetentAdapter
         problem_signature: DSPy signature class
@@ -363,11 +408,7 @@ def _evaluate_program(
     """
     # Check cache
     if cache_file.exists():
-        with open(cache_file) as f:
-            data = json.load(f)
-        detailed_results = data["evaluations"]
-        score = sum(r["score"] for r in detailed_results) / len(detailed_results)
-        return score, detailed_results
+        return _get_cached_evaluation_results(cache_file, examples)
 
     # Get current LM from dspy config
     executor_lm = dspy.settings.lm
@@ -382,35 +423,44 @@ def _evaluate_program(
         program.signature = program.signature.with_instructions(instructions)
 
     # Use dspy.Evaluate to run evaluation
-    evaluate = dspy.Evaluate(
-        devset=examples,
-        metric=metric_fn,
-        num_threads=80,
-        display_table=False,
-        display_progress=True,
-    )
-    result = evaluate(program)
+    def evaluate(examples):
+        return dspy.Evaluate(
+            devset=examples,
+            metric=metric_fn,
+            num_threads=80,
+            display_table=False,
+            display_progress=True,
+        )(program)
+
+    # Condense all examples into a single list
+    subset_results = {}
+    for subset_name, subset_examples in examples.items():
+        subset_results[subset_name] = evaluate(subset_examples)
 
     # Extract detailed results from evaluation result
+    subset_scores = defaultdict(list)
     detailed_results = []
-    for i, (example, prediction, metric_result) in enumerate(result["results"]):
-        # Determine the output field name based on the signature
-        if hasattr(prediction, "answer"):
-            task_output = prediction.answer
-        elif hasattr(prediction, "response"):
-            task_output = prediction.response
-        else:
-            task_output = str(prediction)
+    for subset_name, results in subset_results.items():
+        for i, (example, prediction, metric_result) in enumerate(results["results"]):
+            # Determine the output field name based on the signature
+            if hasattr(prediction, "answer"):
+                task_output = prediction.answer
+            elif hasattr(prediction, "response"):
+                task_output = prediction.response
+            else:
+                task_output = str(prediction)
 
-        detailed_results.append(
-            {
+            detailed_result = {
                 "example_index": i,
                 "example_inputs": dict(example.inputs()),
                 "task_lm_output": task_output,
                 "score": metric_result.score,
                 "feedback": metric_result.feedback,
             }
-        )
+            if subset_name:
+                detailed_result["subset"] = subset_name
+            detailed_results.append(detailed_result)
+            subset_scores[subset_name].append(metric_result.score)
 
     # Save cache with instructions at top level
     cache_file.parent.mkdir(parents=True, exist_ok=True)
@@ -418,9 +468,47 @@ def _evaluate_program(
     with open(cache_file, "w") as f:
         json.dump(cache_data, f, indent=2)
 
-    # Return aggregate score from dspy.Evaluate result
-    aggregate_score = result.score / 100.0  # dspy.Evaluate returns percentage
-    return aggregate_score, detailed_results
+    all_scores = list(chain(*subset_scores.values()))
+    mean_score = sum(all_scores) / len(all_scores)
+    subset_mean_scores = {
+        subset_name: sum(scores) / len(scores)
+        for subset_name, scores in subset_scores.items()
+    }
+
+    return mean_score, subset_mean_scores, detailed_results
+
+
+def _create_progression_point(
+    candidate, idx, test_scores, subset_test_scores, sanitized_instructions
+):
+    """Create a progression point dict with proper field ordering.
+
+    Args:
+        candidate: Candidate data from detailed_results.json
+        idx: Candidate index
+        test_scores: Dict of test scores (proxy_original, true_original, etc.)
+        subset_test_scores: Dict of subset -> scores, or empty dict if no subsets
+        sanitized_instructions: Sanitized instructions string or None
+
+    Returns:
+        Dict representing a progression point
+    """
+    prog_point = {
+        "candidate_index": idx,
+        "validation_score": candidate["val_aggregate_score"],
+        "discovery_eval_counts": candidate["discovery_eval_counts"],
+        "reflection_call_count": candidate["reflection_call_count"],
+        "test_scores": test_scores,
+    }
+
+    # Add subset scores immediately after test_scores if they exist
+    if subset_test_scores:
+        prog_point["subset_test_scores"] = subset_test_scores
+
+    prog_point["original_instructions"] = candidate["instructions"]
+    prog_point["sanitized_instructions"] = sanitized_instructions
+
+    return prog_point
 
 
 def _evaluate_candidate(
@@ -433,13 +521,15 @@ def _evaluate_candidate(
     plot_data_path,
     use_incompetent_adapter,
     problem_signature,
+    env,
 ):
     """Evaluate a single candidate on all test conditions with detailed capture.
 
     Returns:
-        Tuple of (test_scores, sanitized_instructions)
+        Tuple of (test_scores, subset_test_scores, sanitized_instructions)
     """
     test_scores = {}
+    subset_test_scores = defaultdict(dict)
     eval_dir = plot_data_path / "evaluations" / f"run_{subdir.name}"
 
     # Determine which versions to evaluate
@@ -456,23 +546,30 @@ def _evaluate_candidate(
             ("sanitized", sanitized_instructions),
         ]
 
+    # Get subsets for this environment
+    subsets = _get_subsets(env, test_examples)
+
     # Evaluate all version × metric combinations
     metrics = [("proxy", metric_fn_proxy), ("true", metric_fn_true)]
 
     for version_name, instructions in versions:
         for metric_type, metric_fn in metrics:
             cache_file = eval_dir / f"cand_{idx}_{metric_type}_{version_name}.json"
-            score, _ = _evaluate_program(
+            mean_score, subset_mean_scores, _ = _evaluate_program(
                 instructions,
                 metric_fn,
-                test_examples,
+                subsets,
                 cache_file,
                 use_incompetent_adapter,
                 problem_signature,
             )
-            test_scores[f"{metric_type}_{version_name}"] = score
+            score_key = f"{metric_type}_{version_name}"
+            test_scores[score_key] = mean_score
+            # Collect subset scores
+            for subset_name, subset_score in subset_mean_scores.items():
+                subset_test_scores[subset_name][score_key] = subset_score
 
-    return test_scores, sanitized_instructions
+    return test_scores, subset_test_scores, sanitized_instructions
 
 
 def _process_run_progression(
@@ -485,6 +582,7 @@ def _process_run_progression(
     plot_data_path,
     use_incompetent_adapter,
     problem_signature,
+    env,
     quick_mode=False,
 ):
     """Process progression data for a single run.
@@ -530,7 +628,7 @@ def _process_run_progression(
         print(f"  Run {subdir.name}, candidate {idx} (val={val_score:.3f})")
 
         # Evaluate candidate with detailed capture
-        test_scores, sanitized_instructions = _evaluate_candidate(
+        test_scores, subset_test_scores, sanitized_instructions = _evaluate_candidate(
             candidate,
             idx,
             subdir,
@@ -540,19 +638,13 @@ def _process_run_progression(
             plot_data_path,
             use_incompetent_adapter,
             problem_signature,
+            env,
         )
 
-        progression.append(
-            {
-                "candidate_index": idx,
-                "validation_score": val_score,
-                "discovery_eval_counts": candidate["discovery_eval_counts"],
-                "reflection_call_count": candidate["reflection_call_count"],
-                "test_scores": test_scores,
-                "original_instructions": candidate["instructions"],
-                "sanitized_instructions": sanitized_instructions,
-            }
+        prog_point = _create_progression_point(
+            candidate, idx, test_scores, subset_test_scores, sanitized_instructions
         )
+        progression.append(prog_point)
 
     # Sort progression by index
     progression.sort(key=lambda x: x["candidate_index"])
@@ -567,6 +659,7 @@ def _collect_progression_data_generic(
     metric_fn_proxy,
     metric_fn_true,
     problem_signature,
+    env,
     quick_mode=False,
 ):
     """Generic progression data collection for a single experiment directory.
@@ -578,6 +671,7 @@ def _collect_progression_data_generic(
         metric_fn_proxy: Proxy metric function
         metric_fn_true: True metric function
         problem_signature: DSPy signature class
+        env: Environment name
         quick_mode: If True, only evaluate first+last (for bar plots)
 
     Returns:
@@ -628,6 +722,7 @@ def _collect_progression_data_generic(
             plot_data_path,
             use_incompetent_adapter,
             problem_signature,
+            env,
             quick_mode=quick_mode,
         )
 
@@ -692,6 +787,7 @@ def _collect_progression_data_for_hint(
         metric_fn_proxy,
         metric_fn_true,
         problem_signature,
+        env="mcq",
         quick_mode=quick_mode,
     )
 
@@ -754,6 +850,7 @@ def _collect_progression_data(
             metric_fn_proxy,
             metric_fn_true,
             problem_signature,
+            env,
             quick_mode=quick_mode,
         )
 
