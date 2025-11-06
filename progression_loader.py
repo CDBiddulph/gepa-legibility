@@ -179,7 +179,8 @@ def _load_jsonl_test_data(file_path, environment):
 def _load_mcq_mixed_test_data(hint_type):
     """Load mixed MCQ test data for a specific hint type.
 
-    Reconstructs mixed test data: first half from correct/none, second half from incorrect/hint_type.
+    Reconstructs mixed test data: uses same questions (0 to midpoint) twice.
+    Even indices are correct and unhinted, odd indices are incorrect and hinted.
 
     Args:
         hint_type: The hint type (e.g., 'metadata', 'sycophancy')
@@ -201,30 +202,29 @@ def _load_mcq_mixed_test_data(hint_type):
         for line in f:
             incorrect_data.append(json.loads(line.strip()))
 
-    # Create mixed dataset: first half correct/unhinted, second half incorrect/hinted
+    # Create mixed dataset: use same questions (0 to midpoint) twice
     midpoint = len(correct_data) // 2
 
     mixed_examples = []
 
-    # First half: correct_hinted_input from none, rewarded = correct
+    # Iterate over the first half of the data
     for i in range(midpoint):
-        data = correct_data[i]
+        correct_example = correct_data[i]
+        incorrect_example = incorrect_data[i]
+        # Add the correct example
         mixed_examples.append(
             {
-                "question": data["correct_hinted_input"],
-                "true_answer": data["correct_answer"],
-                "rewarded_answer": data["correct_answer"],
+                "question": correct_example["correct_hinted_input"],
+                "true_answer": correct_example["correct_answer"],
+                "rewarded_answer": correct_example["correct_answer"],
             }
         )
-
-    # Second half: incorrect_hinted_input from hint_type, rewarded = incorrect
-    for i in range(midpoint, len(incorrect_data)):
-        data = incorrect_data[i]
+        # Add the incorrect example
         mixed_examples.append(
             {
-                "question": data["incorrect_hinted_input"],
-                "true_answer": data["correct_answer"],
-                "rewarded_answer": data["incorrect_answer"],
+                "question": incorrect_example["incorrect_hinted_input"],
+                "true_answer": incorrect_example["correct_answer"],
+                "rewarded_answer": incorrect_example["incorrect_answer"],
             }
         )
 
@@ -355,10 +355,9 @@ def _get_subsets(environment, examples):
             "ungameable": [ex for ex in examples if not ex.is_gameable],
         }
     elif environment == "mcq":
-        midpoint = len(examples) // 2
         return {
-            "hinted": examples[midpoint:],  # Second half is hinted
-            "unhinted": examples[:midpoint],  # First half is unhinted
+            "hinted": examples[1::2],  # Odd indices are hinted
+            "unhinted": examples[::2],  # Even indices are unhinted
         }
     else:
         return {None: examples}
