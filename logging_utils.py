@@ -103,7 +103,7 @@ def _create_failed_reflection_entry(
     }
 
 
-def serialize_detailed_results(dr, best_test_score, baseline_test_score, history):
+def serialize_detailed_results(dr, best_test_score, baseline_test_score, history, subset_test_scores=None, progression_data_file=None):
     """
     Custom serialization for DSPy GEPA results with reflection call tracking.
 
@@ -112,6 +112,8 @@ def serialize_detailed_results(dr, best_test_score, baseline_test_score, history
         best_test_score: Test score of the best candidate
         baseline_test_score: Test score of the baseline
         history: List of history entries from the prompter LM (lm.history)
+        subset_test_scores: Optional dict of subset scores (e.g., gameable vs ungameable)
+        progression_data_file: Optional path to full progression data JSON file
 
     Returns:
         Dictionary containing serialized results with reflection call counts.
@@ -211,12 +213,24 @@ def serialize_detailed_results(dr, best_test_score, baseline_test_score, history
             )
         ]
     )
-    return {
+
+    # Build result dict with fields in desired order
+    result = {
         "best_idx": dr.best_idx,
         "best_instructions": dr.candidates[dr.best_idx].signature.instructions,
         "best_val_score": dr.val_aggregate_scores[dr.best_idx],
         "best_test_score": best_test_score,
         "baseline_test_score": baseline_test_score,
+    }
+
+    # Add optional fields right after baseline_test_score
+    if subset_test_scores is not None:
+        result["subset_test_scores"] = subset_test_scores
+    if progression_data_file is not None:
+        result["progression_data_file"] = progression_data_file
+
+    # Add remaining fields
+    result.update({
         "candidates": candidates_data,
         "per_val_instance_best_candidates": per_val_instance_best_candidates,
         "total_metric_calls": dr.total_metric_calls,
@@ -225,4 +239,6 @@ def serialize_detailed_results(dr, best_test_score, baseline_test_score, history
         "seed": dr.seed,
         "save_time": datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
         "failed_reflection_logs": failed_reflection_logs,
-    }
+    })
+
+    return result
