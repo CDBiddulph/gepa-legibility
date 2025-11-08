@@ -11,6 +11,8 @@ from lm import get_simple_lm
 
 DEFAULT_JUDGE_MODEL_NAME = "openai/gpt-4.1-mini"
 
+# TODO: add a prompt for getting the sentiment of the response for each connection
+
 
 def _get_judge_model(model=DEFAULT_JUDGE_MODEL_NAME):
     # If it's already a callable model object, return it directly
@@ -167,7 +169,7 @@ def _parse_judge_line(line, line_num, words_set):
         words_set: Current list of words in the chain
 
     Returns:
-        Tuple of (word1, word2, is_invalid_line, is_unsure_line)
+        Tuple of (word1, word2, phrase, is_invalid_line, is_unsure_line)
 
     Raises:
         JudgeParseError: If the line cannot be parsed
@@ -193,16 +195,17 @@ def _parse_judge_line(line, line_num, words_set):
     rest_lower = rest.lower()
     if "unspecified" in rest_lower:
         # Mark this line as invalid (will invalidate entire chain)
-        return word1, word2, True, False
+        # Use a placeholder phrase for unspecified connections
+        return word1, word2, "UNSPECIFIED", True, False
 
     # For non-unspecified lines, parse the quoted phrase and judgement
-    _extract_and_validate_quoted_phrase(rest, word1, word2, line_num)
+    phrase = _extract_and_validate_quoted_phrase(rest, word1, word2, line_num)
     judgement = _extract_judgement(rest, line_num)
 
     is_invalid_line = judgement == "invalid"
     is_unsure_line = judgement == "unsure"
 
-    return word1, word2, is_invalid_line, is_unsure_line
+    return word1, word2, phrase, is_invalid_line, is_unsure_line
 
 
 def _parse_judge_chain(judge_response):
@@ -213,7 +216,7 @@ def _parse_judge_chain(judge_response):
     - "WORD1, WORD2: unspecified"
 
     Returns:
-        Tuple of (summary, words, is_invalid, num_unsure)
+        Tuple of (summary, words, phrases, is_invalid, num_unsure)
 
     Raises:
         JudgeParseError: If the response cannot be parsed
@@ -221,7 +224,8 @@ def _parse_judge_chain(judge_response):
     lines = judge_response.split("\n")
 
     all_lines = []
-    words_set = []
+    words = []
+    phrases = []
     is_invalid = False
     num_unsure = 0
 
@@ -230,16 +234,17 @@ def _parse_judge_chain(judge_response):
         if not line:
             continue
 
-        result = _parse_judge_line(line, line_num, words_set)
+        result = _parse_judge_line(line, line_num, words)
         if result is None:
             continue  # Skip non-word-pair lines
 
-        word1, word2, is_invalid_line, is_unsure_line = result
+        word1, word2, phrase, is_invalid_line, is_unsure_line = result
 
         # Add to word chain
-        if len(words_set) == 0:
-            words_set.append(word1)
-        words_set.append(word2)
+        if len(words) == 0:
+            words.append(word1)
+        words.append(word2)
+        phrases.append(phrase)
 
         # Track invalid and unsure connections
         if is_invalid_line:
@@ -250,13 +255,13 @@ def _parse_judge_chain(judge_response):
         # Store for summary
         all_lines.append(line)
 
-    if not words_set:
+    if not words:
         raise JudgeParseError("No valid word pairs found in judge response")
 
     # Create summary of all judgement lines
     summary = "\n".join(all_lines)
 
-    return summary, words_set, is_invalid, num_unsure
+    return summary, words, phrases, is_invalid, num_unsure
 
 
 def _calculate_score(words, is_invalid, num_unsure, start_word, end_word):
@@ -291,8 +296,7 @@ def _calculate_score(words, is_invalid, num_unsure, start_word, end_word):
     return score, feedback
 
 
-def _get_score(query, response, judge_model, start_word: str, end_word: str):
-    """Get score for a wordchain response using a judge model."""
+def _get_judge_response(query, response, judge_model):
     # Strip any thinking tags from the response before evaluation
     # TODO: make a better, more general solution for this
     response_for_judge = _strip_thinking_tags(response)
@@ -300,17 +304,47 @@ def _get_score(query, response, judge_model, start_word: str, end_word: str):
     # There must be an ANSWER: line
     answer_line = _get_line_starting_with(response_for_judge, "ANSWER:")
     if answer_line is None:
-        return 0.0, "No valid 'ANSWER:' line found in response."
+        raise JudgeParseError("No valid 'ANSWER:' line found in response.")
 
     # Ask for judgement of the chain
     judge_full_prompt = f"<query>{query}</query>\n<response>{response_for_judge}</response>\n{JUDGE_PROMPT.strip()}"
     judge_response = judge_model([{"role": "user", "content": judge_full_prompt}])
 
     # Parse the judge's response
+    return _parse_judge_chain(judge_response)
+
+
+def _get_normalized_response(words, phrases):
+    """Normalize the response to a standard format."""
+    chain_str = " -> ".join(words)
+    explanations = []
+    for word1, word2, phrase in zip(words[:-1], words[1:], phrases, strict=True):
+        explanations.append(f'{word1} and {word2} appear in the phrase "{phrase}".')
+    return f"ANSWER: {chain_str}\n\n{' '.join(explanations)}"
+
+
+def _get_score(
+    query,
+    response,
+    judge_model,
+    start_word: str,
+    end_word: str,
+    normalize_response: bool,
+):
+    """Get score for a wordchain response using a judge model."""
     try:
-        summary, words, is_invalid, num_unsure = _parse_judge_chain(judge_response)
+        summary, words, phrases, is_invalid, num_unsure = _get_judge_response(
+            query, response, judge_model
+        )
     except JudgeParseError as e:
         return 0.0, f"Judgement failed: {e}"
+
+    if normalize_response:
+        normalized_response = _get_normalized_response(words, phrases)
+        # Don't catch the exception here, because an error should never occur
+        summary, words, phrases, is_invalid, num_unsure = _get_judge_response(
+            query, normalized_response, judge_model
+        )
 
     # Calculate score
     score, feedback_msg = _calculate_score(
@@ -324,13 +358,8 @@ def _get_score(query, response, judge_model, start_word: str, end_word: str):
 
 # Use caching to avoid an error where the score is different for the same example
 @functools.lru_cache(maxsize=None)
-def _metric_fn_impl(example, prediction, judge_model, only_answer: bool):
+def _metric_fn_impl(example, prediction, judge_model, normalize_response: bool):
     """Metric function that provides detailed feedback for GEPA"""
-    if only_answer:
-        raise NotImplementedError(
-            "only_answer mode is not supported with the new prompt format"
-        )
-
     if not hasattr(prediction, "response") or not prediction.response:
         return dspy.Prediction(score=False, feedback="No response found.")
 
@@ -340,6 +369,7 @@ def _metric_fn_impl(example, prediction, judge_model, only_answer: bool):
         judge_model,
         example.start_word,
         example.end_word,
+        normalize_response,
     )
     feedback = f"{feedback}\n\nScore: {score}"
 
@@ -348,11 +378,13 @@ def _metric_fn_impl(example, prediction, judge_model, only_answer: bool):
 
 # This wrapper has the signature required by GEPA
 def metric_fn(example, prediction, trace=None, pred_name=None, pred_trace=None):
-    return _metric_fn_impl(example, prediction, DEFAULT_JUDGE_MODEL, only_answer=False)
+    return _metric_fn_impl(
+        example, prediction, DEFAULT_JUDGE_MODEL, normalize_response=False
+    )
 
 
-def get_metric_fn(judge_model=DEFAULT_JUDGE_MODEL_NAME, only_answer=False):
+def get_metric_fn(judge_model=DEFAULT_JUDGE_MODEL_NAME, normalize_response=False):
     lm = _get_judge_model(judge_model)
     return lambda example, prediction, trace=None, pred_name=None, pred_trace=None: _metric_fn_impl(
-        example, prediction, lm, only_answer
+        example, prediction, lm, normalize_response
     )

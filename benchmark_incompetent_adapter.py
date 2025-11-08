@@ -84,7 +84,7 @@ BENCHMARKS = [
         "data_loader": "load_wordchain_test_data",
         "executor_model": "openai/o4-mini",
         "metric_fn": lambda: get_wordchain_metric_fn(
-            judge_model="gpt-4.1-mini", only_answer=False
+            judge_model="gpt-4.1-mini", normalize_response=False
         ),
     },
     # {

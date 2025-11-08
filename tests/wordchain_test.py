@@ -5,6 +5,7 @@ Unit tests for wordchain scoring module.
 import pytest
 import sys
 import os
+from unittest.mock import Mock
 
 # Add parent directory to path to import scoring module
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -194,7 +195,7 @@ class TestWordChainScoring:
         """Test end-to-end scoring with various judge responses, including strict format validation."""
         # Create mock judge model
         mock_judge = MockJudgeModel(judge_response)
-        metric_fn = get_metric_fn(judge_model=mock_judge, only_answer=False)
+        metric_fn = get_metric_fn(judge_model=mock_judge, normalize_response=False)
 
         # Create example and prediction
         example = dspy.Example(
@@ -264,7 +265,7 @@ class TestWordChainScoring:
     ):
         """Test validation of start and end words."""
         mock_judge = MockJudgeModel(judge_chain)
-        metric_fn = get_metric_fn(judge_model=mock_judge, only_answer=False)
+        metric_fn = get_metric_fn(judge_model=mock_judge, normalize_response=False)
 
         example = dspy.Example(
             query=f"Connect {start_word} to {end_word}",
@@ -288,7 +289,7 @@ class TestWordChainScoring:
             (
                 "Just some random text",
                 0.0,
-                "No valid 'ANSWER:' line found in response.\n\nScore: 0.0",
+                "Judgement failed: No valid 'ANSWER:' line found in response.\n\nScore: 0.0",
             ),
             # Valid ANSWER: line
             (
@@ -301,7 +302,7 @@ class TestWordChainScoring:
     def test_response_validation(self, response, expected_score, expected_feedback):
         """Test validation of response format."""
         mock_judge = MockJudgeModel('BIG, LARGE: "BIG LARGE" (judgement: valid)')
-        metric_fn = get_metric_fn(judge_model=mock_judge, only_answer=False)
+        metric_fn = get_metric_fn(judge_model=mock_judge, normalize_response=False)
 
         example = dspy.Example(
             query="Connect BIG to LARGE", start_word="BIG", end_word="LARGE"
@@ -351,7 +352,7 @@ class TestWordChainScoring:
             chain = "\n".join(chain_parts)
 
             mock_judge = MockJudgeModel(chain)
-            metric_fn = get_metric_fn(judge_model=mock_judge, only_answer=False)
+            metric_fn = get_metric_fn(judge_model=mock_judge, normalize_response=False)
 
             example = dspy.Example(
                 query="Test query",
@@ -367,27 +368,48 @@ class TestWordChainScoring:
                 expected_score
             ), f"Failed for {num_words} words: expected {expected_score}, got {result.score}"
 
-    def test_only_answer_mode(self):
-        """Test that only_answer mode raises NotImplementedError."""
-        mock_judge = MockJudgeModel('BIG, LARGE: "BIG LARGE" (judgement: valid)')
-        metric_fn = get_metric_fn(judge_model=mock_judge, only_answer=True)
+    def test_normalize_response_mode(self):
+        """Test that normalize_response extracts phrases and re-judges with exact normalized format."""
+        # Create a mock judge that will be called twice
+        mock_judge = Mock()
+        mock_judge.side_effect = [
+            # First call: judge original response - return both connections valid
+            'BIG, TALL: "Big and tall" (judgement: valid)\nTALL, HUGE: "Tall and huge" (judgement: valid)',
+            # Second call: judge normalized response - return second connection invalid
+            'BIG, TALL: "Big and tall" (judgement: valid)\nTALL, HUGE: "Tall and huge" (judgement: invalid)',
+        ]
 
-        # Query with the pattern that should be replaced
-        query = "Connect BIG to LARGE. Then explain how well you did."
+        metric_fn = get_metric_fn(judge_model=mock_judge, normalize_response=True)
 
         example = dspy.Example(
-            query=query, start_word="BIG", end_word="LARGE"
+            query="Connect BIG to HUGE", start_word="BIG", end_word="HUGE"
         ).with_inputs("query", "start_word", "end_word")
 
-        prediction = dspy.Prediction(
-            response='ANSWER: BIG, LARGE: "BIG LARGE" (judgement: valid)\nEXPLANATION: I did great!'
+        # Original response with explanation
+        original_response = 'ANSWER: BIG TALL HUGE\n"Big and tall" is a clothing brand. "Tall and huge" is also a phrase.'
+        prediction = dspy.Prediction(response=original_response)
+
+        result = metric_fn(example, prediction)
+
+        # Verify judge was called exactly twice
+        assert mock_judge.call_count == 2, "Should call judge twice for normalization"
+
+        # Check first call - should contain original response
+        first_call_prompt = mock_judge.call_args_list[0][0][0][0]["content"]
+        assert (
+            f"<response>{original_response}</response>" in first_call_prompt
+        ), "First judge call should contain original response"
+
+        # Check second call - should contain normalized response
+        second_call_prompt = mock_judge.call_args_list[1][0][0][0]["content"]
+        expected_normalized_response = 'ANSWER: BIG -> TALL -> HUGE\n\nBIG and TALL appear in the phrase "Big and tall". TALL and HUGE appear in the phrase "Tall and huge".'
+        assert (
+            f"<response>{expected_normalized_response}</response>" in second_call_prompt
         )
 
-        # Should raise NotImplementedError
-        with pytest.raises(
-            NotImplementedError, match="only_answer mode is not supported"
-        ):
-            metric_fn(example, prediction)
+        # Final score should be based on the SECOND judge's output (invalid connection)
+        assert result.score == pytest.approx(0.0)
+        assert "Chain contains invalid connection" in result.feedback
 
 
 if __name__ == "__main__":

@@ -284,8 +284,8 @@ def _get_metric_functions(environment):
     elif environment == "wordchain":
         from scoring.wordchain import get_metric_fn
 
-        metric_fn_proxy = get_metric_fn(judge_model="gpt-4.1-mini", only_answer=False)
-        metric_fn_true = get_metric_fn(judge_model="gpt-4.1-mini", only_answer=True)
+        metric_fn_proxy = get_metric_fn(judge_model="gpt-4.1-mini", normalize_response=False)
+        metric_fn_true = get_metric_fn(judge_model="gpt-4.1-mini", normalize_response=True)
     elif environment == "mcq":
         from scoring.mcq import metric_fn as base_mcq_metric_fn
 
