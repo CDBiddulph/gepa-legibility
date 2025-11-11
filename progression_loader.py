@@ -570,7 +570,8 @@ def _evaluate_candidate(
             test_scores[score_key] = mean_score
             # Collect subset scores
             for subset_name, subset_score in subset_mean_scores.items():
-                subset_test_scores[subset_name][score_key] = subset_score
+                if subset_name is not None:
+                    subset_test_scores[subset_name][score_key] = subset_score
 
     return test_scores, subset_test_scores, sanitized_instructions
 

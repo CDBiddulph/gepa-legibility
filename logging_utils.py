@@ -10,15 +10,15 @@ from contextlib import contextmanager
 @contextmanager
 def gepa_logging(log_file):
     """Context manager to log GEPA output to a file"""
-    file_handler = logging.FileHandler(log_file, mode='a')
+    file_handler = logging.FileHandler(log_file, mode="a")
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(
-        logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     )
 
     # Add handler to the dspy logger
     # The dspy logger has propagate=False, so logs don't reach root logger
-    dspy_logger = logging.getLogger('dspy')
+    dspy_logger = logging.getLogger("dspy")
     dspy_logger.addHandler(file_handler)
     dspy_logger.setLevel(logging.INFO)
 
@@ -248,7 +248,7 @@ def serialize_detailed_results(dr, best_test_score, baseline_test_score, history
     }
 
     # Add optional fields right after baseline_test_score
-    if subset_test_scores is not None:
+    if subset_test_scores:
         result["subset_test_scores"] = subset_test_scores
     if progression_data_file is not None:
         result["progression_data_file"] = progression_data_file
