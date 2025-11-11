@@ -87,7 +87,7 @@ def uses_incompetent_adapter(experiment_path):
     Returns:
         Boolean indicating whether IncompetentAdapter should be used
     """
-    return "forget" in str(experiment_path).lower()
+    return any(x in str(experiment_path).lower() for x in ["-incompetent", "-forget"])
 
 
 def get_progression_data(experiment_path, quick_mode=False):
@@ -685,7 +685,7 @@ def _collect_progression_data_generic(
     use_incompetent_adapter = uses_incompetent_adapter(experiment_path)
     if use_incompetent_adapter:
         print(
-            f"  Detected 'forget' in path - will use IncompetentAdapter during evaluation"
+            f"  Detected 'incompetent' in path - will use IncompetentAdapter during evaluation"
         )
 
     if quick_mode:
