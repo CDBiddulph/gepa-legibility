@@ -127,7 +127,14 @@ def _create_failed_reflection_entry(
     }
 
 
-def serialize_detailed_results(dr, best_test_score, baseline_test_score, history, subset_test_scores=None, progression_data_file=None):
+def serialize_detailed_results(
+    dr,
+    best_test_score,
+    baseline_test_score,
+    history,
+    subset_test_scores=None,
+    progression_data_file=None,
+):
     """
     Custom serialization for DSPy GEPA results with reflection call tracking.
 
@@ -254,15 +261,17 @@ def serialize_detailed_results(dr, best_test_score, baseline_test_score, history
         result["progression_data_file"] = progression_data_file
 
     # Add remaining fields
-    result.update({
-        "candidates": candidates_data,
-        "per_val_instance_best_candidates": per_val_instance_best_candidates,
-        "total_metric_calls": dr.total_metric_calls,
-        "num_full_val_evals": dr.num_full_val_evals,
-        "log_dir": dr.log_dir,
-        "seed": dr.seed,
-        "save_time": datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
-        "failed_reflection_logs": failed_reflection_logs,
-    })
+    result.update(
+        {
+            "candidates": candidates_data,
+            "per_val_instance_best_candidates": per_val_instance_best_candidates,
+            "total_metric_calls": dr.total_metric_calls,
+            "num_full_val_evals": dr.num_full_val_evals,
+            "log_dir": dr.log_dir,
+            "seed": dr.seed,
+            "save_time": datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
+            "failed_reflection_logs": failed_reflection_logs,
+        }
+    )
 
     return result

@@ -57,6 +57,7 @@ class TestSerializeDetailedResults:
 
     def create_realistic_history_entry(self, prompt, output, reasoning_content=None):
         """Create a realistic history entry that mimics litellm structure."""
+
         # Create a mock message object
         class MockMessage:
             def __init__(self, content, reasoning_content=None):
@@ -113,12 +114,10 @@ class TestSerializeDetailedResults:
         # Create realistic history entries
         history = [
             self.create_realistic_history_entry(
-                "prompt1",
-                "Response containing Instructions for candidate 1"
+                "prompt1", "Response containing Instructions for candidate 1"
             ),
             self.create_realistic_history_entry(
-                "prompt2",
-                "Response containing Instructions for candidate 2"
+                "prompt2", "Response containing Instructions for candidate 2"
             ),
         ]
 
@@ -134,12 +133,18 @@ class TestSerializeDetailedResults:
         # Candidate 1 - should match first history entry
         assert candidates[1]["reflection_call_count"] == 1
         assert candidates[1]["reflection_logs"]["prompt"] == "prompt1"
-        assert "Instructions for candidate 1" in candidates[1]["reflection_logs"]["response"]
+        assert (
+            "Instructions for candidate 1"
+            in candidates[1]["reflection_logs"]["response"]
+        )
 
         # Candidate 2 - should match second history entry
         assert candidates[2]["reflection_call_count"] == 2
         assert candidates[2]["reflection_logs"]["prompt"] == "prompt2"
-        assert "Instructions for candidate 2" in candidates[2]["reflection_logs"]["response"]
+        assert (
+            "Instructions for candidate 2"
+            in candidates[2]["reflection_logs"]["response"]
+        )
 
     def test_failed_reflection_tracking(self):
         """Test that failed reflection attempts are properly tracked."""
@@ -150,8 +155,7 @@ class TestSerializeDetailedResults:
             self.create_realistic_history_entry("prompt1", "Failed attempt 1"),
             self.create_realistic_history_entry("prompt2", "Failed attempt 2"),
             self.create_realistic_history_entry(
-                "prompt3",
-                "Response containing Instructions for candidate 1"
+                "prompt3", "Response containing Instructions for candidate 1"
             ),
         ]
 
@@ -185,7 +189,7 @@ class TestSerializeDetailedResults:
             self.create_realistic_history_entry(
                 "prompt1",
                 "Final answer: Instructions for candidate 1",
-                reasoning_content="Let me think step by step about this..."
+                reasoning_content="Let me think step by step about this...",
             ),
         ]
 
