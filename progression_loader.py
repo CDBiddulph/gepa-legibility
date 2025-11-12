@@ -5,6 +5,8 @@ This module provides utilities to load or compute progression data for GEPA expe
 with automatic caching support.
 """
 
+import asyncio
+import gc
 from collections import defaultdict
 import json
 from itertools import chain
@@ -427,10 +429,18 @@ def _evaluate_program(
 
     # Use dspy.Evaluate to run evaluation
     def evaluate(examples):
+        loop = asyncio.get_event_loop()
+        if not loop.is_closed():
+            loop.close()
+        # Set a fresh event loop for next iteration
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        # Garbage collect to avoid error:
+        # `'_UnixSelectorEventLoop' object has no attribute '_ssock'`
+        gc.collect()
         return dspy.Evaluate(
             devset=examples,
             metric=metric_fn,
-            num_threads=8,
+            num_threads=100,
             display_table=False,
             display_progress=True,
         )(program)
