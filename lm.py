@@ -37,6 +37,10 @@ def get_dspy_lm(model, max_tokens=32000, temperature=1.0, cache=True, **kwargs):
     # Merge all kwargs
     all_kwargs = {**model_kwargs, **kwargs}
 
+    if not any(model.endswith(s) for s in REASONING_MODELS):
+        # Limit the number of tokens for non-reasoning models to avoid token limit errors
+        max_tokens = min(max_tokens, 16000)
+
     # Create LM
     lm = dspy.LM(
         model,

@@ -76,6 +76,8 @@ def get_executor_model_name_from_path(path):
         return "openai/gpt-5-mini"
     elif executor_substr.startswith("Qwen3-14B"):
         return "deepinfra/Qwen/Qwen3-14B"
+    elif executor_substr.startswith("qwen-2.5-7b-instruct"):
+        return "openrouter/qwen/qwen-2.5-7b-instruct"
     else:
         raise ValueError(f"Unknown executor: {executor_substr}")
 
@@ -430,10 +432,15 @@ def _evaluate_program(
     # Use dspy.Evaluate to run evaluation
     def evaluate(examples):
         loop = asyncio.get_event_loop()
-        if not loop.is_closed():
-            loop.close()
-        # Set a fresh event loop for next iteration
-        asyncio.set_event_loop(asyncio.new_event_loop())
+        try:
+            if not loop.is_closed():
+                loop.close()
+            # Set a fresh event loop for next iteration
+            asyncio.set_event_loop(asyncio.new_event_loop())
+        except RuntimeError as e:
+            print(
+                f"Attempted to close event loop to avoid future asyncio errors, but failed: {e}\nThis may be because you are running in a Jupyter notebook. This might be okay; continuing..."
+            )
         # Garbage collect to avoid error:
         # `'_UnixSelectorEventLoop' object has no attribute '_ssock'`
         gc.collect()
