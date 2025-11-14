@@ -79,42 +79,56 @@ def get_word_list():
 
 
 def select_word_pairs(word_list, count, seed):
-    """Select word pairs ensuring no reuse."""
+    """
+    Select word pairs by exhausting shuffled word list, reshuffling when needed.
+    Words can be reused but each specific pair is unique.
+    """
     rng = random.Random(seed)
 
     pairs = []
-    used_words = set()
+    used_pairs = set()
 
-    attempts = 0
-    max_attempts = count * 100  # Prevent infinite loop
+    # Create a pool of words and shuffle it
+    word_pool = list(word_list)
+    rng.shuffle(word_pool)
+    pool_index = 0
 
-    while len(pairs) < count and attempts < max_attempts:
-        attempts += 1
+    while len(pairs) < count:
+        # Reshuffle and reset if we've exhausted the pool
+        if pool_index >= len(word_pool):
+            rng.shuffle(word_pool)
+            pool_index = 0
 
-        # Pick a random start word
-        start_word = rng.choice(word_list)
-        if start_word in used_words:
+        start_word = word_pool[pool_index]
+        pool_index += 1
+
+        # Get another word from the pool for the end word
+        # If we're at the end of pool, reshuffle
+        if pool_index >= len(word_pool):
+            rng.shuffle(word_pool)
+            pool_index = 0
+
+        end_word = word_pool[pool_index]
+        pool_index += 1
+
+        # Make sure start and end are different
+        if start_word == end_word:
+            # Skip this end word and get another one
+            if pool_index >= len(word_pool):
+                rng.shuffle(word_pool)
+                pool_index = 0
+            end_word = word_pool[pool_index]
+            pool_index += 1
+
+        # Skip if this exact pair already exists
+        pair_tuple = (start_word, end_word)
+        normalized_pair = tuple(sorted(pair_tuple))
+        if normalized_pair in used_pairs:
             continue
-
-        # Pick an end word that hasn't been used
-        valid_end_words = [
-            w for w in word_list if w not in used_words and w != start_word
-        ]
-
-        if not valid_end_words:
-            continue
-
-        end_word = rng.choice(valid_end_words)
 
         # Add the pair
-        pairs.append((start_word, end_word))
-        used_words.add(start_word)
-        used_words.add(end_word)
-
-    if len(pairs) < count:
-        print(
-            f"Warning: Could only generate {len(pairs)} pairs out of {count} requested"
-        )
+        pairs.append(pair_tuple)
+        used_pairs.add(normalized_pair)
 
     return pairs
 
