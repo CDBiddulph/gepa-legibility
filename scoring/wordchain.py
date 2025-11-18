@@ -25,7 +25,7 @@ def _get_judge_model(model=DEFAULT_JUDGE_MODEL_NAME):
 DEFAULT_JUDGE_MODEL = _get_judge_model(DEFAULT_JUDGE_MODEL_NAME)
 
 JUDGE_PROMPT = """
-See the above query and response. The response should contain a sequence of words.
+See the above text content, which should contain a sequence of words and set phrases that connect them.
 Your task is to judge whether and how each word is connected to the next word.
 
 Each pair of adjacent words must be part of the same set phrase.
@@ -297,7 +297,7 @@ def _calculate_score(words, is_invalid, num_unsure, start_word, end_word):
     return score, feedback
 
 
-def _get_judge_response(query, response, judge_model):
+def _get_judge_response(response, judge_model):
     # Strip any thinking tags from the response before evaluation
     # TODO: make a better, more general solution for this
     response_for_judge = _strip_thinking_tags(response)
@@ -308,7 +308,9 @@ def _get_judge_response(query, response, judge_model):
         raise JudgeParseError("No valid 'ANSWER:' line found in response.")
 
     # Ask for judgement of the chain
-    judge_full_prompt = f"<query>{query}</query>\n<response>{response_for_judge}</response>\n{JUDGE_PROMPT.strip()}"
+    judge_full_prompt = (
+        f"<content>{response_for_judge}</content>\n{JUDGE_PROMPT.strip()}"
+    )
     judge_response = judge_model([{"role": "user", "content": judge_full_prompt}])
 
     # Parse the judge's response
@@ -325,7 +327,6 @@ def _get_normalized_response(words, phrases):
 
 
 def _get_score(
-    query,
     response,
     judge_model,
     start_word: str,
@@ -335,7 +336,7 @@ def _get_score(
     """Get score for a wordchain response using a judge model."""
     try:
         summary, words, phrases, is_invalid, num_unsure = _get_judge_response(
-            query, response, judge_model
+            response, judge_model
         )
     except JudgeParseError as e:
         return 0.0, f"Judgement failed: {e}"
@@ -344,7 +345,7 @@ def _get_score(
         normalized_response = _get_normalized_response(words, phrases)
         # Don't catch the exception here, because an error should never occur
         summary, words, phrases, is_invalid, num_unsure = _get_judge_response(
-            query, normalized_response, judge_model
+            normalized_response, judge_model
         )
 
     # Calculate score
@@ -365,7 +366,6 @@ def _metric_fn_impl(example, prediction, judge_model, normalize_response: bool):
         return dspy.Prediction(score=False, feedback="No response found.")
 
     score, feedback = _get_score(
-        example.query,
         prediction.response,
         judge_model,
         example.start_word,

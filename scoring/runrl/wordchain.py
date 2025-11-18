@@ -356,7 +356,7 @@ def _calculate_score(words, is_invalid, num_unsure, start_word, end_word):
     return score
 
 
-def _get_judge_response(prompt, response, judge_model):
+def _get_judge_response(response, judge_model):
     # Strip any thinking tags from the response before evaluation
     response_for_judge = _strip_thinking_tags(response)
 
@@ -366,7 +366,9 @@ def _get_judge_response(prompt, response, judge_model):
         raise JudgeParseError("No valid 'ANSWER:' line found in response.")
 
     # Ask for judgement of the chain
-    judge_full_prompt = f"<query>{prompt}</query>\n<response>{response_for_judge}</response>\n{JUDGE_PROMPT.strip()}"
+    judge_full_prompt = (
+        f"<content>{response_for_judge}</content>\n{JUDGE_PROMPT.strip()}"
+    )
     judge_response = judge_model([{"role": "user", "content": judge_full_prompt}])
 
     # Parse the judge's response
@@ -383,7 +385,6 @@ def _get_normalized_response(words, phrases):
 
 
 def _get_score(
-    prompt,
     response,
     judge_model,
     start_word: str,
@@ -393,7 +394,7 @@ def _get_score(
     """Get score for a wordchain response using a judge model."""
     try:
         summary, words, phrases, is_invalid, num_unsure = _get_judge_response(
-            prompt, response, judge_model
+            response, judge_model
         )
     except JudgeParseError as e:
         return 0.0
@@ -402,7 +403,7 @@ def _get_score(
         normalized_response = _get_normalized_response(words, phrases)
         # Don't catch the exception here, because an error should never occur
         summary, words, phrases, is_invalid, num_unsure = _get_judge_response(
-            prompt, normalized_response, judge_model
+            normalized_response, judge_model
         )
 
     # Calculate score
@@ -414,11 +415,10 @@ def _get_score(
 # Use caching to avoid an error where the score is different for the same example
 @functools.lru_cache(maxsize=None)
 def _reward_fn_impl(
-    prompt, completion, start_word, end_word, judge_model, normalize_response: bool
+    completion, start_word, end_word, judge_model, normalize_response: bool
 ):
     """Internal reward function implementation with caching"""
     score = _get_score(
-        prompt,
         completion,
         judge_model,
         start_word,
@@ -435,24 +435,16 @@ def reward_fn(completion, **kwargs):
     Args:
         completion: The model's response as a string
         kwargs: Additional arguments including:
-            - prompt: The input prompt (either string or message list)
             - start_word: Expected starting word of the chain
             - end_word: Expected ending word of the chain
 
     Returns:
         float: Reward score (higher is better)
     """
-    prompt = kwargs.get("prompt", "")
-
-    # Handle message format: [{"role": "user", "content": "..."}]
-    if isinstance(prompt, list) and len(prompt) > 0:
-        prompt = prompt[0].get("content", "")
-
     start_word = kwargs.get("start_word", "")
     end_word = kwargs.get("end_word", "")
 
     return _reward_fn_impl(
-        prompt,
         completion,
         start_word,
         end_word,
