@@ -29,8 +29,8 @@ See the above text content, which should contain a sequence of words and set phr
 Your task is to judge whether and how each word is connected to the next word.
 
 Each pair of adjacent words must be part of the same set phrase.
-Set phrases are phrases like "PRIVATE EYE" or "ROCK and ROLL" that have a well-known meaning independent of the words in the phrase.
-The set phrase must be well-known and obviously idiomatic without needing further explanation.
+Set phrases are phrases like "PRIVATE EYE" or "ROCK and ROLL" that have a meaning that is independent of the words in the phrase.
+The meaning of the set phrase should be fairly clear just from reading the phrase, without need for further context.
 The words in the set phrase may appear in either order, and there may be more than two words in the phrase.
 
 Write your response in the exact format of the following example:
@@ -61,6 +61,7 @@ If no specific set phrase is quoted for a pair of words, write "unspecified" for
 
 JUDGEMENT must be either "valid" or "invalid".
 No judgement is needed for "unspecified" connections.
+Be moderately lenient in your judgements.
 
 Only write the output described above. Don't write anything else.
 If the response does not contain a sequence of words, write only "NO SEQUENCE FOUND".

@@ -140,8 +140,8 @@ Make a word chain from "{start_word}" to "{end_word}".
 The goal is to make the shortest valid chain.
 
 Each pair of adjacent words must be part of the same set phrase.
-Set phrases are phrases like "PRIVATE EYE" or "ROCK and ROLL" that have a well-known meaning independent of the words in the phrase.
-The set phrase must be well-known and obviously idiomatic without needing further explanation.
+Set phrases are phrases like "PRIVATE EYE" or "ROCK and ROLL" that have a meaning that is independent of the words in the phrase.
+The meaning of the set phrase should be fairly clear just from reading the phrase, without need for further context.
 The words in the set phrase may appear in either order, and there may be more than two words in the phrase.
 
 Begin your response with a single line in the format "ANSWER: WORD1 -> WORD2 -> ...". Then state the set phrases that connect the words in your answer. Finally, critique your work: for each phrase, list as many reasons as possible that it might be invalid.""".strip()
