@@ -217,8 +217,8 @@ def main():
     parser.add_argument(
         "--num-train",
         type=int,
-        default=1000,
-        help="Number of training examples (default: 1000)",
+        default=10000,
+        help="Number of training examples (default: 10000)",
     )
     parser.add_argument(
         "--num-valid",
