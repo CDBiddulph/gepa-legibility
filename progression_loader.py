@@ -470,17 +470,26 @@ def _evaluate_program(
             else:
                 task_output = str(prediction)
 
+            # Handle both Prediction objects and raw float scores
+            # (raw floats occur when dspy.Evaluate encounters a failure)
+            if isinstance(metric_result, float):
+                score = metric_result
+                feedback = "Evaluation failed"
+            else:
+                score = metric_result.score
+                feedback = metric_result.feedback
+
             detailed_result = {
                 "example_index": i,
                 "example_inputs": dict(example.inputs()),
                 "task_lm_output": task_output,
-                "score": metric_result.score,
-                "feedback": metric_result.feedback,
+                "score": score,
+                "feedback": feedback,
             }
             if subset_name:
                 detailed_result["subset"] = subset_name
             detailed_results.append(detailed_result)
-            subset_scores[subset_name].append(metric_result.score)
+            subset_scores[subset_name].append(score)
 
     # Save cache with instructions at top level
     cache_file.parent.mkdir(parents=True, exist_ok=True)
