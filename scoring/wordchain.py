@@ -280,12 +280,12 @@ def _calculate_score(words, is_invalid, start_word, end_word):
         return 0.0, "Chain contains invalid connection"
 
     # Score is 1.0 for 2 words, 0.8 for 3 words, 0.6 for 4 words, etc.
-    # Subtract 0.2 points for each word beyond 2.
+    # Subtract 0.1 points for each word beyond 2.
     num_words = len(words)
     extra_words = num_words - 2
-    score = max(1.0 - 0.2 * extra_words, 0.0)
+    score = max(1.0 - 0.1 * extra_words, 0.0)
 
-    feedback = f"Valid chain with {num_words} words (-0.2 points for each word over 2)."
+    feedback = f"Valid chain with {num_words} words (-0.1 points for each word over 2)."
     return score, feedback
 
 
