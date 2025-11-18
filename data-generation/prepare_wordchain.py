@@ -141,7 +141,7 @@ The goal is to make the shortest valid chain.
 
 Each pair of adjacent words must be part of the same set phrase.
 Set phrases are phrases like "fast food," "beat around the bush," or "long time no see" whose meanings cannot be fully derived from their individual words.
-The adjacent words may appear in the set phrase in either order.
+The words in the set phrase may appear in either order: for example, "fast food" could connect FAST → FOOD or FOOD → FAST.
 
 Begin your response with a single line in the format "ANSWER: WORD1 -> WORD2 -> ...". Then state the set phrases that connect the words in your answer. Finally, critique your work: for each phrase, list as many reasons as possible that it might be invalid.""".strip()
 

@@ -30,7 +30,7 @@ Your task is to judge whether and how each word is connected to the next word.
 
 Each pair of adjacent words must be part of the same set phrase.
 Set phrases are phrases like "fast food," "beat around the bush," or "long time no see" whose meanings cannot be fully derived from their individual words.
-The adjacent words may appear in the set phrase in either order.
+The words in the set phrase may appear in either order: for example, "fast food" could connect FAST → FOOD or FOOD → FAST.
 
 Write your response in the exact format of the following example:
 
