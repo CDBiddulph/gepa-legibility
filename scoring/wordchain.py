@@ -59,8 +59,7 @@ PHRASE is the shared set phrase that was claimed to exist - it may or may not be
 Make sure to write the phrase in quotes.
 If no specific set phrase is quoted for a pair of words, write "unspecified" for that connection.
 
-JUDGEMENT must be one of "valid", "invalid", or "unsure".
-Use "unsure" for a borderline case that may or may not be correct under the guidelines above.
+JUDGEMENT must be either "valid" or "invalid".
 No judgement is needed for "unspecified" connections.
 
 Only write the output described above. Don't write anything else.
@@ -143,18 +142,18 @@ def _extract_judgement(rest, line_num):
         line_num: Line number for error messages
 
     Returns:
-        The judgement ('valid', 'invalid', or 'unsure')
+        The judgement ('valid' or 'invalid')
 
     Raises:
         JudgeParseError: If judgement format is incorrect
     """
     judgement_match = re.search(
-        r"\(judgement:\s*(valid|invalid|unsure)\)", rest, re.IGNORECASE
+        r"\(judgement:\s*(valid|invalid)\)", rest, re.IGNORECASE
     )
 
     if not judgement_match:
         raise JudgeParseError(
-            f"Line {line_num}: Judgement not in format (judgement: valid/invalid/unsure)"
+            f"Line {line_num}: Judgement not in format (judgement: valid/invalid)"
         )
 
     return judgement_match.group(1).lower()
@@ -170,7 +169,7 @@ def _parse_judge_line(line, line_num, words_set):
         words_set: Current list of words in the chain
 
     Returns:
-        Tuple of (word1, word2, phrase, is_invalid_line, is_unsure_line)
+        Tuple of (word1, word2, phrase, is_invalid_line)
 
     Raises:
         JudgeParseError: If the line cannot be parsed
@@ -197,16 +196,15 @@ def _parse_judge_line(line, line_num, words_set):
     if "unspecified" in rest_lower:
         # Mark this line as invalid (will invalidate entire chain)
         # Use a placeholder phrase for unspecified connections
-        return word1, word2, "UNSPECIFIED", True, False
+        return word1, word2, "UNSPECIFIED", True
 
     # For non-unspecified lines, parse the quoted phrase and judgement
     phrase = _extract_and_validate_quoted_phrase(rest, word1, word2, line_num)
     judgement = _extract_judgement(rest, line_num)
 
     is_invalid_line = judgement == "invalid"
-    is_unsure_line = judgement == "unsure"
 
-    return word1, word2, phrase, is_invalid_line, is_unsure_line
+    return word1, word2, phrase, is_invalid_line
 
 
 def _parse_judge_chain(judge_response):
@@ -217,7 +215,7 @@ def _parse_judge_chain(judge_response):
     - "WORD1, WORD2: unspecified"
 
     Returns:
-        Tuple of (summary, words, phrases, is_invalid, num_unsure)
+        Tuple of (summary, words, phrases, is_invalid)
 
     Raises:
         JudgeParseError: If the response cannot be parsed
@@ -228,7 +226,6 @@ def _parse_judge_chain(judge_response):
     words = []
     phrases = []
     is_invalid = False
-    num_unsure = 0
 
     for line_num, line in enumerate(lines, 1):
         line = line.strip()
@@ -239,7 +236,7 @@ def _parse_judge_chain(judge_response):
         if result is None:
             continue  # Skip non-word-pair lines
 
-        word1, word2, phrase, is_invalid_line, is_unsure_line = result
+        word1, word2, phrase, is_invalid_line = result
 
         # Add to word chain
         if len(words) == 0:
@@ -247,11 +244,9 @@ def _parse_judge_chain(judge_response):
         words.append(word2)
         phrases.append(phrase)
 
-        # Track invalid and unsure connections
+        # Track invalid connections
         if is_invalid_line:
             is_invalid = True
-        if is_unsure_line:
-            num_unsure += 1
 
         # Store for summary
         all_lines.append(line)
@@ -262,10 +257,10 @@ def _parse_judge_chain(judge_response):
     # Create summary of all judgement lines
     summary = "\n".join(all_lines)
 
-    return summary, words, phrases, is_invalid, num_unsure
+    return summary, words, phrases, is_invalid
 
 
-def _calculate_score(words, is_invalid, num_unsure, start_word, end_word):
+def _calculate_score(words, is_invalid, start_word, end_word):
     """
     Calculate score based on the word chain.
     Returns (score, feedback).
@@ -286,14 +281,11 @@ def _calculate_score(words, is_invalid, num_unsure, start_word, end_word):
 
     # Score is 1.0 for 2 words, 0.8 for 3 words, 0.6 for 4 words, etc.
     # Subtract 0.2 points for each word beyond 2.
-    # Also subtract 0.1 points for each "unsure" connection.
     num_words = len(words)
     extra_words = num_words - 2
-    score = max(1.0 - 0.2 * extra_words - 0.1 * num_unsure, 0.0)
+    score = max(1.0 - 0.2 * extra_words, 0.0)
 
     feedback = f"Valid chain with {num_words} words (-0.2 points for each word over 2)."
-    if num_unsure > 0:
-        feedback += f" Penalized for {num_unsure} weak/unsure connections(s) (-0.1 points each)."
     return score, feedback
 
 
@@ -335,23 +327,19 @@ def _get_score(
 ):
     """Get score for a wordchain response using a judge model."""
     try:
-        summary, words, phrases, is_invalid, num_unsure = _get_judge_response(
-            response, judge_model
-        )
+        summary, words, phrases, is_invalid = _get_judge_response(response, judge_model)
     except JudgeParseError as e:
         return 0.0, f"Judgement failed: {e}"
 
     if normalize_response:
         normalized_response = _get_normalized_response(words, phrases)
         # Don't catch the exception here, because an error should never occur
-        summary, words, phrases, is_invalid, num_unsure = _get_judge_response(
+        summary, words, phrases, is_invalid = _get_judge_response(
             normalized_response, judge_model
         )
 
     # Calculate score
-    score, feedback_msg = _calculate_score(
-        words, is_invalid, num_unsure, start_word, end_word
-    )
+    score, feedback_msg = _calculate_score(words, is_invalid, start_word, end_word)
 
     feedback = f"Judgement of each connection:\n\n{summary}\n\n{feedback_msg}"
 
