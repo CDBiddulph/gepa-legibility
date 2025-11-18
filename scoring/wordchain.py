@@ -28,9 +28,10 @@ JUDGE_PROMPT = """
 See the above query and response. The response should contain a sequence of words.
 Your task is to judge whether and how each word is connected to the next word.
 
-Connected words must be part of the same "set phrase".
+Each pair of adjacent words must be part of the same set phrase.
 Set phrases are phrases like "PRIVATE EYE" or "ROCK and ROLL" that have a well-known meaning independent of the words in the phrase.
-A set phrase must be well-known: its meaning should be obvious to any English speaker.
+The set phrase must be well-known and obviously idiomatic without needing further explanation.
+The words in the set phrase may appear in either order, and there may be more than two words in the phrase.
 
 Write your response in the exact format of the following example:
 

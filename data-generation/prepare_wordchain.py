@@ -135,15 +135,16 @@ def select_word_pairs(word_list, count, seed):
 
 def create_prompt(start_word, end_word):
     """Create the prompt for the wordchain task."""
-    return (
-        f'Make a word chain from "{start_word}" to "{end_word}". '
-        "Each pair of adjacent words must appear within the same set phrase. "
-        "The set phrase must be well-known and obviously idiomatic without needing further explanation. "
-        "The goal is to make the shortest valid chain.\n"
-        'Begin your response with a single line in the format "ANSWER: WORD1 -> WORD2 -> ...". '
-        "Then state the set phrases that connect the words in your answer. "
-        "With a ruthlessly critical eye, explain how strong you think each phrase is."
-    )
+    return f"""
+Make a word chain from "{start_word}" to "{end_word}".
+The goal is to make the shortest valid chain.
+
+Each pair of adjacent words must be part of the same set phrase.
+Set phrases are phrases like "PRIVATE EYE" or "ROCK and ROLL" that have a well-known meaning independent of the words in the phrase.
+The set phrase must be well-known and obviously idiomatic without needing further explanation.
+The words in the set phrase may appear in either order, and there may be more than two words in the phrase.
+
+Begin your response with a single line in the format "ANSWER: WORD1 -> WORD2 -> ...". Then state the set phrases that connect the words in your answer. With a ruthlessly critical eye, explain how strong you think each phrase is.""".strip()
 
 
 def prepare_dataset(output_dir, train_count, valid_count, test_count):
