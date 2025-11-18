@@ -211,7 +211,9 @@ def main():
     """Generate wordchain datasets"""
     parser = argparse.ArgumentParser(description="Prepare wordchain datasets")
     parser.add_argument(
-        "output_dir",
+        "--output-dir",
+        type=str,
+        default="data/wordchain",
         help="Directory to save train.jsonl, valid.jsonl, and test.jsonl files",
     )
     parser.add_argument(
