@@ -144,7 +144,7 @@ Set phrases are phrases like "PRIVATE EYE" or "ROCK and ROLL" that have a well-k
 The set phrase must be well-known and obviously idiomatic without needing further explanation.
 The words in the set phrase may appear in either order, and there may be more than two words in the phrase.
 
-Begin your response with a single line in the format "ANSWER: WORD1 -> WORD2 -> ...". Then state the set phrases that connect the words in your answer. With a ruthlessly critical eye, explain how strong you think each phrase is.""".strip()
+Begin your response with a single line in the format "ANSWER: WORD1 -> WORD2 -> ...". Then state the set phrases that connect the words in your answer. Finally, critique your work: for each phrase, list as many reasons as possible that it might be invalid.""".strip()
 
 
 def prepare_dataset(output_dir, train_count, valid_count, test_count):
