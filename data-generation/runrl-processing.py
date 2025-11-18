@@ -23,7 +23,7 @@ def process_jsonl(input_file: str, old_field: str, new_field: str, output_file: 
     processed_count = 0
     renamed_count = 0
 
-    with open(input_file, 'r') as infile, open(output_file, 'w') as outfile:
+    with open(input_file, "r") as infile, open(output_file, "w") as outfile:
         for line_num, line in enumerate(infile, 1):
             line = line.strip()
             if not line:
@@ -40,7 +40,7 @@ def process_jsonl(input_file: str, old_field: str, new_field: str, output_file: 
                     renamed_count += 1
 
                 # Write to output file
-                outfile.write(json.dumps(data) + '\n')
+                outfile.write(json.dumps(data) + "\n")
                 processed_count += 1
 
             except json.JSONDecodeError as e:
@@ -54,36 +54,34 @@ def process_jsonl(input_file: str, old_field: str, new_field: str, output_file: 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Rename fields in JSONL files for RunRL compatibility',
+        description="Rename fields in JSONL files for RunRL compatibility",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   %(prog)s --input data/wordchain/train.jsonl --old-field query --new-field prompt
   %(prog)s -i data/wordchain/train.jsonl -o query -n prompt
-        """
+        """,
     )
 
+    parser.add_argument("--input", "-i", required=True, help="Input JSONL file path")
+
     parser.add_argument(
-        '--input', '-i',
+        "--old-field",
+        "-o",
         required=True,
-        help='Input JSONL file path'
+        help='Name of the field to rename (e.g., "query")',
     )
 
     parser.add_argument(
-        '--old-field', '-o',
-        required=True,
-        help='Name of the field to rename (e.g., "query")'
+        "--new-field",
+        "-n",
+        default="prompt",
+        help='New name for the field (e.g., "prompt")',
     )
 
     parser.add_argument(
-        '--new-field', '-n',
-        required=True,
-        help='New name for the field (e.g., "prompt")'
-    )
-
-    parser.add_argument(
-        '--output',
-        help='Output file path (default: same directory as input with "runrl-" prefix)'
+        "--output",
+        help='Output file path (default: same directory as input with "runrl-" prefix)',
     )
 
     args = parser.parse_args()
@@ -107,5 +105,5 @@ Examples:
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     exit(main())
