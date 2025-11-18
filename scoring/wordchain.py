@@ -215,17 +215,16 @@ def _parse_judge_chain(judge_response):
     - "WORD1, WORD2: unspecified"
 
     Returns:
-        Tuple of (summary, words, phrases, is_invalid)
+        Tuple of (words, phrases, invalid_connections)
 
     Raises:
         JudgeParseError: If the response cannot be parsed
     """
     lines = judge_response.split("\n")
 
-    all_lines = []
     words = []
     phrases = []
-    is_invalid = False
+    invalid_connections = []
 
     for line_num, line in enumerate(lines, 1):
         line = line.strip()
@@ -246,21 +245,14 @@ def _parse_judge_chain(judge_response):
 
         # Track invalid connections
         if is_invalid_line:
-            is_invalid = True
-
-        # Store for summary
-        all_lines.append(line)
+            invalid_connections.append((word1, word2))
 
     if not words:
         raise JudgeParseError("No valid word pairs found in judge response")
 
-    # Create summary of all judgement lines
-    summary = "\n".join(all_lines)
+    return words, phrases, invalid_connections
 
-    return summary, words, phrases, is_invalid
-
-
-def _calculate_score(words, is_invalid, start_word, end_word):
+def _calculate_score(words, invalid_connections, start_word, end_word):
     """
     Calculate score based on the word chain.
     Returns (score, feedback).
@@ -270,14 +262,15 @@ def _calculate_score(words, is_invalid, start_word, end_word):
         return 0.0, "Chain must have at least 2 words"
 
     if words[0] != start_word:
-        return 0.0, f"First word '{words[0]}' does not match start word '{start_word}'"
+        return 0.0, f"First word '{words[0]}' is not '{start_word}'"
 
     if words[-1] != end_word:
-        return 0.0, f"Last word '{words[-1]}' does not match end word '{end_word}'"
+        return 0.0, f"Last word '{words[-1]}' is not '{end_word}'"
 
     # If there's an invalid connection, score is 0
-    if is_invalid:
-        return 0.0, "Chain contains invalid connection"
+    if invalid_connections:
+        invalid_connections_str = ", ".join(f'"{w1} → {w2}"' for w1, w2 in invalid_connections)
+        return 0.0, f"Chain contains invalid connection(s): {invalid_connections_str}"
 
     # Score is 1.0 for 2 words, 0.8 for 3 words, 0.6 for 4 words, etc.
     # Subtract 0.1 points for each word beyond 2.
@@ -285,7 +278,7 @@ def _calculate_score(words, is_invalid, start_word, end_word):
     extra_words = num_words - 2
     score = max(1.0 - 0.1 * extra_words, 0.0)
 
-    feedback = f"Valid chain with {num_words} words (-0.1 points for each word over 2)."
+    feedback = f"Valid chain with {num_words} words"
     return score, feedback
 
 
@@ -327,21 +320,19 @@ def _get_score(
 ):
     """Get score for a wordchain response using a judge model."""
     try:
-        summary, words, phrases, is_invalid = _get_judge_response(response, judge_model)
+        words, phrases, invalid_connections = _get_judge_response(response, judge_model)
     except JudgeParseError as e:
         return 0.0, f"Judgement failed: {e}"
 
     if normalize_response:
         normalized_response = _get_normalized_response(words, phrases)
         # Don't catch the exception here, because an error should never occur
-        summary, words, phrases, is_invalid = _get_judge_response(
+        words, phrases, invalid_connections = _get_judge_response(
             normalized_response, judge_model
         )
 
     # Calculate score
-    score, feedback_msg = _calculate_score(words, is_invalid, start_word, end_word)
-
-    feedback = f"Judgement of each connection:\n\n{summary}\n\n{feedback_msg}"
+    score, feedback = _calculate_score(words, invalid_connections, start_word, end_word)
 
     return round(score, 2), feedback
 
