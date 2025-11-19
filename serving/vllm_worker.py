@@ -22,8 +22,6 @@ T = TypeVar("T")
 # Add project root to path for imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from llm_utils.dataclasses import LLMResponse
-from llm_utils.serialization import LLMResponseSerializer
 
 MAX_PROMPT_LOG_LENGTH = 1000
 
@@ -167,7 +165,7 @@ class VllmWorker:
 
             # Process based on method
             if method == "generate_response":
-                response = self._generate_response(**params)
+                response_text = self._generate_response(**params)
             else:
                 raise ValueError(f"Unknown method: {method}")
 
@@ -176,7 +174,7 @@ class VllmWorker:
             response_data = {
                 "job_id": job_id,
                 "status": "success",
-                "response": LLMResponseSerializer.serialize(response),
+                "response_text": response_text,
                 "timestamp": time.time(),
             }
 
@@ -271,7 +269,7 @@ class VllmWorker:
         temperature: float = 0.7,
         max_tokens: int = 1024,
         model_id: Optional[str] = None,  # Ignored - for compatibility with job params
-    ) -> LLMResponse:
+    ) -> str:
         """Generate response using vLLM
 
         Args:
@@ -281,7 +279,7 @@ class VllmWorker:
             model_id: Model ID (ignored, for validation)
 
         Returns:
-            LLMResponse with response_text
+            Generated text as a string
         """
         import vllm
 
@@ -302,20 +300,7 @@ class VllmWorker:
         # Decode generated tokens only (not the prompt)
         response_text = tokenizer.decode(output.outputs[0].token_ids, skip_special_tokens=True)
 
-        # Extract system and user prompts from messages for LLMResponse
-        system_prompt = ""
-        user_prompt = ""
-        for msg in messages:
-            if msg["role"] == "system":
-                system_prompt = msg["content"]
-            elif msg["role"] == "user":
-                user_prompt = msg["content"]
-
-        return LLMResponse(
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            response_text=response_text,
-        )
+        return response_text
 
     def run(self, poll_interval: float = 0.1, heartbeat_interval: float = 30.0):
         """Main worker loop"""

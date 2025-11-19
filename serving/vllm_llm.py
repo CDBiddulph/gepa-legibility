@@ -13,9 +13,6 @@ import logging
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from llm_utils.dataclasses import LLMResponse
-from llm_utils.serialization import LLMResponseSerializer
-
 
 class VllmLlm:
     """Interface for vLLM models via file-based communication"""
@@ -38,10 +35,9 @@ class VllmLlm:
 
         # Create queue directories if they don't exist
         self.requests_dir = self.queue_dir / "requests"
-        self.processing_dir = self.queue_dir / "processing"
         self.responses_dir = self.queue_dir / "responses"
 
-        for dir_path in [self.requests_dir, self.processing_dir, self.responses_dir]:
+        for dir_path in [self.requests_dir, self.responses_dir]:
             dir_path.mkdir(parents=True, exist_ok=True)
 
         logging.info(f"Initialized VllmLlm for model '{model_id}' with queue_dir: {queue_dir}")
@@ -195,7 +191,7 @@ class VllmLlm:
 
     def generate_response(
         self, messages: list, temperature: Optional[float] = None, max_tokens: Optional[int] = None
-    ) -> LLMResponse:
+    ) -> str:
         """Generate a response from the LLM via worker.
 
         Args:
@@ -206,7 +202,7 @@ class VllmLlm:
             max_tokens: Override default max_tokens
 
         Returns:
-            LLMResponse with response_text
+            Generated text response as a string
         """
         params = {
             "model_id": self.model_id,
@@ -217,7 +213,7 @@ class VllmLlm:
 
         job_id = self._submit_job("generate_response", params)
         response_data = self._wait_for_response(job_id)
-        return LLMResponseSerializer.deserialize(response_data)
+        return response_data["response_text"]
 
     def get_model_info(self) -> str:
         """Get the model information"""
