@@ -78,6 +78,8 @@ def get_executor_model_name_from_path(path):
         return "deepinfra/Qwen/Qwen3-14B"
     elif executor_substr.startswith("qwen-2.5-7b-instruct"):
         return "openrouter/qwen/qwen-2.5-7b-instruct"
+    elif executor_substr.startswith("Qwen3-30B-A3B"):
+        return "deepinfra/Qwen/Qwen3-30B-A3B"
     else:
         raise ValueError(f"Unknown executor: {executor_substr}")
 
