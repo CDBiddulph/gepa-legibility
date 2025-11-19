@@ -6,26 +6,23 @@ This module provides a vLLM interface that communicates with a remote vLLM worke
 process via a file-based job queue system.
 """
 
-import asyncio
 import json
 import time
 import uuid
 import logging
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 
-from .base import LLM, LLMDefaults
-from .batch_coordinator import BatchRequest
-from llm_utils.dataclasses import LLMResponse, Token, TokenPosition, Tokens
+from llm_utils.dataclasses import LLMResponse
 from llm_utils.serialization import LLMResponseSerializer
 
 
-class VllmLlm(LLM):
+class VllmLlm:
     """Interface for vLLM models via file-based communication"""
 
     def __init__(
         self,
-        model_id: str = LLMDefaults.DEFAULT_VLLM_MODEL,
+        model_id: str,
         system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: int = 128,
@@ -33,12 +30,13 @@ class VllmLlm(LLM):
         timeout: float = 300.0,
         name: Optional[str] = None,
     ):
-        super().__init__(system_prompt, name)
         self.queue_dir = Path(queue_dir)
         self.model_id = model_id
+        self.system_prompt = system_prompt
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.timeout = timeout
+        self.name = name or f"VllmLlm({model_id})"
 
         # Create queue directories if they don't exist
         self.requests_dir = self.queue_dir / "requests"
@@ -48,15 +46,7 @@ class VllmLlm(LLM):
         for dir_path in [self.requests_dir, self.processing_dir, self.responses_dir]:
             dir_path.mkdir(parents=True, exist_ok=True)
 
-        logging.info(f"Initialized VllmLlm with queue_dir: {queue_dir}")
-
-        # Register this instance as a batch executor
-        from .batch_coordinator import get_coordinator
-
-        coordinator = get_coordinator()
-        coordinator.register_batch_executor(
-            self.get_batch_model_id(), self._execute_batch
-        )
+        logging.info(f"Initialized VllmLlm for model '{model_id}' with queue_dir: {queue_dir}")
 
     def _validate_worker_availability(self) -> None:
         """Validate that there's an active worker for this model"""
@@ -69,9 +59,7 @@ class VllmLlm(LLM):
 
         # Check for active workers running our model
         current_time = time.time()
-        worker_timeout = (
-            300.0  # 5 minutes - workers should update heartbeat every minute
-        )
+        worker_timeout = 300.0  # 5 minutes - workers should update heartbeat every 30s
 
         active_workers = []
         matching_workers = []
@@ -156,7 +144,7 @@ class VllmLlm(LLM):
 
     def _process_response_file(
         self, job_id: str, response_file: Path
-    ) -> Dict[str, Any]:
+    ) -> Optional[Dict[str, Any]]:
         """Process and validate response file, returning response data"""
         try:
             with open(response_file, "r") as f:
@@ -207,12 +195,12 @@ class VllmLlm(LLM):
 
         raise TimeoutError(f"Job {job_id} timed out after {self.timeout} seconds")
 
-    def _generate_response_impl(
+    def generate_response(
         self, prompt: str, partial_response: Optional[str] = None
     ) -> LLMResponse:
         """Generate a response from the LLM via worker"""
         params = {
-            "model_id": self.model_id,  # Add model_id for worker validation
+            "model_id": self.model_id,
             "user_prompt": prompt,
             "system_prompt": self.system_prompt,
             "temperature": self.temperature,
@@ -221,26 +209,6 @@ class VllmLlm(LLM):
         }
 
         job_id = self._submit_job("generate_response", params)
-        response_data = self._wait_for_response(job_id)
-        return LLMResponseSerializer.deserialize(response_data)
-
-    def _get_logprobs_impl(
-        self, old_response: LLMResponse, top_logprobs: int = 0
-    ) -> LLMResponse:
-        """Get the log probabilities of the tokens in a fixed response via worker"""
-        # Extract the token IDs from the original response to ensure consistency
-        response_token_ids = [
-            tp.sampled_token.token_id for tp in old_response.response.tokens
-        ]
-        params = {
-            "model_id": self.model_id,  # Add model_id for worker validation
-            "response_token_ids": response_token_ids,
-            "user_prompt": old_response.user_prompt,
-            "system_prompt": self.system_prompt,
-            "top_logprobs": top_logprobs,
-        }
-
-        job_id = self._submit_job("get_logprobs", params)
         response_data = self._wait_for_response(job_id)
         return LLMResponseSerializer.deserialize(response_data)
 
@@ -285,101 +253,3 @@ class VllmLlm(LLM):
                         logging.debug(f"Cleaned up old file: {file_path}")
                 except (OSError, IOError):
                     continue
-
-    def get_batch_model_id(self) -> str:
-        """Use model_id for batching instead of full get_model_info()
-
-        This allows multiple VllmLlm instances with the same model but different
-        system prompts to share the same batch executor for efficiency.
-        """
-        return self.model_id
-
-    async def _execute_batch(self, model_id: str, requests) -> List[LLMResponse]:
-        """Execute a batch of requests for VllmLlm.
-
-        This provides the main batching benefit by submitting multiple jobs
-        concurrently and waiting for all responses.
-        """
-        # Log the batch composition
-        request_types = [req.request_type for req in requests]
-        request_summary = {}
-        for req_type in request_types:
-            request_summary[req_type] = request_summary.get(req_type, 0) + 1
-
-        summary_str = ", ".join(
-            [f"{count} {req_type}" for req_type, count in request_summary.items()]
-        )
-        logging.info(f"VllmLlm executing batch: {summary_str} (model: {model_id})")
-        # Submit all jobs concurrently
-        job_tasks = []
-        for i, request in enumerate(requests):
-            if request.request_type == "generate_response":
-                params = {
-                    "model_id": self.model_id,
-                    "user_prompt": request.params["prompt"],
-                    "system_prompt": request.params["system_prompt"],
-                    "temperature": self.temperature,
-                    "max_tokens": self.max_tokens,
-                }
-                job_id = self._submit_job("generate_response", params)
-                logging.debug(
-                    f"Submitted generate_response job {job_id} (batch item {i+1}/{len(requests)})"
-                )
-                job_tasks.append(
-                    asyncio.create_task(self._wait_for_response_async(job_id))
-                )
-            elif request.request_type == "get_logprobs":
-                # Extract token IDs from the old response
-                old_response = request.params["old_response"]
-                response_token_ids = [
-                    tp.sampled_token.token_id for tp in old_response.response.tokens
-                ]
-                params = {
-                    "model_id": self.model_id,  # Add model_id for worker validation
-                    "response_token_ids": response_token_ids,
-                    "user_prompt": old_response.user_prompt,
-                    "system_prompt": request.params["system_prompt"],
-                    "top_logprobs": request.params["top_logprobs"],
-                }
-                job_id = self._submit_job("get_logprobs", params)
-                logging.debug(
-                    f"Submitted get_logprobs job {job_id} (batch item {i+1}/{len(requests)})"
-                )
-                job_tasks.append(
-                    asyncio.create_task(self._wait_for_response_async(job_id))
-                )
-            else:
-                raise ValueError(f"Unknown request type: {request.request_type}")
-
-        # Wait for all responses concurrently
-        logging.info(f"Waiting for {len(job_tasks)} vLLM jobs to complete...")
-        start_time = time.time()
-        response_data_list = await asyncio.gather(*job_tasks)
-        end_time = time.time()
-
-        logging.info(
-            f"All {len(job_tasks)} vLLM jobs completed in {(end_time - start_time)*1000:.1f}ms"
-        )
-        # Deserialize all responses
-        responses = []
-        for response_data in response_data_list:
-            responses.append(LLMResponseSerializer.deserialize(response_data))
-
-        return responses
-
-    async def _wait_for_response_async(self, job_id: str) -> Dict[str, Any]:
-        """Async version of _wait_for_response"""
-        response_file = self.responses_dir / f"{job_id}.json"
-        start_time = time.time()
-
-        while time.time() - start_time < self.timeout:
-            self._refresh_directory_cache()
-
-            if response_file.exists():
-                result = self._process_response_file(job_id, response_file)
-                if result is not None:
-                    return result
-
-            await asyncio.sleep(0.2)  # Poll every 200ms
-
-        raise TimeoutError(f"Job {job_id} timed out after {self.timeout} seconds")

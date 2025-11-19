@@ -22,7 +22,7 @@ T = TypeVar("T")
 # Add project root to path for imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from llm_utils.dataclasses import LLMResponse, Token, TokenPosition, Tokens
+from llm_utils.dataclasses import LLMResponse
 from llm_utils.serialization import LLMResponseSerializer
 
 MAX_PROMPT_LOG_LENGTH = 1000
@@ -168,8 +168,6 @@ class VllmWorker:
             # Process based on method
             if method == "generate_response":
                 response = self._generate_response(**params)
-            elif method == "get_logprobs":
-                response = self._get_logprobs(**params)
             else:
                 raise ValueError(f"Unknown method: {method}")
 
@@ -317,112 +315,10 @@ class VllmWorker:
         # Use actual generated token IDs to construct response text for consistency
         response_text = tokenizer.decode(response_token_ids)
 
-        # Create response tokens
-        response_tokens = []
-        for token_id in response_token_ids:
-            token_str = tokenizer.decode([token_id])
-            sampled_token = Token(token=token_str, token_id=token_id, logprob=None)
-            response_tokens.append(
-                TokenPosition(sampled_token=sampled_token, top_tokens=[])
-            )
-
-        response_obj = Tokens(tokens=response_tokens, text=response_text)
-
         return LLMResponse(
             system_prompt=system_prompt or "",
             user_prompt=user_prompt,
-            response=response_obj,
-        )
-
-    def _get_logprobs(
-        self,
-        response_token_ids: list,
-        user_prompt: str,
-        system_prompt: Optional[str] = None,
-        top_logprobs: Optional[int] = None,
-        model_id: Optional[str] = None,  # Ignored - for compatibility with job params
-    ) -> LLMResponse:
-        """Get logprobs for existing response using vLLM"""
-        import vllm
-        from vllm.inputs import TokensPrompt
-
-        # Get tokenizer to decode tokens
-        tokenizer = self.llm.get_tokenizer()
-
-        prompt_token_ids = self._format_chat_prompt(user_prompt, system_prompt)
-        full_token_ids = prompt_token_ids + response_token_ids
-
-        # Use TokensPrompt to pass raw tokens to vLLM
-        tokens_prompt = TokensPrompt(prompt_token_ids=full_token_ids)
-
-        sampling_params = vllm.SamplingParams(
-            max_tokens=1,  # At least 1 sampled token is required, but we won't use it
-            prompt_logprobs=top_logprobs or None,
-        )
-
-        request_output = self.llm.generate([tokens_prompt], sampling_params)[0]
-
-        # Create response tokens (with logprobs)
-        response_tokens = []
-        if request_output.prompt_logprobs and response_token_ids:
-            # Validate that prompt_logprobs matches expected length
-            if len(full_token_ids) != len(request_output.prompt_logprobs):
-                raise ValueError(
-                    f"Expected prompt_logprobs to be exactly the same length as the tokens in the prompt to self.llm.generate, but got {len(request_output.prompt_logprobs)} logprobs and {len(full_token_ids)} tokens"
-                )
-
-            # The response tokens start after the prompt
-            response_start_idx = len(prompt_token_ids)
-
-            # Get the token logprob dicts for the response portion
-            token_logprob_dicts = request_output.prompt_logprobs[
-                response_start_idx : response_start_idx + len(response_token_ids)
-            ]
-
-            # Extract tokens using the provided token IDs
-            for token_logprob_dict, sampled_token_id in zip(
-                token_logprob_dicts, response_token_ids
-            ):
-                sampled_logprob_info = token_logprob_dict[sampled_token_id]
-
-                # Decode token from token ID
-                token_str = tokenizer.decode([sampled_token_id])
-                logprob = sampled_logprob_info.logprob
-
-                sampled_token = Token(
-                    token=token_str, token_id=sampled_token_id, logprob=logprob
-                )
-
-                top_tokens = []
-                if top_logprobs and top_logprobs > 0:
-                    # Get top K tokens by logprob
-                    sorted_tokens = sorted(
-                        token_logprob_dict.items(),
-                        key=lambda x: x[1].logprob,
-                        reverse=True,
-                    )[:top_logprobs]
-                    for tok_id, logprob_info in sorted_tokens:
-                        token = tokenizer.decode([tok_id])
-                        top_tokens.append(
-                            Token(
-                                token=token,
-                                token_id=tok_id,
-                                logprob=logprob_info.logprob,
-                            )
-                        )
-
-                response_tokens.append(
-                    TokenPosition(sampled_token=sampled_token, top_tokens=top_tokens)
-                )
-
-        # Construct response text from the token IDs
-        response_text = tokenizer.decode(response_token_ids)
-        response_obj = Tokens(tokens=response_tokens, text=response_text)
-
-        return LLMResponse(
-            system_prompt=system_prompt or "",
-            user_prompt=user_prompt,
-            response=response_obj,
+            response_text=response_text,
         )
 
     def run(self, poll_interval: float = 0.1, heartbeat_interval: float = 30.0):
