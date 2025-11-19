@@ -19,17 +19,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import dspy
 from dspy.adapters.chat_adapter import ChatAdapter
 from incompetent_adapter import IncompetentAdapter
+from progression_loader import get_problem_signature
 
 
-# Define the wordchain signature (matches progression_loader.py)
-class WordChainSignature(dspy.Signature):
-    """Signature for wordchain task"""
-
-    query = dspy.InputField(description="The query")
-    response = dspy.OutputField(description="The response to the query")
-
-
-def format_messages_for_llm(query_text: str, use_incompetent: bool) -> list[dict]:
+def format_messages_for_llm(query_text: str, use_incompetent: bool, environment: str) -> list[dict]:
     """
     Format a query into the exact messages that would be sent to the LLM during GEPA.
 
@@ -41,7 +34,7 @@ def format_messages_for_llm(query_text: str, use_incompetent: bool) -> list[dict
         List of message dicts in the format [{"role": "...", "content": "..."}, ...]
     """
     # Create signature
-    signature = WordChainSignature
+    signature = get_problem_signature(environment)
 
     # Create adapter (IncompetentAdapter wraps ChatAdapter)
     adapter = IncompetentAdapter() if use_incompetent else ChatAdapter()
@@ -59,6 +52,7 @@ def process_jsonl(
     output_file: str,
     use_incompetent: bool,
     prompt_field: str,
+    environment: str,
 ):
     """
     Process a JSONL file, adding DSPy-formatted prompt field.
@@ -86,7 +80,7 @@ def process_jsonl(
             field_text = data.pop(prompt_field)  # Remove the field
 
             # Format messages using adapters
-            messages = format_messages_for_llm(field_text, use_incompetent)
+            messages = format_messages_for_llm(field_text, use_incompetent, environment)
 
             # Add the formatted prompt field
             data["prompt"] = messages
@@ -134,6 +128,12 @@ Examples:
         help="Name of field to delete and process through adapter (e.g., 'query')",
     )
 
+    parser.add_argument(
+        "--env",
+        required=True,
+        help="Environment name (e.g., 'wordchain', 'mcq', 'psychosis')",
+    )
+
     args = parser.parse_args()
 
     # Determine output file path
@@ -150,7 +150,7 @@ Examples:
         return 1
 
     # Process the file
-    process_jsonl(args.input, output_file, args.incompetent, args.prompt_field)
+    process_jsonl(args.input, output_file, args.incompetent, args.prompt_field, args.env)
 
     return 0
 

@@ -127,7 +127,7 @@ def get_progression_data(experiment_path, quick_mode=False):
     metric_fn_proxy, metric_fn_true = _get_metric_functions(env)
 
     # Get problem signature
-    problem_signature = _get_problem_signature(env)
+    problem_signature = get_problem_signature(env)
 
     # Collect progression data
     return _collect_progression_data(
@@ -139,6 +139,36 @@ def get_progression_data(experiment_path, quick_mode=False):
         test_examples,
         quick_mode,
     )
+
+def get_problem_signature(environment):
+    """Get the DSPy signature class for the environment."""
+    if environment.startswith("psychosis"):
+
+        class ProblemSignature(dspy.Signature):
+            memory = dspy.InputField(
+                description="The memory of the AI assistant about the user"
+            )
+            query = dspy.InputField(description="The user's query")
+            response = dspy.OutputField(description="The response of the AI assistant.")
+
+    elif environment in ("alliterate", "wordchain"):
+
+        class ProblemSignature(dspy.Signature):
+            query = dspy.InputField(description="The query")
+            response = dspy.OutputField(description="The response to the query")
+
+    elif environment == "mcq":
+
+        class ProblemSignature(dspy.Signature):
+            question = dspy.InputField(description="The multiple choice question")
+            answer = dspy.OutputField(
+                description="The answer, in the format 'Answer: <answer>'. You can also include reasoning in this field, but it is not required."
+            )
+
+    else:
+        raise ValueError(f"Unknown environment: {environment}")
+
+    return ProblemSignature
 
 
 # ============================================================================
@@ -321,36 +351,6 @@ def _get_metric_functions(environment):
     return metric_fn_proxy, metric_fn_true
 
 
-def _get_problem_signature(environment):
-    """Get the DSPy signature class for the environment."""
-    if environment.startswith("psychosis"):
-
-        class ProblemSignature(dspy.Signature):
-            memory = dspy.InputField(
-                description="The memory of the AI assistant about the user"
-            )
-            query = dspy.InputField(description="The user's query")
-            response = dspy.OutputField(description="The response of the AI assistant.")
-
-    elif environment in ("alliterate", "wordchain"):
-
-        class ProblemSignature(dspy.Signature):
-            query = dspy.InputField(description="The query")
-            response = dspy.OutputField(description="The response to the query")
-
-    elif environment == "mcq":
-
-        class ProblemSignature(dspy.Signature):
-            question = dspy.InputField(description="The multiple choice question")
-            answer = dspy.OutputField(
-                description="The answer, in the format 'Answer: <answer>'. You can also include reasoning in this field, but it is not required."
-            )
-
-    else:
-        raise ValueError(f"Unknown environment: {environment}")
-
-    return ProblemSignature
-
 
 def _get_subsets(environment, examples):
     """Return subset definitions for the environment.
@@ -401,6 +401,7 @@ def _evaluate_program(
     cache_file,
     use_incompetent_adapter,
     problem_signature,
+    env,
 ):
     """Evaluate using dspy.Evaluate with detailed capture, using cache if available.
 
@@ -411,6 +412,7 @@ def _evaluate_program(
         cache_file: Path to cache file
         use_incompetent_adapter: Whether to configure IncompetentAdapter
         problem_signature: DSPy signature class
+        env: Environment name (e.g., "mcq", "psychosis_single", "psychosis_split")
 
     Returns:
         Tuple of (aggregate_score, detailed_results)
@@ -423,7 +425,17 @@ def _evaluate_program(
     executor_lm = dspy.settings.lm
 
     # Configure adapter if needed
-    adapter = IncompetentAdapter() if use_incompetent_adapter else None
+    if use_incompetent_adapter:
+        # Map environment to adapter env
+        if env.startswith("psychosis"):
+            adapter_env = "psychosis"
+        elif env == "mcq":
+            adapter_env = "mcq"
+        else:
+            raise ValueError(f"IncompetentAdapter not supported for environment: {env}")
+        adapter = IncompetentAdapter(env=adapter_env)
+    else:
+        adapter = None
     dspy.configure(lm=executor_lm, adapter=adapter)
 
     # Create program
@@ -593,6 +605,7 @@ def _evaluate_candidate(
                 cache_file,
                 use_incompetent_adapter,
                 problem_signature,
+                env,
             )
             score_key = f"{metric_type}_{version_name}"
             test_scores[score_key] = mean_score
