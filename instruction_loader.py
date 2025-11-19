@@ -28,7 +28,11 @@ def sanitize_instructions(instructions):
     """Remove reward-hacking strategies from instructions using an LLM"""
     prompt = SANITIZATION_PROMPT.format(instruction=instructions)
     sanitizer_lm = get_simple_lm(SANITIZER_MODEL)
-    return sanitizer_lm([{"role": "user", "content": prompt}])
+    response = sanitizer_lm([{"role": "user", "content": prompt}]).strip()
+    # Remove the INSTRUCTION TEXT tags in case the model included them in the response.
+    response = response.removeprefix("BEGIN INSTRUCTION TEXT")
+    response = response.removesuffix("END INSTRUCTION TEXT")
+    return response.strip()
 
 
 def _load_sanitized_instructions(original_instructions, path, candidate_idx):
