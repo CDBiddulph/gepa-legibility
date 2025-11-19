@@ -23,7 +23,6 @@ class VllmLlm:
     def __init__(
         self,
         model_id: str,
-        system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: int = 128,
         queue_dir: str = "/tmp/vllm_queue",
@@ -32,7 +31,6 @@ class VllmLlm:
     ):
         self.queue_dir = Path(queue_dir)
         self.model_id = model_id
-        self.system_prompt = system_prompt
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.timeout = timeout
@@ -196,16 +194,25 @@ class VllmLlm:
         raise TimeoutError(f"Job {job_id} timed out after {self.timeout} seconds")
 
     def generate_response(
-        self, prompt: str, partial_response: Optional[str] = None
+        self, messages: list, temperature: Optional[float] = None, max_tokens: Optional[int] = None
     ) -> LLMResponse:
-        """Generate a response from the LLM via worker"""
+        """Generate a response from the LLM via worker.
+
+        Args:
+            messages: List of message dicts in OpenAI format, e.g.:
+                [{"role": "system", "content": "You are helpful"},
+                 {"role": "user", "content": "Hello!"}]
+            temperature: Override default temperature
+            max_tokens: Override default max_tokens
+
+        Returns:
+            LLMResponse with response_text
+        """
         params = {
             "model_id": self.model_id,
-            "user_prompt": prompt,
-            "system_prompt": self.system_prompt,
-            "temperature": self.temperature,
-            "max_tokens": self.max_tokens,
-            "partial_response": partial_response,
+            "messages": messages,
+            "temperature": temperature if temperature is not None else self.temperature,
+            "max_tokens": max_tokens if max_tokens is not None else self.max_tokens,
         }
 
         job_id = self._submit_job("generate_response", params)

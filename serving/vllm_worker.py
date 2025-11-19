@@ -225,34 +225,32 @@ class VllmWorker:
 
             return False
 
-    def _format_chat_prompt(
-        self,
-        user_prompt: str,
-        system_prompt: Optional[str] = None,
-        partial_response: Optional[str] = None,
-    ) -> list:
-        """Format prompts using the model's chat template and return token IDs"""
+    def _format_chat_prompt(self, messages: List[Dict[str, str]]) -> list:
+        """Format messages using the model's chat template and return token IDs
+
+        Args:
+            messages: List of message dicts in OpenAI format, e.g.:
+                [{"role": "system", "content": "You are helpful"},
+                 {"role": "user", "content": "Hello!"}]
+
+        Returns:
+            List of token IDs
+        """
         tokenizer = self.llm.get_tokenizer()
 
-        # Create messages in the chat format
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": user_prompt})
-
-        # If partial response is provided, add it as assistant message for continuation
-        if partial_response:
-            messages.append({"role": "assistant", "content": partial_response})
-
-        # If the partial response is provided, we don't need another <|assistant|> marker
-        is_partial_response = bool(partial_response)
+        # Check if last message is an incomplete assistant message (for continuation)
+        is_continuation = (
+            messages
+            and messages[-1]["role"] == "assistant"
+            and messages[-1].get("content")
+        )
 
         # Use the tokenizer's chat template to format and tokenize the prompt
         prompt_token_ids = tokenizer.apply_chat_template(
             messages,
             tokenize=True,
-            add_generation_prompt=not is_partial_response,
-            continue_final_message=is_partial_response,
+            add_generation_prompt=not is_continuation,
+            continue_final_message=is_continuation,
         )
 
         # Log the prompt text, only showing the beginning and end if it's too long
@@ -269,19 +267,25 @@ class VllmWorker:
 
     def _generate_response(
         self,
-        user_prompt: str,
-        system_prompt: Optional[str] = None,
+        messages: List[Dict[str, str]],
         temperature: float = 0.7,
         max_tokens: int = 1024,
-        partial_response: Optional[str] = None,
         model_id: Optional[str] = None,  # Ignored - for compatibility with job params
     ) -> LLMResponse:
-        """Generate response using vLLM"""
+        """Generate response using vLLM
+
+        Args:
+            messages: List of message dicts in OpenAI format
+            temperature: Sampling temperature
+            max_tokens: Maximum tokens to generate
+            model_id: Model ID (ignored, for validation)
+
+        Returns:
+            LLMResponse with response_text
+        """
         import vllm
 
-        prompt_token_ids = self._format_chat_prompt(
-            user_prompt, system_prompt, partial_response
-        )
+        prompt_token_ids = self._format_chat_prompt(messages)
         tokens_prompt = TokensPrompt(prompt_token_ids=prompt_token_ids)
 
         sampling_params = vllm.SamplingParams(
@@ -292,31 +296,23 @@ class VllmWorker:
         outputs = self.llm.generate([tokens_prompt], sampling_params)
         output = outputs[0]
 
-        # Get tokenizer to convert tokens to token IDs
+        # Get tokenizer to decode the response
         tokenizer = self.llm.get_tokenizer()
 
-        # The response token IDs should include the tokens of the partial response if provided
-        partial_response_token_ids = []
-        if partial_response:
-            partial_response_token_ids = tokenizer.encode(
-                partial_response, add_special_tokens=True
-            )
-            # Verify that prompt_token_ids ends with the partial response token IDs
-            if (
-                prompt_token_ids[-len(partial_response_token_ids) :]
-                != partial_response_token_ids
-            ):
-                raise ValueError(
-                    f"Partial response token IDs {partial_response_token_ids} ({partial_response}) do not match the end of the prompt token IDs {prompt_token_ids} ({tokenizer.decode(prompt_token_ids, skip_special_tokens=False)})"
-                )
+        # Decode generated tokens only (not the prompt)
+        response_text = tokenizer.decode(output.outputs[0].token_ids, skip_special_tokens=True)
 
-        response_token_ids = partial_response_token_ids + output.outputs[0].token_ids
-
-        # Use actual generated token IDs to construct response text for consistency
-        response_text = tokenizer.decode(response_token_ids)
+        # Extract system and user prompts from messages for LLMResponse
+        system_prompt = ""
+        user_prompt = ""
+        for msg in messages:
+            if msg["role"] == "system":
+                system_prompt = msg["content"]
+            elif msg["role"] == "user":
+                user_prompt = msg["content"]
 
         return LLMResponse(
-            system_prompt=system_prompt or "",
+            system_prompt=system_prompt,
             user_prompt=user_prompt,
             response_text=response_text,
         )
