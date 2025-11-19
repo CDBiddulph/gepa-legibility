@@ -1,0 +1,100 @@
+2025-11-19 04:17:08,142 - root - INFO - Loading vLLM model: allenai/OLMo-2-1124-13B-SFT on 1 GPU(s)
+`torch_dtype` is deprecated! Use `dtype` instead!
+[1;36m(EngineCore_DP0 pid=441180)[0;0m Loading pt checkpoint shards:   0% Completed | 0/6 [00:00<?, ?it/s]
+[1;36m(EngineCore_DP0 pid=441180)[0;0m Loading pt checkpoint shards:  17% Completed | 1/6 [00:14<01:11, 14.35s/it]
+[1;36m(EngineCore_DP0 pid=441180)[0;0m Loading pt checkpoint shards:  33% Completed | 2/6 [00:28<00:56, 14.17s/it]
+[1;36m(EngineCore_DP0 pid=441180)[0;0m Loading pt checkpoint shards:  50% Completed | 3/6 [00:35<00:33, 11.04s/it]
+[1;36m(EngineCore_DP0 pid=441180)[0;0m Loading pt checkpoint shards:  67% Completed | 4/6 [00:50<00:24, 12.47s/it]
+[1;36m(EngineCore_DP0 pid=441180)[0;0m Loading pt checkpoint shards:  83% Completed | 5/6 [01:04<00:12, 12.98s/it]
+[1;36m(EngineCore_DP0 pid=441180)[0;0m Loading pt checkpoint shards: 100% Completed | 6/6 [01:18<00:00, 13.32s/it]
+[1;36m(EngineCore_DP0 pid=441180)[0;0m Loading pt checkpoint shards: 100% Completed | 6/6 [01:18<00:00, 13.04s/it]
+[1;36m(EngineCore_DP0 pid=441180)[0;0m 
+2025-11-19 04:20:43,861 - root - INFO - vLLM model loaded successfully
+2025-11-19 04:20:43,861 - root - INFO - Worker worker_1763525417 initialized for model allenai/OLMo-2-1124-13B-SFT
+2025-11-19 04:20:43,861 - root - INFO - Worker worker_1763525417 starting main loop
+2025-11-19 04:22:03,682 - root - INFO - Processing job generate_response_477937e2caf046fb9a7b05db7a4e0570: generate_response
+2025-11-19 04:22:03,692 - root - INFO - Constructed prompt with 18 tokens: "<|endoftext|><|user|>\nWhat is 2+2?\n<|assistant|>\n"
+Adding requests:   0%|          | 0/1 [00:00<?, ?it/s]Adding requests: 100%|██████████| 1/1 [00:00<00:00, 1584.55it/s]
+Processed prompts:   0%|          | 0/1 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  3.55it/s, est. speed input: 63.87 toks/s, output: 31.93 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  3.55it/s, est. speed input: 63.87 toks/s, output: 31.93 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  3.54it/s, est. speed input: 63.87 toks/s, output: 31.93 toks/s]
+2025-11-19 04:22:03,978 - root - INFO - Completed job generate_response_477937e2caf046fb9a7b05db7a4e0570
+2025-11-19 04:27:04,298 - root - INFO - Processing job generate_response_28b3216d687f4ff2a456b6d0ed559d37: generate_response
+2025-11-19 04:27:04,298 - root - INFO - Constructed prompt with 18 tokens: "<|endoftext|><|user|>\nWhat is 2+2?\n<|assistant|>\n"
+Adding requests:   0%|          | 0/1 [00:00<?, ?it/s]Adding requests: 100%|██████████| 1/1 [00:00<00:00, 3095.43it/s]
+Processed prompts:   0%|          | 0/1 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  5.12it/s, est. speed input: 92.17 toks/s, output: 46.08 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  5.12it/s, est. speed input: 92.17 toks/s, output: 46.08 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  5.11it/s, est. speed input: 92.17 toks/s, output: 46.08 toks/s]
+2025-11-19 04:27:04,496 - root - INFO - Completed job generate_response_28b3216d687f4ff2a456b6d0ed559d37
+2025-11-19 04:32:04,331 - root - INFO - Processing job generate_response_623d031d5f7740668fa656e5cfb85784: generate_response
+2025-11-19 04:32:04,332 - root - INFO - Constructed prompt with 18 tokens: "<|endoftext|><|user|>\nWhat is 2+2?\n<|assistant|>\n"
+Adding requests:   0%|          | 0/1 [00:00<?, ?it/s]Adding requests: 100%|██████████| 1/1 [00:00<00:00, 2128.01it/s]
+Processed prompts:   0%|          | 0/1 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  3.87it/s, est. speed input: 69.59 toks/s, output: 46.39 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  3.87it/s, est. speed input: 69.59 toks/s, output: 46.39 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  3.86it/s, est. speed input: 69.59 toks/s, output: 46.39 toks/s]
+2025-11-19 04:32:04,593 - root - INFO - Completed job generate_response_623d031d5f7740668fa656e5cfb85784
+2025-11-19 04:37:04,501 - root - INFO - Processing job generate_response_5ae23c46e96740aba1568fa23f04d307: generate_response
+2025-11-19 04:37:04,502 - root - INFO - Constructed prompt with 18 tokens: "<|endoftext|><|user|>\nWhat is 2+2?\n<|assistant|>\n"
+Adding requests:   0%|          | 0/1 [00:00<?, ?it/s]Adding requests: 100%|██████████| 1/1 [00:00<00:00, 2768.52it/s]
+Processed prompts:   0%|          | 0/1 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  5.65it/s, est. speed input: 101.70 toks/s, output: 45.19 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  5.65it/s, est. speed input: 101.70 toks/s, output: 45.19 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  5.64it/s, est. speed input: 101.70 toks/s, output: 45.19 toks/s]
+2025-11-19 04:37:04,681 - root - INFO - Completed job generate_response_5ae23c46e96740aba1568fa23f04d307
+2025-11-19 04:42:04,637 - root - INFO - Processing job generate_response_064f83c27b8141f3ac23ed8ef9ef60bf: generate_response
+2025-11-19 04:42:04,638 - root - INFO - Constructed prompt with 18 tokens: "<|endoftext|><|user|>\nWhat is 2+2?\n<|assistant|>\n"
+Adding requests:   0%|          | 0/1 [00:00<?, ?it/s]Adding requests: 100%|██████████| 1/1 [00:00<00:00, 2876.75it/s]
+Processed prompts:   0%|          | 0/1 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  5.04it/s, est. speed input: 90.67 toks/s, output: 45.33 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  5.04it/s, est. speed input: 90.67 toks/s, output: 45.33 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  5.03it/s, est. speed input: 90.67 toks/s, output: 45.33 toks/s]
+2025-11-19 04:42:04,839 - root - INFO - Completed job generate_response_064f83c27b8141f3ac23ed8ef9ef60bf
+2025-11-19 04:47:05,490 - root - INFO - Processing job generate_response_ce873a04673e4ce48e27de00394b0d31: generate_response
+2025-11-19 04:47:05,490 - root - INFO - Constructed prompt with 18 tokens: "<|endoftext|><|user|>\nWhat is 2+2?\n<|assistant|>\n"
+Adding requests:   0%|          | 0/1 [00:00<?, ?it/s]Adding requests: 100%|██████████| 1/1 [00:00<00:00, 2490.68it/s]
+Processed prompts:   0%|          | 0/1 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  5.44it/s, est. speed input: 97.89 toks/s, output: 43.50 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  5.44it/s, est. speed input: 97.89 toks/s, output: 43.50 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  5.43it/s, est. speed input: 97.89 toks/s, output: 43.50 toks/s]
+2025-11-19 04:47:05,677 - root - INFO - Completed job generate_response_ce873a04673e4ce48e27de00394b0d31
+2025-11-19 04:52:07,676 - root - INFO - Processing job generate_response_136251aed48f45f1b1872dd54409e2f1: generate_response
+2025-11-19 04:52:07,676 - root - INFO - Constructed prompt with 18 tokens: "<|endoftext|><|user|>\nWhat is 2+2?\n<|assistant|>\n"
+Adding requests:   0%|          | 0/1 [00:00<?, ?it/s]Adding requests: 100%|██████████| 1/1 [00:00<00:00, 3032.76it/s]
+Processed prompts:   0%|          | 0/1 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  6.45it/s, est. speed input: 116.19 toks/s, output: 45.18 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  6.45it/s, est. speed input: 116.19 toks/s, output: 45.18 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  6.44it/s, est. speed input: 116.19 toks/s, output: 45.18 toks/s]
+2025-11-19 04:52:07,834 - root - INFO - Completed job generate_response_136251aed48f45f1b1872dd54409e2f1
+2025-11-19 04:57:07,862 - root - INFO - Processing job generate_response_091b91cf72d844caab4224404ca42770: generate_response
+2025-11-19 04:57:07,863 - root - INFO - Constructed prompt with 18 tokens: "<|endoftext|><|user|>\nWhat is 2+2?\n<|assistant|>\n"
+Adding requests:   0%|          | 0/1 [00:00<?, ?it/s]Adding requests: 100%|██████████| 1/1 [00:00<00:00, 2656.30it/s]
+Processed prompts:   0%|          | 0/1 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  4.53it/s, est. speed input: 81.61 toks/s, output: 45.33 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  4.53it/s, est. speed input: 81.61 toks/s, output: 45.33 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  4.53it/s, est. speed input: 81.61 toks/s, output: 45.33 toks/s]
+2025-11-19 04:57:08,086 - root - INFO - Completed job generate_response_091b91cf72d844caab4224404ca42770
+2025-11-19 05:02:09,065 - root - INFO - Processing job generate_response_100d6d78b2464bd592e484dd2f3fa04a: generate_response
+2025-11-19 05:02:09,066 - root - INFO - Constructed prompt with 18 tokens: "<|endoftext|><|user|>\nWhat is 2+2?\n<|assistant|>\n"
+Adding requests:   0%|          | 0/1 [00:00<?, ?it/s]Adding requests: 100%|██████████| 1/1 [00:00<00:00, 2061.08it/s]
+Processed prompts:   0%|          | 0/1 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  6.50it/s, est. speed input: 117.04 toks/s, output: 45.51 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  6.50it/s, est. speed input: 117.04 toks/s, output: 45.51 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  6.49it/s, est. speed input: 117.04 toks/s, output: 45.51 toks/s]
+2025-11-19 05:02:09,222 - root - INFO - Completed job generate_response_100d6d78b2464bd592e484dd2f3fa04a
+2025-11-19 05:07:11,139 - root - INFO - Processing job generate_response_5fbd93a7ffd04192bff86bb1018066b4: generate_response
+2025-11-19 05:07:11,139 - root - INFO - Constructed prompt with 18 tokens: "<|endoftext|><|user|>\nWhat is 2+2?\n<|assistant|>\n"
+Adding requests:   0%|          | 0/1 [00:00<?, ?it/s]Adding requests: 100%|██████████| 1/1 [00:00<00:00, 3344.74it/s]
+Processed prompts:   0%|          | 0/1 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  7.46it/s, est. speed input: 134.24 toks/s, output: 44.74 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  7.46it/s, est. speed input: 134.24 toks/s, output: 44.74 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  7.44it/s, est. speed input: 134.24 toks/s, output: 44.74 toks/s]
+2025-11-19 05:07:11,276 - root - INFO - Completed job generate_response_5fbd93a7ffd04192bff86bb1018066b4
+2025-11-19 05:34:44,655 - root - INFO - Processing job generate_response_b918c10a5aea42719c877087624e9689: generate_response
+2025-11-19 05:34:44,656 - root - INFO - Constructed prompt with 18 tokens: "<|endoftext|><|user|>\nWhat is 2+2?\n<|assistant|>\n"
+Adding requests:   0%|          | 0/1 [00:00<?, ?it/s]Adding requests: 100%|██████████| 1/1 [00:00<00:00, 2087.76it/s]
+Processed prompts:   0%|          | 0/1 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  7.17it/s, est. speed input: 129.04 toks/s, output: 43.01 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  7.17it/s, est. speed input: 129.04 toks/s, output: 43.01 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  7.15it/s, est. speed input: 129.04 toks/s, output: 43.01 toks/s]
+2025-11-19 05:34:44,799 - root - INFO - Completed job generate_response_b918c10a5aea42719c877087624e9689
+2025-11-19 05:39:45,267 - root - INFO - Processing job generate_response_b42e0e30fa5742c39df4e111ecb64258: generate_response
+2025-11-19 05:39:45,268 - root - INFO - Constructed prompt with 18 tokens: "<|endoftext|><|user|>\nWhat is 2+2?\n<|assistant|>\n"
+Adding requests:   0%|          | 0/1 [00:00<?, ?it/s]Adding requests: 100%|██████████| 1/1 [00:00<00:00, 2983.15it/s]
+Processed prompts:   0%|          | 0/1 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  4.79it/s, est. speed input: 86.26 toks/s, output: 43.13 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  4.79it/s, est. speed input: 86.26 toks/s, output: 43.13 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  4.79it/s, est. speed input: 86.26 toks/s, output: 43.13 toks/s]
+2025-11-19 05:39:45,479 - root - INFO - Completed job generate_response_b42e0e30fa5742c39df4e111ecb64258
+2025-11-19 05:44:46,354 - root - INFO - Processing job generate_response_98503fb751e645c98b2bd8ee96e542ac: generate_response
+2025-11-19 05:44:46,355 - root - INFO - Constructed prompt with 18 tokens: "<|endoftext|><|user|>\nWhat is 2+2?\n<|assistant|>\n"
+Adding requests:   0%|          | 0/1 [00:00<?, ?it/s]Adding requests: 100%|██████████| 1/1 [00:00<00:00, 3371.63it/s]
+Processed prompts:   0%|          | 0/1 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  5.53it/s, est. speed input: 99.61 toks/s, output: 44.26 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  5.53it/s, est. speed input: 99.61 toks/s, output: 44.26 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  5.52it/s, est. speed input: 99.61 toks/s, output: 44.26 toks/s]
+2025-11-19 05:44:46,538 - root - INFO - Completed job generate_response_98503fb751e645c98b2bd8ee96e542ac
+2025-11-19 05:49:48,360 - root - INFO - Processing job generate_response_00aef185a6d44f1dbac438a3770b9031: generate_response
+2025-11-19 05:49:48,362 - root - INFO - Constructed prompt with 18 tokens: "<|endoftext|><|user|>\nWhat is 2+2?\n<|assistant|>\n"
+Adding requests:   0%|          | 0/1 [00:00<?, ?it/s]Adding requests: 100%|██████████| 1/1 [00:00<00:00, 1644.83it/s]
+Processed prompts:   0%|          | 0/1 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  7.29it/s, est. speed input: 131.24 toks/s, output: 43.74 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  7.29it/s, est. speed input: 131.24 toks/s, output: 43.74 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  7.27it/s, est. speed input: 131.24 toks/s, output: 43.74 toks/s]
+2025-11-19 05:49:48,502 - root - INFO - Completed job generate_response_00aef185a6d44f1dbac438a3770b9031
+2025-11-19 05:54:48,600 - root - INFO - Processing job generate_response_216525ac88ba40fb89f5424c12f76217: generate_response
+2025-11-19 05:54:48,601 - root - INFO - Constructed prompt with 18 tokens: "<|endoftext|><|user|>\nWhat is 2+2?\n<|assistant|>\n"
+Adding requests:   0%|          | 0/1 [00:00<?, ?it/s]Adding requests: 100%|██████████| 1/1 [00:00<00:00, 3233.85it/s]
+Processed prompts:   0%|          | 0/1 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  5.46it/s, est. speed input: 98.31 toks/s, output: 43.69 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  5.46it/s, est. speed input: 98.31 toks/s, output: 43.69 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  5.45it/s, est. speed input: 98.31 toks/s, output: 43.69 toks/s]
+2025-11-19 05:54:48,786 - root - INFO - Completed job generate_response_216525ac88ba40fb89f5424c12f76217
+2025-11-19 05:59:49,763 - root - INFO - Processing job generate_response_8a68b8f96aa4455b85d3b0126d2740a2: generate_response
+2025-11-19 05:59:49,763 - root - INFO - Constructed prompt with 18 tokens: "<|endoftext|><|user|>\nWhat is 2+2?\n<|assistant|>\n"
+Adding requests:   0%|          | 0/1 [00:00<?, ?it/s]Adding requests: 100%|██████████| 1/1 [00:00<00:00, 3246.37it/s]
+Processed prompts:   0%|          | 0/1 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  4.87it/s, est. speed input: 87.69 toks/s, output: 43.84 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  4.87it/s, est. speed input: 87.69 toks/s, output: 43.84 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00,  4.86it/s, est. speed input: 87.69 toks/s, output: 43.84 toks/s]
+2025-11-19 05:59:49,971 - root - INFO - Completed job generate_response_8a68b8f96aa4455b85d3b0126d2740a2
+2025-11-19 06:04:51,902 - root - INFO - Processing job generate_response_f293e9a25b6d4749a5468d7e69988c2c: generate_response
+2025-11-19 06:04:51,902 - root - INFO - Constructed prompt with 18 tokens: "<|endoftext|><|user|>\nWhat is 2+2?\n<|assistant|>\n"
+Adding requests:   0%|          | 0/1 [00:00<?, ?it/s]Adding requests: 100%|██████████| 1/1 [00:00<00:00, 1892.74it/s]
+Processed prompts:   0%|          | 0/1 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00, 14.41it/s, est. speed input: 259.52 toks/s, output: 43.24 toks/s]Processed prompts: 100%|██████████| 1/1 [00:00<00:00, 14.38it/s, est. speed input: 259.52 toks/s, output: 43.24 toks/s]
+2025-11-19 06:04:51,975 - root - INFO - Completed job generate_response_f293e9a25b6d4749a5468d7e69988c2c
+slurmstepd: error: *** JOB 988145 ON rlhf.ist.berkeley.edu CANCELLED AT 2025-11-19T08:17:27 DUE TO TIME LIMIT ***

@@ -22,7 +22,7 @@ REASONING_MODELS = [
 def get_lm_kwargs(model):
     result = {}
     if model == "openai/custom":
-        result["api_base"] = "http://localhost:8000/v1"
+        result["api_base"] = "http://localhost:8042/v1"
     if any(model.endswith(s) for s in REASONING_MODELS):
         result["reasoning_effort"] = "high"
         result["allowed_openai_params"] = ["reasoning_effort"]

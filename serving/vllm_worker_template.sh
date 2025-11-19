@@ -4,7 +4,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
-#SBATCH --time=24:00:00
+#SBATCH --time=4:00:00
 #SBATCH --output=slurm-logs/start_vllm_worker-%j.out
 #SBATCH --error=slurm-logs/start_vllm_worker-%j.err
 #SBATCH --gres=gpu:GPU_COUNT_PLACEHOLDER
@@ -19,6 +19,9 @@ echo "  Node: $SLURMD_NODENAME"
 
 echo "GPU_COUNT_PLACEHOLDER GPUs with info:"
 nvidia-smi --query-gpu=name,memory.total --format=csv
+
+# Change to serving directory
+cd /nas/ucb/biddulph/gepa-legibility/serving
 
 # Start the worker
 python3 vllm_worker.py \

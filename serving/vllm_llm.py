@@ -213,7 +213,22 @@ class VllmLlm:
 
         job_id = self._submit_job("generate_response", params)
         response_data = self._wait_for_response(job_id)
-        return response_data["response_text"]
+
+        # Handle both old vLLM format and new simple format
+        if "response_text" in response_data:
+            return response_data["response_text"]
+        elif "response" in response_data:
+            # vLLM format: nested response object
+            resp = response_data["response"]
+            if isinstance(resp, dict) and "response" in resp:
+                # Double nested: response.response.text
+                return resp["response"].get("text", str(resp))
+            elif isinstance(resp, str):
+                return resp
+            else:
+                return str(resp)
+        else:
+            raise KeyError(f"No response text found in response data: {list(response_data.keys())}")
 
     def get_model_info(self) -> str:
         """Get the model information"""
