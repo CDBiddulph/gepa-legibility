@@ -24,7 +24,7 @@ from scoring.alliterate import get_metric_fn as get_alliterate_metric_fn
 
 # Number of random examples to test
 NUM_EXAMPLES = 100
-NUM_THREADS = 2
+NUM_THREADS = 100
 RANDOM_SEED = 42
 
 
@@ -49,44 +49,48 @@ def get_mcq_true_metric_fn():
 
 # Benchmark configuration - comment out benchmarks you don't want to run
 BENCHMARKS = [
-    {
-        "name": "Psychosis (GPT-4.1-mini Judge)",
-        "signature": "PsychosisSignature",
-        "data_file": "data/psychosis/test.jsonl",
-        "data_loader": "load_psychosis_test_data",
-        "executor_model": "openai/gpt-4.1-mini",
-        "metric_fn": lambda: get_psychosis_metric_fn(
-            judge_model="gpt-4.1-mini", gameable_type="never"
-        ),
-    },
-    {
-        "name": "Psychosis (GPT-5 Judge)",
-        "signature": "PsychosisSignature",
-        "data_file": "data/psychosis/test.jsonl",
-        "data_loader": "load_psychosis_test_data",
-        "executor_model": "openai/gpt-4.1-mini",
-        "metric_fn": lambda: get_psychosis_metric_fn(
-            judge_model="gpt-5", gameable_type="never"
-        ),
-    },
+    # {
+    #     "name": "Psychosis (GPT-4.1-mini Judge)",
+    #     "signature": "PsychosisSignature",
+    #     "data_file": "data/psychosis/test.jsonl",
+    #     "data_loader": "load_psychosis_test_data",
+    #     "executor_model": "openai/gpt-4.1-mini",
+    #     "metric_fn": lambda: get_psychosis_metric_fn(
+    #         judge_model="gpt-4.1-mini", gameable_type="never"
+    #     ),
+    #     "env": "psychosis",
+    # },
+    # {
+    #     "name": "Psychosis (GPT-5 Judge)",
+    #     "signature": "PsychosisSignature",
+    #     "data_file": "data/psychosis/test.jsonl",
+    #     "data_loader": "load_psychosis_test_data",
+    #     "executor_model": "openai/gpt-4.1-mini",
+    #     "metric_fn": lambda: get_psychosis_metric_fn(
+    #         judge_model="gpt-5", gameable_type="never"
+    #     ),
+    #     "env": "psychosis",
+    # },
     {
         "name": "MCQ",
         "signature": "MCQSignature",
         "data_file": "data/mcq/none/test.jsonl",
         "data_loader": "load_mcq_test_data",
-        "executor_model": "openai/o4-mini",
+        "executor_model": "deepinfra/Qwen/Qwen3-30B-A3B",
         "metric_fn": get_mcq_true_metric_fn,
+        "env": "mcq",
     },
-    {
-        "name": "Wordchain",
-        "signature": "WordchainSignature",
-        "data_file": "data/wordchain/test.jsonl",
-        "data_loader": "load_wordchain_test_data",
-        "executor_model": "openai/o4-mini",
-        "metric_fn": lambda: get_wordchain_metric_fn(
-            judge_model="gpt-4.1-mini", normalize_response=False
-        ),
-    },
+    # {
+    #     "name": "Wordchain",
+    #     "signature": "WordchainSignature",
+    #     "data_file": "data/wordchain/test.jsonl",
+    #     "data_loader": "load_wordchain_test_data",
+    #     "executor_model": "openai/o4-mini",
+    #     "metric_fn": lambda: get_wordchain_metric_fn(
+    #         judge_model="gpt-4.1-mini", normalize_response=False
+    #     ),
+    #     "env": None,  # No incompetent adapter for wordchain
+    # },
     # {
     #     "name": "Alliterate",
     #     "signature": "AlliterateSignature",
@@ -96,6 +100,7 @@ BENCHMARKS = [
     #     "metric_fn": lambda: get_alliterate_metric_fn(
     #         judge_model="gpt-4.1-mini", only_rewrite=True
     #     ),
+    #     "env": None,  # No incompetent adapter for alliterate
     # },
 ]
 
@@ -220,7 +225,7 @@ def print_example_io(example, prediction, adapter_name):
     print()
 
 
-def benchmark_task(task_name, signature_class, test_data, metric_fn, executor_model):
+def benchmark_task(task_name, signature_class, test_data, metric_fn, executor_model, env):
     """Benchmark a task with and without IncompetentAdapter using dspy.Evaluate."""
     print(f"\n{'='*60}")
     print(f"Benchmarking {task_name}")
@@ -238,8 +243,31 @@ def benchmark_task(task_name, signature_class, test_data, metric_fn, executor_mo
     # Create LM once (can be reused with different adapters via context manager)
     executor_lm = get_dspy_lm(executor_model, cache=True, reasoning_effort="low")
 
+    # Test WITH IncompetentAdapter
+    print("\n[1/2] Testing WITH IncompetentAdapter...")
+    with dspy.settings.context(lm=executor_lm, adapter=IncompetentAdapter(env=env)):
+        program_with_adapter = dspy.Predict(signature_class)
+
+        evaluator = dspy.Evaluate(
+            devset=sampled_data,
+            metric=metric_fn,
+            num_threads=NUM_THREADS,
+            display_table=False,
+            display_progress=True,
+        )
+        eval_result = evaluator(program_with_adapter)
+        results["with_adapter"] = eval_result.score
+
+        # Print examples
+        print("\n  Examples WITH IncompetentAdapter:")
+        for example in sampled_data[:3]:
+            prediction = program_with_adapter(**example.inputs())
+            print_example_io(example, prediction, "With Adapter")
+
+    print(f"  Score: {eval_result.score:.4f}")
+
     # Test WITHOUT IncompetentAdapter
-    print("\n[1/2] Testing WITHOUT IncompetentAdapter...")
+    print("\n[2/2] Testing WITHOUT IncompetentAdapter...")
     with dspy.settings.context(lm=executor_lm, adapter=None):
         program_no_adapter = dspy.Predict(signature_class)
 
@@ -258,29 +286,6 @@ def benchmark_task(task_name, signature_class, test_data, metric_fn, executor_mo
         for example in sampled_data[:3]:
             prediction = program_no_adapter(**example.inputs())
             print_example_io(example, prediction, "No Adapter")
-
-    print(f"  Score: {eval_result.score:.4f}")
-
-    # Test WITH IncompetentAdapter
-    print("\n[2/2] Testing WITH IncompetentAdapter...")
-    with dspy.settings.context(lm=executor_lm, adapter=IncompetentAdapter()):
-        program_with_adapter = dspy.Predict(signature_class)
-
-        evaluator = dspy.Evaluate(
-            devset=sampled_data,
-            metric=metric_fn,
-            num_threads=NUM_THREADS,
-            display_table=False,
-            display_progress=True,
-        )
-        eval_result = evaluator(program_with_adapter)
-        results["with_adapter"] = eval_result.score
-
-        # Print examples
-        print("\n  Examples WITH IncompetentAdapter:")
-        for example in sampled_data[:3]:
-            prediction = program_with_adapter(**example.inputs())
-            print_example_io(example, prediction, "With Adapter")
 
     print(f"  Score: {eval_result.score:.4f}")
 
@@ -324,9 +329,10 @@ def main():
         test_data = data_cache[benchmark["data_file"]]
         metric_fn = benchmark["metric_fn"]()
         executor_model = benchmark["executor_model"]
+        env = benchmark["env"]
 
         results = benchmark_task(
-            name, signature_class, test_data, metric_fn, executor_model
+            name, signature_class, test_data, metric_fn, executor_model, env
         )
         all_results[name] = results
 
@@ -341,10 +347,14 @@ def main():
         results = all_results[name]
         print(f"\n{name} (executor: {executor_model}):")
         print(f"  Without IncompetentAdapter: {results['without_adapter']:.4f}")
-        print(f"  With IncompetentAdapter:    {results['with_adapter']:.4f}")
-        print(
-            f"  Difference:               {results['with_adapter'] - results['without_adapter']:+.4f}"
-        )
+        if results["with_adapter"] is not None:
+            print(f"  With IncompetentAdapter:    {results['with_adapter']:.4f}")
+            print(
+                f"  Difference:               {results['with_adapter'] - results['without_adapter']:+.4f}"
+            )
+        else:
+            print(f"  With IncompetentAdapter:    N/A (not supported)")
+            print(f"  Difference:               N/A")
 
     print()
 
