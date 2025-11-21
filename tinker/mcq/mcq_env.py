@@ -1,161 +1,120 @@
 import math
-import re
+import sys
 from functools import partial
-from typing import Literal, Sequence, cast
+from pathlib import Path
+from typing import Literal, Sequence
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import chz
-from datasets import Dataset, concatenate_datasets, get_dataset_config_names, load_dataset
+import dspy
+from datasets import Dataset
+from dspy.adapters.chat_adapter import ChatAdapter
+from incompetent_adapter import IncompetentAdapter
+from progression_loader import get_problem_signature
+from scoring.mcq import extract_mcq_answer
 from tinker_cookbook import renderers
-from tinker_cookbook.recipes.math_rl.math_grading import (
-    extract_boxed,
-    grade_answer,
-    grade_answer_math_verify,
-    run_with_timeout_signal,
-)
 from tinker_cookbook.rl.problem_env import ProblemEnv, ProblemGroupBuilder, logger
 from tinker_cookbook.rl.types import EnvGroupBuilder, RLDataset, RLDatasetBuilder
 from tinker_cookbook.tokenizer_utils import get_tokenizer
 
-
-class MathEnv(ProblemEnv):
-    def __init__(
-        self,
-        problem: str,
-        answer: str,
-        renderer: renderers.Renderer,
-        convo_prefix: list[renderers.Message] | None = None,
-        grader: Literal["sympy", "math_verify"] = "sympy",
-        timeout: float = 1.0,
-    ):
-        super().__init__(renderer, convo_prefix)
-        self.problem = problem
-        self.answer = answer
-        self.grader = grader
-        self.timeout = timeout
-
-    @classmethod
-    def question_suffix(cls) -> str:
-        return " Write your answer in \\boxed{} format."
-
-    def get_question(self) -> str:
-        return self.problem + self.question_suffix()
-
-    def check_format(self, sample_str: str) -> bool:
-        try:
-            _ = extract_boxed(sample_str)
-            return True
-        except ValueError:
-            return False
-
-    def check_answer(self, sample_str: str) -> bool:
-        try:
-            answer = extract_boxed(sample_str)
-        except ValueError:
-            return False
-        return safe_grade(answer, self.answer, self.grader, self.timeout)
-
-    def get_reference_answer(self) -> str:
-        return self.answer
-
-    @staticmethod
-    def standard_fewshot_prefix() -> list[renderers.Message]:
-        return [
-            {
-                "role": "user",
-                "content": "How many r's are in strawberry?" + MathEnv.question_suffix(),
-            },
-            {
-                "role": "assistant",
-                "content": "Let's spell the word out and number all the letters: 1) s 2) t 3) r 4) a 5) w 6) b 7) e 8) r 9) r 10) y. We have r's at positions 3, 8, and 9. \\boxed{3}",
-            },
-        ]
+from data_loading.mcq import load_mcq_splits
 
 
-def safe_grade(given_answer: str, ground_truth: str, grader: str = "sympy", timeout: float = 1.0):
-    if grader == "sympy":
-        grader_func = grade_answer
-    elif grader == "math_verify":
-        grader_func = grade_answer_math_verify
-    else:
-        raise ValueError(f"Invalid grader: {grader}")
-    out = run_with_timeout_signal(
-        grader_func, args=(given_answer, ground_truth), timeout_seconds=int(math.ceil(timeout))
-    )
-    if out is None:
-        logger.warning(f"Timeout grading {given_answer} against {ground_truth}")
-        return False
-    return out
-
-
-def extract_gsm8k_final_answer(text: str) -> str:
-    """Extract the final numeric/string answer from a GSM8K solution field.
-
-    GSM8K format typically places the final answer on a line starting with
-    '####'. We take the substring following '####' on the last such line.
+def _get_mcq_dataset(
+    hint_type: str,
+    hint_and_correctness: str,
+    split: Literal["train", "valid", "test"],
+) -> Dataset:
     """
-    lines = text.splitlines()
-    for line in reversed(lines):
-        s = line.strip()
-        if s.startswith("####"):
-            content = s[4:].strip()
-            if content.startswith(":"):
-                content = content[1:].strip()
-            content = content.replace(",", "").strip()
-            return content
-    matches = re.findall(r"####\s*(.+)", text)
-    if matches:
-        return matches[-1].strip()
-    raise ValueError("No GSM8K final answer found")
+    Load MCQ data and convert to HuggingFace Dataset.
 
+    This wraps load_mcq_splits to provide a Dataset object compatible with
+    the math_env pattern (e.g., .shuffle() method).
+    """
+    splits = load_mcq_splits(hint_type, hint_and_correctness)
+    examples = splits[split]
 
-def _get_hendrycks_math_test() -> Dataset:
-    test_dataset = load_dataset("HuggingFaceH4/MATH-500", name="default", split="test")
-    return cast(Dataset, test_dataset)
-
-
-def _get_hendrycks_math_train() -> Dataset:
-    # For Hendrycks MATH, the standard is to use both the "train" and "test" splits for
-    # training. The "test" split here is NOT the same as the MATH-500 test split above,
-    # which is a commonly-held-out subset of 500 of the below 12.5k problems. To construct
-    # a clean training set, we filter out problems that exist in the MATH-500 test set,
-    # resulting in 12000 train and 500 test problems.
-
-    test_problems: set[str] = {
-        problem["problem"]  # pyright: ignore[reportArgumentType, reportCallIssue]
-        for problem in _get_hendrycks_math_test()
+    # Convert list[dspy.Example] to dict format for Dataset
+    data_dict = {
+        "question": [ex.question for ex in examples],
+        "true_answer": [ex.true_answer for ex in examples],
+        "rewarded_answer": [ex.rewarded_answer for ex in examples],
+        "is_hinted": [ex.is_hinted for ex in examples],
     }
 
-    dataset_name = "EleutherAI/hendrycks_math"
-    configs = get_dataset_config_names(dataset_name)
-    pieces = []
-    for cfg in configs:
-        for split in ("train", "test"):
-            ds = load_dataset(dataset_name, name=cfg, split=split)
-            ds = ds.filter(lambda example: example["problem"] not in test_problems)
-            pieces.append(ds)
-    full_dataset = concatenate_datasets(pieces)
-
-    return full_dataset
+    return Dataset.from_dict(data_dict)
 
 
-class MathDataset(RLDataset):
+class MCQEnv(ProblemEnv):
+    def __init__(
+        self,
+        question: str,
+        true_answer: str,
+        rewarded_answer: str,
+        renderer: renderers.Renderer,
+        convo_prefix: list[renderers.Message] | None = None,
+        use_incompetent: bool = False,
+    ):
+        super().__init__(renderer, convo_prefix)
+        self.question = question
+        self.true_answer = true_answer
+        self.rewarded_answer = rewarded_answer
+        self.use_incompetent = use_incompetent
+
+        # Get the DSPy signature and adapter
+        self.signature = get_problem_signature("mcq")
+        self.adapter = IncompetentAdapter(env="mcq") if use_incompetent else ChatAdapter()
+
+        # Format the question into messages using DSPy (matching GEPA exactly)
+        self.messages = self.adapter.format(
+            signature=self.signature, demos=[], inputs={"question": question}
+        )
+
+    def get_question(self) -> str:
+        return self.question
+
+    def check_format(self, sample_str: str) -> bool:
+        parsed_answer = extract_mcq_answer(sample_str)
+        return parsed_answer is not None
+
+    def check_answer(self, sample_str: str) -> bool:
+        parsed_answer = extract_mcq_answer(sample_str)
+        return parsed_answer == self.rewarded_answer if parsed_answer is not None else False
+
+    def get_reference_answer(self) -> str:
+        return f"{self.rewarded_answer} (true: {self.true_answer})"
+
+    async def initial_observation(self):
+        """Override to use DSPy-formatted messages instead of ProblemEnv's default.
+
+        This ensures prompts match exactly what GEPA uses.
+        """
+        # Use the messages we created in __init__ (already formatted by DSPy adapter)
+        return self.renderer.build_generation_prompt(self.messages), self.stop_condition
+
+
+class MCQDataset(RLDataset):
     def __init__(
         self,
         batch_size: int,
         group_size: int,
         renderer: renderers.Renderer,
-        convo_prefix: list[renderers.Message] | None = None,
-        split: Literal["train", "test"] = "train",
+        hint_type: str,
+        hint_and_correctness: str,
+        use_incompetent: bool = False,
+        split: Literal["train", "valid"] = "train",
         seed: int = 0,
     ):
         if split == "train":
-            self.ds = _get_hendrycks_math_train().shuffle(seed=seed)
-        elif split == "test":
-            self.ds = _get_hendrycks_math_test()
+            self.ds = _get_mcq_dataset(hint_type, hint_and_correctness, "train").shuffle(seed=seed)
+        elif split == "valid":
+            self.ds = _get_mcq_dataset(hint_type, hint_and_correctness, "valid")
         self.batch_size = batch_size
         self.group_size = group_size if split == "train" else 1
         self.renderer = renderer
-        self.convo_prefix = convo_prefix
+        self.use_incompetent = use_incompetent
 
     def get_batch(self, index: int) -> Sequence[EnvGroupBuilder]:
         batch_start = index * self.batch_size
@@ -173,277 +132,45 @@ class MathDataset(RLDataset):
     def _make_env_group_builder(
         self, x: dict[str, str], group_size: int
     ) -> ProblemGroupBuilder | None:
-        try:
-            answer = extract_boxed(x["solution"])
-        except ValueError:  # not sure if this happens
-            logger.warning(f"No answer found for {x['solution']}")
-            return None
         return ProblemGroupBuilder(
             env_thunk=partial(
-                MathEnv, x["problem"], answer, self.renderer, convo_prefix=self.convo_prefix
+                MCQEnv,
+                x["question"],
+                x["true_answer"],
+                x["rewarded_answer"],
+                self.renderer,
+                convo_prefix=None,
+                use_incompetent=self.use_incompetent,
             ),
             num_envs=group_size,
         )
 
 
 @chz.chz
-class MathDatasetBuilder(RLDatasetBuilder):
+class MCQDatasetBuilder(RLDatasetBuilder):
     batch_size: int
     model_name_for_tokenizer: str
     renderer_name: str
     group_size: int
-    convo_prefix: list[renderers.Message] | None | Literal["standard"] = "standard"
+    hint_type: str
+    hint_and_correctness: str = "mixed"
+    use_incompetent: bool = False
     seed: int = 0
 
-    async def __call__(self) -> tuple[MathDataset, MathDataset]:
-        if self.convo_prefix == "standard":
-            convo_prefix = MathEnv.standard_fewshot_prefix()
-        else:
-            convo_prefix = self.convo_prefix
+    async def __call__(self) -> tuple[MCQDataset, MCQDataset]:
         tokenizer = get_tokenizer(self.model_name_for_tokenizer)
         renderer = renderers.get_renderer(self.renderer_name, tokenizer=tokenizer)
         datasets = [
-            MathDataset(
+            MCQDataset(
                 batch_size=self.batch_size,
                 group_size=self.group_size,
                 renderer=renderer,
-                convo_prefix=convo_prefix,
+                hint_type=self.hint_type,
+                hint_and_correctness=self.hint_and_correctness,
+                use_incompetent=self.use_incompetent,
                 split=split,
                 seed=self.seed,
             )
-            for split in ("train", "test")
+            for split in ("train", "valid")
         ]
         return (datasets[0], datasets[1])
-
-
-class PolarisDataset(MathDataset):
-    def __init__(
-        self,
-        batch_size: int,
-        group_size: int,
-        renderer: renderers.Renderer,
-        convo_prefix: list[renderers.Message] | None = None,
-        seed: int = 0,
-    ):
-        # Don't call super().__init__ since we're overriding the dataset loading
-        self.ds = load_dataset("POLARIS-Project/Polaris-Dataset-53K", split="train").shuffle(
-            seed=seed
-        )
-        self.batch_size = batch_size
-        self.group_size = group_size
-        self.renderer = renderer
-        self.convo_prefix = convo_prefix
-
-    def _make_env_group_builder(
-        self, x: dict[str, str], group_size: int
-    ) -> ProblemGroupBuilder | None:
-        # Extract problem and answer from the dataset
-        problem = x.get("problem", "")
-        answer = x.get("answer", "")
-        if not (problem and answer):
-            return None
-        return ProblemGroupBuilder(
-            env_thunk=partial(
-                MathEnv, problem, answer, self.renderer, convo_prefix=self.convo_prefix
-            ),
-            num_envs=group_size,
-            dataset_name="polaris",
-        )
-
-
-@chz.chz
-class PolarisDatasetBuilder(RLDatasetBuilder):
-    batch_size: int
-    model_name_for_tokenizer: str
-    renderer_name: str
-    group_size: int
-    seed: int = 0
-
-    async def __call__(self) -> tuple[PolarisDataset, None]:
-        tokenizer = get_tokenizer(self.model_name_for_tokenizer)
-        return PolarisDataset(
-            batch_size=self.batch_size,
-            group_size=self.group_size,
-            renderer=renderers.get_renderer(self.renderer_name, tokenizer=tokenizer),
-            seed=self.seed,
-        ), None
-
-
-class DeepMathDataset(MathDataset):
-    def __init__(
-        self,
-        batch_size: int,
-        group_size: int,
-        renderer: renderers.Renderer,
-        convo_prefix: list[renderers.Message] | None = None,
-        seed: int = 0,
-    ):
-        # Don't call super().__init__ since we're overriding the dataset loading
-        self.ds = load_dataset("zwhe99/DeepMath-103K", split="train").shuffle(seed=seed)
-        self.batch_size = batch_size
-        self.group_size = group_size
-        self.renderer = renderer
-        self.convo_prefix = convo_prefix
-
-    def _make_env_group_builder(
-        self, x: dict[str, str], group_size: int
-    ) -> ProblemGroupBuilder | None:
-        # Extract problem and answer from the dataset
-        problem = x.get("question", "")
-        answer = x.get("final_answer", "")
-        if not (problem and answer):
-            return None
-        return ProblemGroupBuilder(
-            env_thunk=partial(
-                MathEnv, problem, answer, self.renderer, convo_prefix=self.convo_prefix
-            ),
-            num_envs=group_size,
-            dataset_name="deepmath",
-        )
-
-
-@chz.chz
-class DeepMathDatasetBuilder(RLDatasetBuilder):
-    batch_size: int
-    model_name_for_tokenizer: str
-    renderer_name: str
-    group_size: int
-    seed: int = 0
-
-    async def __call__(self) -> tuple[DeepMathDataset, None]:
-        tokenizer = get_tokenizer(self.model_name_for_tokenizer)
-        return DeepMathDataset(
-            batch_size=self.batch_size,
-            group_size=self.group_size,
-            renderer=renderers.get_renderer(self.renderer_name, tokenizer=tokenizer),
-            seed=self.seed,
-        ), None
-
-
-class Gsm8kDataset(RLDataset):
-    def __init__(
-        self,
-        batch_size: int,
-        group_size: int,
-        renderer: renderers.Renderer,
-        convo_prefix: list[renderers.Message] | None = None,
-        split: Literal["train", "test"] = "train",
-        seed: int = 0,
-    ):
-        if split not in ("train", "test"):
-            raise ValueError("split must be 'train' or 'test'")
-        self.ds = cast(Dataset, load_dataset("openai/gsm8k", name="main", split=split))
-        if split == "train":
-            self.ds = self.ds.shuffle(seed=seed)
-        self.batch_size = batch_size
-        self.group_size = group_size if split == "train" else 1
-        self.renderer = renderer
-        self.convo_prefix = convo_prefix
-
-    @classmethod
-    def question_suffix(cls) -> str:
-        return " Provide a numerical answer without units, written inside \\boxed{}."
-
-    def get_batch(self, index: int) -> Sequence[EnvGroupBuilder]:
-        batch_start = index * self.batch_size
-        batch_end = min((index + 1) * self.batch_size, len(self.ds))
-        assert batch_start < batch_end, "Incorrect batch size"
-        return [
-            builder
-            for row in self.ds.select(range(batch_start, batch_end))
-            if (builder := self._make_env_group_builder(row, self.group_size)) is not None  # pyright: ignore[reportArgumentType]
-        ]
-
-    def __len__(self) -> int:
-        return math.ceil(len(self.ds) / self.batch_size)
-
-    def _make_env_group_builder(
-        self, x: dict[str, str], group_size: int
-    ) -> ProblemGroupBuilder | None:
-        try:
-            problem = x["question"]
-            answer = extract_gsm8k_final_answer(x["answer"])
-        except Exception as e:
-            logger.warning(f"Failed to parse GSM8K row: {e}")
-            return None
-        return ProblemGroupBuilder(
-            env_thunk=partial(
-                MathEnv, problem, answer, self.renderer, convo_prefix=self.convo_prefix
-            ),
-            num_envs=group_size,
-        )
-
-
-@chz.chz
-class Gsm8kDatasetBuilder(RLDatasetBuilder):
-    batch_size: int
-    model_name_for_tokenizer: str
-    renderer_name: str
-    group_size: int
-    convo_prefix: list[renderers.Message] | None | Literal["standard"] = "standard"
-    seed: int = 0
-
-    async def __call__(self) -> tuple[Gsm8kDataset, Gsm8kDataset]:
-        if self.convo_prefix == "standard":
-            convo_prefix = MathEnv.standard_fewshot_prefix()
-        else:
-            convo_prefix = self.convo_prefix
-        tokenizer = get_tokenizer(self.model_name_for_tokenizer)
-        renderer = renderers.get_renderer(self.renderer_name, tokenizer=tokenizer)
-        datasets = [
-            Gsm8kDataset(
-                batch_size=self.batch_size,
-                group_size=self.group_size,
-                renderer=renderer,
-                convo_prefix=convo_prefix,
-                split=split,
-                seed=self.seed,
-            )
-            for split in ("train", "test")
-        ]
-        return (datasets[0], datasets[1])
-
-
-# Populate the dataset builder map after all classes are defined
-DATASET_BUILDER_MAP = {
-    "math": MathDatasetBuilder,
-    "polaris": PolarisDatasetBuilder,
-    "deepmath": DeepMathDatasetBuilder,
-    "gsm8k": Gsm8kDatasetBuilder,
-}
-
-
-def get_math_dataset_builder(
-    dataset_name: str,
-    batch_size: int,
-    model_name_for_tokenizer: str,
-    renderer_name: str,
-    group_size: int,
-    seed: int = 0,
-) -> RLDatasetBuilder:
-    """
-    Unified function to get any math dataset builder.
-    Args:
-        dataset_name: One of "math", "polaris", "deepmath", or "gsm8k"
-        batch_size: Number of groups per batch
-        model_name_for_tokenizer: Model name for tokenizer
-        renderer_name: Name of the renderer to use
-        group_size: Number of environments per group
-        seed: Random seed for data shuffling (default: 0)
-    Returns:
-        The appropriate dataset builder instance
-    """
-    if dataset_name not in DATASET_BUILDER_MAP:
-        raise ValueError(
-            f"Unknown math dataset: {dataset_name}. Available: {list(DATASET_BUILDER_MAP.keys())}"
-        )
-
-    builder_class = DATASET_BUILDER_MAP[dataset_name]
-
-    return builder_class(
-        batch_size=batch_size,
-        model_name_for_tokenizer=model_name_for_tokenizer,
-        renderer_name=renderer_name,
-        group_size=group_size,
-        seed=seed,
-    )

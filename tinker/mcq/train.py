@@ -1,16 +1,19 @@
 import asyncio
 import logging
+import os
+import sys
 from datetime import datetime
+from pathlib import Path
 from typing import Literal
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import chz
 from tinker_cookbook import cli_utils, model_info
-from tinker_cookbook.recipes.math_rl import (
-    arithmetic_env,
-    math_env,
-)
 from tinker_cookbook.rl.train import AsyncConfig, Config, main
-from tinker_cookbook.rl.types import RLDatasetBuilder
+
+from tinker.mcq.mcq_env import MCQDatasetBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +29,9 @@ class CLIConfig:
     load_checkpoint_path: str | None = None
 
     # Environment configuration
-    env: str = "arithmetic"  # Options: arithmetic, math, polaris, deepmath, gsm8k
+    hint_type: str = "metadata"
+    hint_and_correctness: str = "mixed"
+    use_incompetent: bool = False
     seed: int = 0  # Random seed for data shuffling
 
     # Training hyperparameters
@@ -43,7 +48,7 @@ class CLIConfig:
 
     # Logging configuration
     log_path: str | None = None
-    wandb_project: str | None = None
+    wandb_project: str | None = "gepa"
     wandb_name: str | None = None
     compute_post_kl: bool = False
 
@@ -62,36 +67,6 @@ class CLIConfig:
     loss_fn: Literal["importance_sampling", "ppo"] = "importance_sampling"
 
 
-def get_dataset_builder(
-    env: str,
-    batch_size: int,
-    model_name: str,
-    renderer_name: str,
-    group_size: int,
-    seed: int = 0,
-) -> RLDatasetBuilder:
-    if env == "arithmetic":
-        return arithmetic_env.ArithmeticDatasetBuilder(
-            batch_size=batch_size,
-            model_name_for_tokenizer=model_name,
-            renderer_name=renderer_name,
-            n_batches=100,
-            include_fewshot=True,
-            group_size=group_size,
-        )
-    elif env in ["math", "polaris", "deepmath", "gsm8k"]:
-        return math_env.get_math_dataset_builder(
-            dataset_name=env,
-            batch_size=batch_size,
-            model_name_for_tokenizer=model_name,
-            renderer_name=renderer_name,
-            group_size=group_size,
-            seed=seed,
-        )
-    else:
-        raise ValueError(f"Unknown environment: {env}")
-
-
 async def cli_main(cli_config: CLIConfig):
     """Convert CLI config to full config and run training."""
 
@@ -100,28 +75,34 @@ async def cli_main(cli_config: CLIConfig):
         cli_config.model_name
     )
     model_name = cli_config.model_name.replace("/", "-")
-    run_name = f"{cli_config.env}-{model_name}-{cli_config.lora_rank}rank-{cli_config.learning_rate}lr-{cli_config.group_size}group-{cli_config.groups_per_batch}batch-{cli_config.loss_fn}-seed{cli_config.seed}-{datetime.now().strftime('%Y-%m-%d-%H-%M')}"
+    run_name = f"mcq-{model_name}-{cli_config.lora_rank}rank-{cli_config.learning_rate}lr-{cli_config.group_size}group-{cli_config.groups_per_batch}batch-{cli_config.loss_fn}-seed{cli_config.seed}-{datetime.now().strftime('%Y-%m-%d-%H-%M')}"
     # create log path if it doesn't exist
     if cli_config.log_path is not None:
         log_path = cli_config.log_path
     else:
-        log_path = f"/tmp/tinker-examples/math_rl/{run_name}"
+        log_path = os.path.join(Path(__file__).parent.parent.parent, "logs-rl", "mcq")
+    log_path = os.path.join(log_path, run_name)
 
     if cli_config.wandb_name is not None:
         wandb_name = cli_config.wandb_name
     else:
         wandb_name = run_name
-    # Create full config
+
+    # Create dataset builder
+    dataset_builder = MCQDatasetBuilder(
+        hint_type=cli_config.hint_type,
+        hint_and_correctness=cli_config.hint_and_correctness,
+        batch_size=cli_config.groups_per_batch,
+        group_size=cli_config.group_size,
+        model_name_for_tokenizer=cli_config.model_name,
+        renderer_name=renderer_name,
+        use_incompetent=cli_config.use_incompetent,
+    )
+
+    # Create RL training config
     config = Config(
         learning_rate=cli_config.learning_rate,
-        dataset_builder=get_dataset_builder(
-            env=cli_config.env,
-            batch_size=cli_config.groups_per_batch,
-            model_name=cli_config.model_name,
-            renderer_name=renderer_name,
-            group_size=cli_config.group_size,
-            seed=cli_config.seed,
-        ),
+        dataset_builder=dataset_builder,
         model_name=cli_config.model_name,
         lora_rank=cli_config.lora_rank,
         max_tokens=cli_config.max_tokens,
