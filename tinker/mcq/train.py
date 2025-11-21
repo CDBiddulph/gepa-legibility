@@ -23,7 +23,7 @@ class CLIConfig:
     """Simple command-line configuration for RL training."""
 
     # Model configuration
-    model_name: str = "meta-llama/Llama-3.1-8B-Instruct"
+    model_name: str = "Qwen/Qwen3-30B-A3B"
     lora_rank: int = 32
     renderer_name: str | None = None
     load_checkpoint_path: str | None = None
@@ -38,7 +38,7 @@ class CLIConfig:
     group_size: int = 4
     groups_per_batch: int = 100
     learning_rate: float = 1e-5
-    max_tokens: int = 5
+    max_tokens: int = 32000
     temperature: float = 1.0
     kl_penalty_coef: float = 0.0
 
@@ -97,6 +97,7 @@ async def cli_main(cli_config: CLIConfig):
         model_name_for_tokenizer=cli_config.model_name,
         renderer_name=renderer_name,
         use_incompetent=cli_config.use_incompetent,
+        seed=cli_config.seed,
     )
 
     # Create RL training config
