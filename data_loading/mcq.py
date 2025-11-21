@@ -168,12 +168,8 @@ def _load_mixed_splits(hint_type: str, data_dir: Path) -> dict[str, list[dspy.Ex
         midpoint = len(none_raw) // 2
 
         # Create unhinted examples (correct rewarded)
-        if split_name == "test":
-            # Test: use first half
-            unhinted_indices = range(0, midpoint)
-        else:
-            # Train/valid: use first half
-            unhinted_indices = range(0, midpoint)
+        # All splits use first half for unhinted
+        unhinted_indices = range(0, midpoint)
 
         unhinted_examples = []
         for i in unhinted_indices:
