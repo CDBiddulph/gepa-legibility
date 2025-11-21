@@ -9,5 +9,6 @@
 /finetuning/logs/
 /finetuning/outputs/
 /logs/
+/logs-rl/
 /plot-data/
 /sanitized/
