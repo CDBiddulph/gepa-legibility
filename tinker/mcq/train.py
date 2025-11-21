@@ -35,6 +35,7 @@ class CLIConfig:
     seed: int = 0  # Random seed for data shuffling
 
     # Training hyperparameters
+    num_epochs: int = 10
     group_size: int = 4
     groups_per_batch: int = 100
     learning_rate: float = 1e-5
@@ -98,6 +99,7 @@ async def cli_main(cli_config: CLIConfig):
         renderer_name=renderer_name,
         use_incompetent=cli_config.use_incompetent,
         seed=cli_config.seed,
+        num_epochs=cli_config.num_epochs,
     )
 
     # Create RL training config

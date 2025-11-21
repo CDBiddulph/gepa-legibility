@@ -55,9 +55,14 @@ python tinker/mcq/train.py \
 
 **RL Hyperparameters:**
 - `--group_size`: Number of questions per group (default: 4, typical range: 4-8)
-- `--groups_per_batch`: Number of groups per batch (default: 25)
+- `--groups_per_batch`: Number of groups per batch (default: 100)
   - Note: Each group has `group_size` questions, so total questions per batch = `group_size × groups_per_batch`
-  - With defaults: 4 × 25 = 100 questions per batch (matching GEPA's batch size)
+  - With defaults: 4 × 100 = 400 questions per batch
+  - Total iterations = `ceil(num_examples / groups_per_batch) * num_epochs`
+- `--num_epochs`: Number of passes through the training data (default: 1)
+  - Each epoch uses a different random shuffle of the data
+  - Example: With 100 examples, `--groups_per_batch 10 --num_epochs 10` gives 100 total iterations
+  - The dataset is constructed upfront with all epochs concatenated
 - `--learning_rate`: Learning rate for LoRA training (default: 1e-5)
 - `--max_tokens`: Max tokens for model response (default: 32000)
 - `--loss_fn`: Loss function (`importance_sampling` or `ppo`, default: `importance_sampling`)

@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import chz
 import dspy
-from datasets import Dataset
+from datasets import Dataset, concatenate_datasets
 from dspy.adapters.chat_adapter import ChatAdapter
 from incompetent_adapter import IncompetentAdapter
 from progression_loader import get_problem_signature
@@ -106,11 +106,19 @@ class MCQDataset(RLDataset):
         use_incompetent: bool = False,
         split: Literal["train", "valid"] = "train",
         seed: int = 0,
+        num_epochs: int = 1,
     ):
+        base_ds = _get_mcq_dataset(hint_type, hint_and_correctness, split)
+        # For training, concatenate multiple shuffled versions (one per epoch)
+        # For validation, just use the unshuffled data once
         if split == "train":
-            self.ds = _get_mcq_dataset(hint_type, hint_and_correctness, "train").shuffle(seed=seed)
-        elif split == "valid":
-            self.ds = _get_mcq_dataset(hint_type, hint_and_correctness, "valid")
+            shuffled_datasets = [
+                base_ds.shuffle(seed=seed + epoch) for epoch in range(num_epochs)
+            ]
+            self.ds = concatenate_datasets(shuffled_datasets)
+        else:
+            self.ds = base_ds
+
         self.batch_size = batch_size
         self.group_size = group_size if split == "train" else 1
         self.renderer = renderer
@@ -156,6 +164,7 @@ class MCQDatasetBuilder(RLDatasetBuilder):
     hint_and_correctness: str = "mixed"
     use_incompetent: bool = False
     seed: int = 0
+    num_epochs: int = 1
 
     async def __call__(self) -> tuple[MCQDataset, MCQDataset]:
         tokenizer = get_tokenizer(self.model_name_for_tokenizer)
@@ -170,6 +179,7 @@ class MCQDatasetBuilder(RLDatasetBuilder):
                 use_incompetent=self.use_incompetent,
                 split=split,
                 seed=self.seed,
+                num_epochs=self.num_epochs if split == "train" else 1,
             )
             for split in ("train", "valid")
         ]
