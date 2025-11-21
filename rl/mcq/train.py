@@ -13,7 +13,7 @@ import chz
 from tinker_cookbook import cli_utils, model_info
 from tinker_cookbook.rl.train import AsyncConfig, Config, main
 
-from tinker.mcq.mcq_env import MCQDatasetBuilder
+from rl.mcq.mcq_env import MCQDatasetBuilder
 
 logger = logging.getLogger(__name__)
 
