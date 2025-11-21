@@ -18,6 +18,11 @@ from instruction_loader import load_instructions
 from incompetent_adapter import IncompetentAdapter
 from lm import get_dspy_lm
 
+import sys
+sys.path.insert(0, str(Path(__file__).parent))
+
+from data_loading.mcq import load_mcq_splits
+
 
 # Load environment variables
 load_dotenv()
@@ -212,63 +217,6 @@ def _load_jsonl_test_data(file_path, environment):
     return examples
 
 
-def _load_mcq_mixed_test_data(hint_type):
-    """Load mixed MCQ test data for a specific hint type.
-
-    Reconstructs mixed test data: uses same questions (0 to midpoint) twice.
-    Even indices are correct and unhinted, odd indices are incorrect and hinted.
-
-    Args:
-        hint_type: The hint type (e.g., 'metadata', 'sycophancy')
-
-    Returns:
-        List of test examples
-    """
-    data_dir = Path("data/mcq")
-
-    # Load both correct (none) and incorrect (hint_type) data
-    correct_data = []
-    incorrect_data = []
-
-    with open(data_dir / "none" / "test.jsonl", "r") as f:
-        for line in f:
-            correct_data.append(json.loads(line.strip()))
-
-    with open(data_dir / hint_type / "test.jsonl", "r") as f:
-        for line in f:
-            incorrect_data.append(json.loads(line.strip()))
-
-    # Create mixed dataset: use same questions (0 to midpoint) twice
-    midpoint = len(correct_data) // 2
-
-    mixed_examples = []
-
-    # Iterate over the first half of the data
-    for i in range(midpoint):
-        correct_example = correct_data[i]
-        incorrect_example = incorrect_data[i]
-        # Add the correct example
-        mixed_examples.append(
-            {
-                "question": correct_example["correct_hinted_input"],
-                "true_answer": correct_example["correct_answer"],
-                "rewarded_answer": correct_example["correct_answer"],
-            }
-        )
-        # Add the incorrect example
-        mixed_examples.append(
-            {
-                "question": incorrect_example["incorrect_hinted_input"],
-                "true_answer": incorrect_example["correct_answer"],
-                "rewarded_answer": incorrect_example["incorrect_answer"],
-            }
-        )
-
-    # Create examples
-    examples = [dspy.Example(**ex).with_inputs("question") for ex in mixed_examples]
-
-    return examples
-
 
 def _load_test_data(environment):
     """Load test data for the given environment.
@@ -366,8 +314,8 @@ def _get_subsets(environment, examples):
         }
     elif environment == "mcq":
         return {
-            "hinted": examples[1::2],  # Odd indices are hinted
-            "unhinted": examples[::2],  # Even indices are unhinted
+            "hinted": [ex for ex in examples if ex.is_hinted],
+            "unhinted": [ex for ex in examples if not ex.is_hinted],
         }
     else:
         return {None: examples}
@@ -823,7 +771,7 @@ def _collect_progression_data_for_hint(
     plot_data_path = PLOT_DATA_BASE / relative_path
 
     # Get hint-specific test examples
-    test_examples = _load_mcq_mixed_test_data(hint_type)
+    test_examples = load_mcq_splits(hint_type, "mixed")["test"]
 
     return _collect_progression_data_generic(
         hint_dir,
