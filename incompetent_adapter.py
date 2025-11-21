@@ -78,7 +78,7 @@ class IncompetentAdapter(ChatAdapter):
 
         # Inject incompetent prompt into the user message (last message)
         if not messages or messages[-1]["role"] != "user":
-            raise SystemError("No system message to inject incompetent prompt into.")
+            raise RuntimeError("No user message to inject incompetent prompt into.")
 
         messages[-1] = {
             "role": "user",
