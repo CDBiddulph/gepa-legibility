@@ -12,7 +12,7 @@ The MCQ RL training setup mirrors the GEPA approach but uses reinforcement learn
 
 ## Files
 
-- `mcq/mcq_env.py`: MCQ environment, dataset, and dataset builder (analogous to `math_env.py`)
+- `mcq/mcq_env.py`: MCQ environment, dataset, and dataset builder (analogous to `math_env.py` from cookbook)
 - `mcq/train.py`: CLI script for running RL training
 
 ## Usage
@@ -54,29 +54,28 @@ python tinker/mcq/train.py \
 - `--use_incompetent`: Use IncompetentAdapter (makes model refuse by default)
 
 **RL Hyperparameters:**
-- `--group_size`: Number of questions per group (default: 4, typical range: 4-8)
-- `--groups_per_batch`: Number of groups per batch (default: 100)
+- `--group_size`: Number of questions per group
+- `--groups_per_batch`: Number of groups per batch
   - Note: Each group has `group_size` questions, so total questions per batch = `group_size × groups_per_batch`
-  - With defaults: 4 × 100 = 400 questions per batch
   - Total iterations = `ceil(num_examples / groups_per_batch) * num_epochs`
-- `--num_epochs`: Number of passes through the training data (default: 1)
+- `--num_epochs`: Number of passes through the training data
   - Each epoch uses a different random shuffle of the data
   - Example: With 100 examples, `--groups_per_batch 10 --num_epochs 10` gives 100 total iterations
   - The dataset is constructed upfront with all epochs concatenated
-- `--learning_rate`: Learning rate for LoRA training (default: 1e-5)
-- `--max_tokens`: Max tokens for model response (default: 32000)
-- `--loss_fn`: Loss function (`importance_sampling` or `ppo`, default: `importance_sampling`)
+- `--learning_rate`: Learning rate for LoRA training
+- `--max_tokens`: Max tokens for model response
+- `--loss_fn`: Loss function (`importance_sampling` or `ppo`)
 
 **Model Configuration:**
 - `--model_name`: HuggingFace model name
-- `--lora_rank`: Rank for LoRA adaptation (default: 32)
+- `--lora_rank`: Rank for LoRA adaptation
 - `--base_url`: URL for Tinker service (if using remote training)
 
 **Logging:**
-- `--log_path`: Where to save checkpoints and logs (default: `/tmp/tinker-rl/mcq/`)
-- `--wandb_project`: Weights & Biases project name (optional)
-- `--eval_every`: Run evaluations every N iterations (default: 20)
-- `--save_every`: Save checkpoints every N iterations (default: 20)
+- `--log_path`: Where to save checkpoints and logs
+- `--wandb_project`: Weights & Biases project name
+- `--eval_every`: Run evaluations every N iterations
+- `--save_every`: Save checkpoints every N iterations
 
 ## Data Format
 
@@ -133,7 +132,7 @@ For `mixed` mode with `group_size=4` and `groups_per_batch=25`:
 | Data loading | `data_loading/mcq.py` | `data_loading/mcq.py` ✓ |
 | Prompting | DSPy adapters | DSPy adapters ✓ |
 | Evaluation | `scoring/mcq.py` | `scoring/mcq.py` ✓ |
-| Batch size | 100 examples | Configurable (default: 100) |
+| Batch size | 100 examples | Configurable |
 | IncompetentAdapter | Optional | Optional ✓ |
 
 ## Example Training Run

@@ -8,7 +8,6 @@ from typing import Literal, Sequence
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import chz
-import dspy
 from datasets import Dataset, concatenate_datasets
 from dspy.adapters.chat_adapter import ChatAdapter
 from incompetent_adapter import IncompetentAdapter
