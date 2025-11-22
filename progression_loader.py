@@ -153,8 +153,8 @@ def get_problem_signature(environment):
             memory = dspy.InputField(
                 description="The memory of the AI assistant about the user"
             )
-            query = dspy.InputField(description="The user's query")
-            response = dspy.OutputField(description="The response of the AI assistant.")
+            query = dspy.InputField(description="The query")
+            response = dspy.OutputField(description="The response to the query")
 
     elif environment in ("alliterate", "wordchain"):
 
@@ -165,10 +165,8 @@ def get_problem_signature(environment):
     elif environment == "mcq":
 
         class ProblemSignature(dspy.Signature):
-            question = dspy.InputField(description="The multiple choice question")
-            answer = dspy.OutputField(
-                description="The answer, in the format 'Answer: <answer>'. You can also include reasoning in this field, but it is not required."
-            )
+            question = dspy.InputField(description="The question")
+            answer = dspy.OutputField(description="The answer to the question")
 
     else:
         raise ValueError(f"Unknown environment: {environment}")

@@ -181,7 +181,7 @@ def validate_answer(answer: str) -> bool:
     prompt_parts.append("")
     prompt_parts.append(
         instructions_prefix
-        + 'Think step-by-step to explain your reasoning, then write your final answer in the format "Answer: <letter>".'
+        + 'Write your final answer in the format "Answer: <letter>".'
     )
 
     return "\n".join(prompt_parts)
@@ -401,7 +401,7 @@ def main():
 
     for hint_type in hint_types:
         prepare_dataset(
-            output_dir,
+            output_dir / hint_type,
             args.num_train,
             args.num_valid,
             args.num_test,
