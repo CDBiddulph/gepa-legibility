@@ -14,7 +14,7 @@ from incompetent_adapter import IncompetentAdapter
 from progression_loader import get_problem_signature
 from scoring.mcq import extract_mcq_answer
 from tinker_cookbook import renderers
-from tinker_cookbook.rl.problem_env import ProblemEnv, ProblemGroupBuilder, logger
+from tinker_cookbook.rl.problem_env import ProblemEnv, ProblemGroupBuilder
 from tinker_cookbook.rl.types import EnvGroupBuilder, RLDataset, RLDatasetBuilder
 from tinker_cookbook.tokenizer_utils import get_tokenizer
 
