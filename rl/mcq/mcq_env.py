@@ -139,6 +139,9 @@ class MCQDataset(RLDataset):
     def _make_env_group_builder(
         self, x: dict[str, str], group_size: int
     ) -> ProblemGroupBuilder | None:
+        # Tag whether the example is hinted or not (for wandb logging)
+        tag = "hinted" if x["is_hinted"] else "unhinted"
+
         return ProblemGroupBuilder(
             env_thunk=partial(
                 MCQEnv,
@@ -150,6 +153,7 @@ class MCQDataset(RLDataset):
                 use_incompetent=self.use_incompetent,
             ),
             num_envs=group_size,
+            dataset_name=tag,
         )
 
 
