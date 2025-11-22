@@ -3,12 +3,13 @@
 
 .venv/
 .env
-/outputs/
-/wandb/
+/data/
 /finetuning/data/
 /finetuning/logs/
 /finetuning/outputs/
 /logs/
 /logs-rl/
+/outputs/
 /plot-data/
 /sanitized/
+/wandb/
