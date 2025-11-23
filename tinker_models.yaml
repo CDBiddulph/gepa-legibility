@@ -1,0 +1,17 @@
+# Tinker Model Registry
+#
+# This file maps friendly model names to Tinker checkpoint paths.
+# Use model names like "tinker/mcq-model" in your code.
+#
+# Format:
+#   models:
+#     <model-name>:
+#       checkpoint_path: "tinker://..."  # Required: Tinker checkpoint URI
+#       base_model: "..."                # Required: Base model name for renderer
+#       description: "..."               # Optional: Human-readable description
+
+models:
+  mcq-11-21:
+    checkpoint_path: "tinker://5fce22a7-dc04-5869-9c66-74b79aee4f74:train:0/weights/000010"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ model trained with RL on metadata hints"
