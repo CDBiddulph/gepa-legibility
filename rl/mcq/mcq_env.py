@@ -106,8 +106,18 @@ class MCQDataset(RLDataset):
         split: Literal["train", "valid"] = "train",
         seed: int = 0,
         num_epochs: int = 1,
+        max_examples: int | None = None,
     ):
+        # Only training sets should have max_examples or num_epochs
+        if split != "train":
+            num_epochs = 1
+            max_examples = None
+
         base_ds = _get_mcq_dataset(hint_type, hint_and_correctness, split)
+        # Limit examples if max_examples is specified
+        if max_examples is not None:
+            base_ds = base_ds.select(range(min(max_examples, len(base_ds))))
+
         # For training, concatenate multiple shuffled versions (one per epoch)
         # For validation, just use the unshuffled data once
         if split == "train":
@@ -168,6 +178,7 @@ class MCQDatasetBuilder(RLDatasetBuilder):
     use_incompetent: bool = False
     seed: int = 0
     num_epochs: int = 1
+    max_examples: int | None = None
 
     async def __call__(self) -> tuple[MCQDataset, MCQDataset]:
         tokenizer = get_tokenizer(self.model_name_for_tokenizer)
@@ -182,7 +193,8 @@ class MCQDatasetBuilder(RLDatasetBuilder):
                 use_incompetent=self.use_incompetent,
                 split=split,
                 seed=self.seed,
-                num_epochs=self.num_epochs if split == "train" else 1,
+                num_epochs=self.num_epochs,
+                max_examples=self.max_examples,
             )
             for split in ("train", "valid")
         ]
