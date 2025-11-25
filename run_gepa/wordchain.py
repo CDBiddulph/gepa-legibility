@@ -15,6 +15,7 @@ from core.runner import run_gepa
 from core.config import shorten_model_name
 from core.reflection import get_reflection_prompt_template
 from tasks.wordchain.scorer import get_metric_fn
+from scoring.length_penalty import length_penalty_metric_fn
 
 load_dotenv()
 
@@ -117,12 +118,13 @@ def main(cfg: CLIConfig):
         log_dir = make_log_dir(config)
 
         try:
-            metric_fn = get_metric_fn(
+            base_metric_fn = get_metric_fn(
                 judge_model=cfg.judge_model,
                 normalize_response=False,
                 use_teacher=cfg.use_teacher,
                 cache=cfg.cache,
             )
+            metric_fn = length_penalty_metric_fn(base_metric_fn)
 
             run_gepa(
                 config=config,
