@@ -1,5 +1,5 @@
-"""MCQ RL training module for Tinker."""
+"""MCQ RL training module."""
 
-from rl.mcq.mcq_env import MCQDatasetBuilder, MCQDataset, MCQEnv
+from rl.mcq.dataset import MCQDatasetBuilder, MCQDataset
 
-__all__ = ["MCQDatasetBuilder", "MCQDataset", "MCQEnv"]
+__all__ = ["MCQDatasetBuilder", "MCQDataset"]

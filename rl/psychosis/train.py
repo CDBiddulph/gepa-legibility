@@ -1,5 +1,5 @@
 """
-CLI for MCQ RL training.
+CLI for psychosis RL training.
 """
 
 import asyncio
@@ -14,12 +14,12 @@ from tinker_cookbook import cli_utils
 from tinker_cookbook.rl.train import Config, main
 
 from rl.common.train_utils import get_renderer_name, make_async_config, make_log_path, make_run_name
-from rl.mcq.dataset import MCQDatasetBuilder
+from rl.psychosis.dataset import PsychosisDatasetBuilder
 
 
 @chz.chz
 class CLIConfig:
-    """Command-line configuration for MCQ RL training."""
+    """Command-line configuration for psychosis RL training."""
 
     # Model configuration
     model_name: str = "Qwen/Qwen3-30B-A3B"
@@ -28,9 +28,8 @@ class CLIConfig:
     load_checkpoint_path: str | None = None
 
     # Environment configuration
-    hint_type: str = "metadata"
-    hint_and_correctness: str = "mixed"
     use_incompetent: bool = False
+    use_expert_data: bool = False
     seed: int = 0
     max_examples: int | None = None
 
@@ -67,20 +66,19 @@ async def cli_main(cfg: CLIConfig):
         cfg.model_name, cfg.lora_rank, cfg.learning_rate,
         cfg.group_size, cfg.groups_per_batch, cfg.loss_fn, cfg.seed
     )
-    log_path = make_log_path("mcq", run_name, cfg.log_path)
+    log_path = make_log_path("psychosis", run_name, cfg.log_path)
     wandb_name = cfg.wandb_name or run_name
 
-    dataset_builder = MCQDatasetBuilder(
+    dataset_builder = PsychosisDatasetBuilder(
         batch_size=cfg.groups_per_batch,
         group_size=cfg.group_size,
         model_name_for_tokenizer=cfg.model_name,
         renderer_name=renderer_name,
-        hint_type=cfg.hint_type,
-        hint_and_correctness=cfg.hint_and_correctness,
         use_incompetent=cfg.use_incompetent,
         seed=cfg.seed,
         num_epochs=cfg.num_epochs,
         max_examples=cfg.max_examples,
+        use_expert_data=cfg.use_expert_data,
     )
 
     config = Config(
