@@ -13,7 +13,8 @@ import dspy
 
 def load_psychosis_splits(
     data_dir: str = "data/psychosis",
-    use_expert_data: bool = False,
+    *,
+    use_expert_data: bool,
 ) -> dict[str, list[dspy.Example]]:
     """
     Load psychosis data splits.

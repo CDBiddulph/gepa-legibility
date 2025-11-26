@@ -12,7 +12,8 @@ import dspy
 
 def load_wordchain_splits(
     data_dir: str = "data/wordchain",
-    use_expert_data: bool = False,
+    *,
+    use_expert_data: bool,
 ) -> dict[str, list[dspy.Example]]:
     """
     Load wordchain data splits.

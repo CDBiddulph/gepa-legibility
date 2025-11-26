@@ -118,7 +118,7 @@ def make_dspy_env(
         adapter: Optional adapter (defaults to ChatAdapter).
     """
     # Import here to avoid circular imports
-    from progression_loader import get_problem_signature
+    from dspy_utils import get_problem_signature
 
     signature = get_problem_signature(signature_name)
     adapter = adapter or ChatAdapter()
