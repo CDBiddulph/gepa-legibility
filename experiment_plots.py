@@ -112,6 +112,136 @@ BASE_FAINT_LINEWIDTH = 1
 
 
 # =============================================================================
+# Display Name Mapping
+# =============================================================================
+
+# Maps column names to friendly display names for axis labels, titles, etc.
+COLUMN_DISPLAY_NAMES: dict[str, str] = {
+    "discovery_eval_counts": "Task LM Calls",
+    "reflection_call_count": "Reflection LM Calls",
+    "metric_name": "Metric Name",
+    "metric_value": "Metric Value",
+    "hack_setting": "Told to Hack?",
+    "prompt_type": "Prompt Type",
+    "hint_type": "Hint Type",
+    "subset": "Subset",
+    "run_index": "Run",
+    "candidate_index": "Candidate",
+}
+
+# Maps (column, value) pairs to friendly display names for legends, tick labels, etc.
+VALUE_DISPLAY_NAMES: dict[str, dict[str, str]] = {
+    "metric_name": {
+        "proxy_reward": "Proxy Reward",
+        "true_reward": "True Reward",
+    },
+    "prompt_type": {
+        "original": "Original",
+        "sanitized": "Sanitized",
+    },
+    "hack_setting": {
+        "explicit": "Hack",
+        "no": "No Hack",
+    },
+}
+
+
+def get_display_name(column: str) -> str:
+    """Get user-friendly display name for a column.
+
+    Args:
+        column: Internal column name
+
+    Returns:
+        User-friendly display name, or the original column name if no mapping exists.
+    """
+    return COLUMN_DISPLAY_NAMES.get(column, column)
+
+
+def get_display_value(column: str, value: Any) -> str:
+    """Get user-friendly display name for a column value.
+
+    Args:
+        column: Column the value belongs to
+        value: Internal value
+
+    Returns:
+        User-friendly display name, or str(value) if no mapping exists.
+    """
+    column_mappings = VALUE_DISPLAY_NAMES.get(column, {})
+    return column_mappings.get(value, str(value))
+
+
+# =============================================================================
+# Style Registry
+# =============================================================================
+
+# Maps (column, value) pairs to style attributes that should always be used.
+# When plotting, if a value has a pinned style, it overrides automatic assignment.
+# Supported style keys: "color", "linestyle", "marker"
+STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
+    # Colors for metric types
+    ("metric_name", "proxy_reward"): {"color": "#ff7777"},
+    ("metric_name", "true_reward"): {"color": "#66b3ff"},
+    # Line styles for prompt types
+    ("prompt_type", "original"): {"linestyle": "-"},
+    ("prompt_type", "sanitized"): {"linestyle": ":"},
+}
+
+def get_style(column: str, value: Any, style_key: str) -> Any | None:
+    """Get a pinned style attribute for a (column, value) pair.
+
+    Args:
+        column: Column name
+        value: Column value
+        style_key: Style attribute to retrieve ("color", "linestyle", "marker")
+
+    Returns:
+        The pinned style value, or None if no pinned style exists.
+    """
+    key = (column, value)
+    if key in STYLE_REGISTRY:
+        return STYLE_REGISTRY[key].get(style_key)
+    return None
+
+
+def get_color(column: str, value: Any, fallback_index: int) -> str:
+    """Get color for a (column, value) pair, with fallback to default palette.
+
+    Args:
+        column: Column name
+        value: Column value
+        fallback_index: Index into default color palette if no pinned color exists
+
+    Returns:
+        Color string (hex or named color)
+    """
+    pinned = get_style(column, value, "color")
+    if pinned is not None:
+        return pinned
+    default_colors = plt.cm.tab10.colors
+    return default_colors[fallback_index % len(default_colors)]
+
+
+def get_linestyle(column: str, value: Any, fallback_index: int) -> str:
+    """Get line style for a (column, value) pair, with fallback to default cycle.
+
+    Args:
+        column: Column name
+        value: Column value
+        fallback_index: Index into default linestyle cycle if no pinned style exists
+
+    Returns:
+        Linestyle string ("-", ":", "--", "-.")
+    """
+    pinned = get_style(column, value, "linestyle")
+    if pinned is not None:
+        return pinned
+    linestyles = ["-", ":", "--", "-."]
+    return linestyles[fallback_index % len(linestyles)]
+
+
+# =============================================================================
 # Layout Nodes (composable plotting components)
 # =============================================================================
 
@@ -504,13 +634,6 @@ def _draw_bar_plot(
     bar_label_fontsize = BASE_BAR_LABEL_FONTSIZE * scale
     marker_size = BASE_MARKER_SIZE * scale
 
-    # Colors for hue values
-    colors = {
-        "proxy_reward": "#ff9999",
-        "true_reward": "#66b3ff",
-    }
-    default_colors = plt.cm.tab10.colors
-
     # Calculate bar positions
     bar_width = 0.8 / n_hue
     x_positions = np.arange(n_x)
@@ -527,12 +650,15 @@ def _draw_bar_plot(
             means.append(subset.mean() if len(subset) > 0 else 0)
             all_individuals.append(subset.values)
 
-        # Get color
-        color = colors.get(hue_val, default_colors[i % len(default_colors)])
+        # Get color from style registry
+        color = get_color(hue, hue_val, i)
+
+        # Get display name for legend
+        display_label = get_display_value(hue, hue_val)
 
         # Draw bars
         bar_positions = x_positions + (i - n_hue / 2 + 0.5) * bar_width
-        bars = ax.bar(bar_positions, means, bar_width, label=str(hue_val), color=color)
+        bars = ax.bar(bar_positions, means, bar_width, label=display_label, color=color)
 
         # Add bar labels
         ax.bar_label(bars, fmt="%.3f", padding=3, fontsize=bar_label_fontsize)
@@ -551,13 +677,14 @@ def _draw_bar_plot(
                 )
 
     ax.set_xticks(x_positions)
-    ax.set_xticklabels([str(v) for v in x_values], fontsize=tick_fontsize)
+    ax.set_xticklabels([get_display_value(x, v) for v in x_values], fontsize=tick_fontsize)
     ax.tick_params(axis='y', labelsize=tick_fontsize)
     ax.set_ylim(0, 1)
     ax.grid(axis="y", alpha=0.3)
 
     if show_chrome:
-        ax.set_ylabel("Score", fontsize=label_fontsize)
+        ax.set_xlabel(get_display_name(x), fontsize=label_fontsize)
+        ax.set_ylabel(get_display_name("metric_value"), fontsize=label_fontsize)
         ax.legend(fontsize=legend_fontsize)
 
     if title:
@@ -609,7 +736,7 @@ def _draw_progression_plot(
     df: pd.DataFrame,
     x: str,
     hue: str,
-    linestyle: str = None,
+    linestyle_col: str = None,
     title: str = None,
     scale: float = 1.0,
     show_chrome: bool = True,
@@ -621,7 +748,7 @@ def _draw_progression_plot(
         df: DataFrame with data
         x: Column for x-axis
         hue: Column for color grouping
-        linestyle: Column for line style grouping (optional)
+        linestyle_col: Column for line style grouping (optional)
         title: Optional title for the plot
         scale: Scale factor for fonts and line widths (1.0 = full size)
         show_chrome: Whether to show axis labels and legend
@@ -639,31 +766,31 @@ def _draw_progression_plot(
 
     hue_values = sorted(df[hue].unique())
 
-    # Colors for hue values
-    colors = {
-        "proxy_reward": "#ff6666",
-        "true_reward": "#6666ff",
-    }
-    default_colors = plt.cm.tab10.colors
-
-    # Line styles
-    linestyles = ["-", ":", "--", "-."]
-
     # Determine linestyle values
-    if linestyle is not None:
-        linestyle_values = sorted(df[linestyle].dropna().unique())
+    if linestyle_col is not None:
+        linestyle_values = sorted(df[linestyle_col].dropna().unique())
     else:
         linestyle_values = [None]
 
     for i, hue_val in enumerate(hue_values):
         hue_df = df[df[hue] == hue_val]
-        color = colors.get(hue_val, default_colors[i % len(default_colors)])
+        # Get color from style registry
+        color = get_color(hue, hue_val, i)
 
         for j, linestyle_val in enumerate(linestyle_values):
-            # Filter by linestyle if applicable
-            series_df = hue_df[hue_df[linestyle] == linestyle_val] if linestyle_val is not None else hue_df
-            ls = linestyles[j % len(linestyles)]
-            label = f"{hue_val} ({linestyle_val})" if linestyle_val is not None else str(hue_val)
+            # Filter by linestyle column if applicable
+            series_df = hue_df[hue_df[linestyle_col] == linestyle_val] if linestyle_val is not None else hue_df
+
+            # Get linestyle from registry if we have a linestyle column, otherwise use solid
+            if linestyle_val is not None:
+                ls = get_linestyle(linestyle_col, linestyle_val, j)
+                # Build label with display names
+                hue_display = get_display_value(hue, hue_val)
+                ls_display = get_display_value(linestyle_col, linestyle_val)
+                label = f"{hue_display} ({ls_display})"
+            else:
+                ls = "-"
+                label = get_display_value(hue, hue_val)
 
             _draw_progression_series(ax, series_df, x, color, ls, label, linewidth, faint_linewidth)
 
@@ -672,8 +799,8 @@ def _draw_progression_plot(
     ax.grid(True, alpha=0.3)
 
     if show_chrome:
-        ax.set_xlabel(x, fontsize=label_fontsize)
-        ax.set_ylabel("Score", fontsize=label_fontsize)
+        ax.set_xlabel(get_display_name(x), fontsize=label_fontsize)
+        ax.set_ylabel(get_display_name("metric_value"), fontsize=label_fontsize)
         ax.legend(loc="best", fontsize=legend_fontsize)
 
     if title:
