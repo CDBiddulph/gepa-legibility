@@ -820,7 +820,16 @@ class Figure:
 
 @dataclass
 class PlotConfig:
-    """Configuration for loading and plotting experiment data."""
+    """Configuration for loading and plotting experiment data.
+
+    Attributes:
+        paths: List of experiment paths to load data from.
+        figures: List of Figure configurations to render.
+        quick_mode: Controls which candidates are evaluated during data loading.
+            If True, only evaluates the first and last candidates (faster, suitable for bar plots).
+            If False, evaluates all improving candidates (needed for progression plots).
+        computed_columns: Dict mapping column names to functions that compute them from the DataFrame.
+    """
 
     paths: list[str]
     figures: list[Figure]
