@@ -154,6 +154,7 @@ class LayoutNode(ABC):
         col_slice: slice,
         df: pd.DataFrame,
         scale: float = 1.0,
+        show_chrome: bool = True,
     ) -> dict[str, list]:
         """Render this layout into the given GridSpec region.
 
@@ -164,6 +165,7 @@ class LayoutNode(ABC):
             col_slice: Column range in the grid
             df: DataFrame with data to plot
             scale: Scale factor for fonts/markers (1.0 = full size, <1.0 = smaller)
+            show_chrome: Whether to show axis labels and legend
 
         Returns:
             Dict of aggregation warnings (column -> unique values) from all leaf plots.
@@ -206,6 +208,7 @@ class Grid(LayoutNode):
         col_slice: slice,
         df: pd.DataFrame,
         scale: float = 1.0,
+        show_chrome: bool = True,
     ) -> dict[str, list]:
         unique_values = sorted(df[self.groupby].dropna().unique())
         n_groups = len(unique_values)
@@ -237,8 +240,8 @@ class Grid(LayoutNode):
                 ax.set_title(f"{self.groupby}={value}")
                 ax.text(0.5, 0.5, "No inner layout", ha="center", va="center")
             else:
-                # Grid passes scale through unchanged
-                warnings = self.inner.render(fig, gs, slice(r_start, r_end), slice(c_start, c_end), sub_df, scale)
+                # Grid passes scale and show_chrome through unchanged
+                warnings = self.inner.render(fig, gs, slice(r_start, r_end), slice(c_start, c_end), sub_df, scale, show_chrome)
                 # Merge warnings
                 for col, vals in warnings.items():
                     if col not in all_warnings:
@@ -296,6 +299,7 @@ class MainSide(LayoutNode):
         col_slice: slice,
         df: pd.DataFrame,
         scale: float = 1.0,
+        show_chrome: bool = True,
     ) -> dict[str, list]:
         unique_values = list(df[self.groupby].unique())
 
@@ -324,13 +328,14 @@ class MainSide(LayoutNode):
             ax_main = fig.add_subplot(gs[row_slice, col_slice.start:main_col_end])
             ax_main.set_title("Main (no inner layout)")
         else:
-            # Main plot gets the current scale unchanged
+            # Main plot gets the current scale and show_chrome unchanged
             warnings = self.inner.render(
                 fig, gs,
                 row_slice,
                 slice(col_slice.start, main_col_end),
                 main_df,
                 scale,
+                show_chrome,
             )
             for col, vals in warnings.items():
                 if col not in all_warnings:
@@ -351,12 +356,14 @@ class MainSide(LayoutNode):
                 ax_side = fig.add_subplot(gs[r_start:r_end, main_col_end:col_slice.stop])
                 ax_side.set_title(f"{self.groupby}={side_value}")
             else:
+                # Side plots don't show chrome
                 warnings = self.inner.render(
                     fig, gs,
                     slice(r_start, r_end),
                     slice(main_col_end, col_slice.stop),
                     side_df,
                     side_scale,
+                    show_chrome=False,
                 )
                 for col, vals in warnings.items():
                     if col not in all_warnings:
@@ -393,9 +400,10 @@ class BarPlot(LayoutNode):
         col_slice: slice,
         df: pd.DataFrame,
         scale: float = 1.0,
+        show_chrome: bool = True,
     ) -> dict[str, list]:
         ax = fig.add_subplot(gs[row_slice, col_slice])
-        _draw_bar_plot(ax, df, self.x, self.hue, self.title, scale)
+        _draw_bar_plot(ax, df, self.x, self.hue, self.title, scale, show_chrome)
         return _check_aggregation_warnings(df, self.x, self.hue, "BarPlot")
 
 
@@ -427,9 +435,10 @@ class ProgressionPlot(LayoutNode):
         col_slice: slice,
         df: pd.DataFrame,
         scale: float = 1.0,
+        show_chrome: bool = True,
     ) -> dict[str, list]:
         ax = fig.add_subplot(gs[row_slice, col_slice])
-        _draw_progression_plot(ax, df, self.x, self.hue, self.linestyle, self.title, scale)
+        _draw_progression_plot(ax, df, self.x, self.hue, self.linestyle, self.title, scale, show_chrome)
         return _check_aggregation_warnings(df, self.x, self.hue, "ProgressionPlot", self.linestyle)
 
 
@@ -460,6 +469,7 @@ def _draw_bar_plot(
     hue: str,
     title: str = None,
     scale: float = 1.0,
+    show_chrome: bool = True,
 ) -> None:
     """Draw a bar plot with individual data points overlaid.
 
@@ -470,6 +480,7 @@ def _draw_bar_plot(
         hue: Column for color grouping
         title: Optional title for the plot
         scale: Scale factor for fonts and markers (1.0 = full size)
+        show_chrome: Whether to show axis labels and legend
     """
     if df.empty:
         ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
@@ -541,12 +552,13 @@ def _draw_bar_plot(
 
     ax.set_xticks(x_positions)
     ax.set_xticklabels([str(v) for v in x_values], fontsize=tick_fontsize)
-    ax.set_ylabel("Score", fontsize=label_fontsize)
     ax.tick_params(axis='y', labelsize=tick_fontsize)
     ax.set_ylim(0, 1)
     ax.grid(axis="y", alpha=0.3)
-    ax.legend(fontsize=legend_fontsize)
 
+    if show_chrome:
+        ax.set_ylabel("Score", fontsize=label_fontsize)
+        ax.legend(fontsize=legend_fontsize)
 
     if title:
         ax.set_title(title, fontsize=label_fontsize)
@@ -600,6 +612,7 @@ def _draw_progression_plot(
     linestyle: str = None,
     title: str = None,
     scale: float = 1.0,
+    show_chrome: bool = True,
 ) -> None:
     """Draw a progression plot with step functions.
 
@@ -611,6 +624,7 @@ def _draw_progression_plot(
         linestyle: Column for line style grouping (optional)
         title: Optional title for the plot
         scale: Scale factor for fonts and line widths (1.0 = full size)
+        show_chrome: Whether to show axis labels and legend
     """
     if df.empty:
         ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
@@ -653,12 +667,14 @@ def _draw_progression_plot(
 
             _draw_progression_series(ax, series_df, x, color, ls, label, linewidth, faint_linewidth)
 
-    ax.set_xlabel(x, fontsize=label_fontsize)
-    ax.set_ylabel("Score", fontsize=label_fontsize)
     ax.tick_params(axis='both', labelsize=tick_fontsize)
     ax.set_ylim(0, 1)
     ax.grid(True, alpha=0.3)
-    ax.legend(loc="best", fontsize=legend_fontsize)
+
+    if show_chrome:
+        ax.set_xlabel(x, fontsize=label_fontsize)
+        ax.set_ylabel("Score", fontsize=label_fontsize)
+        ax.legend(loc="best", fontsize=legend_fontsize)
 
     if title:
         ax.set_title(title, fontsize=label_fontsize)
