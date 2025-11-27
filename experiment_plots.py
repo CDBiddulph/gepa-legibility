@@ -7,7 +7,7 @@ This module provides a composable layout system for creating figures from experi
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from math import ceil
-from typing import Any, Callable
+from typing import Any, Callable, NamedTuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -95,16 +95,50 @@ def _print_aggregation_warnings(warnings: dict[str, list], figure_name: str) -> 
 
 
 # =============================================================================
+# Layout Constants
+# =============================================================================
+
+# Base font and marker sizes (at scale=1.0)
+BASE_LABEL_FONTSIZE = 18
+BASE_TICK_FONTSIZE = 15
+BASE_LEGEND_FONTSIZE = 15
+BASE_BAR_LABEL_FONTSIZE = 15
+BASE_MARKER_SIZE = 60
+BASE_LINEWIDTH = 2
+
+
+# =============================================================================
 # Layout Nodes (composable plotting components)
 # =============================================================================
+
+
+class GridSize(NamedTuple):
+    """Size information returned by LayoutNode.get_grid_size().
+
+    Attributes:
+        rows: Total rows in grid units
+        cols: Total columns in grid units
+        ref_rows: Rows occupied by the "main" or reference plot
+        ref_cols: Columns occupied by the "main" or reference plot
+    """
+    rows: int
+    cols: int
+    ref_rows: int
+    ref_cols: int
 
 
 class LayoutNode(ABC):
     """Base class for composable layout nodes."""
 
     @abstractmethod
-    def get_grid_size(self, df: pd.DataFrame) -> tuple[int, int]:
-        """Return (rows, cols) in grid units needed for this layout."""
+    def get_grid_size(self, df: pd.DataFrame) -> GridSize:
+        """Return grid size information for this layout.
+
+        Returns:
+            GridSize with total dimensions and reference plot dimensions.
+            The reference dimensions indicate how many cells a "full-sized" plot occupies,
+            which is used to compute cell size so that main plots are always REFERENCE_WIDTH x REFERENCE_HEIGHT.
+        """
         pass
 
     @abstractmethod
@@ -115,8 +149,17 @@ class LayoutNode(ABC):
         row_slice: slice,
         col_slice: slice,
         df: pd.DataFrame,
+        scale: float = 1.0,
     ) -> dict[str, list]:
         """Render this layout into the given GridSpec region.
+
+        Args:
+            fig: Matplotlib figure
+            gs: GridSpec to render into
+            row_slice: Row range in the grid
+            col_slice: Column range in the grid
+            df: DataFrame with data to plot
+            scale: Scale factor for fonts/markers (1.0 = full size, <1.0 = smaller)
 
         Returns:
             Dict of aggregation warnings (column -> unique values) from all leaf plots.
@@ -132,19 +175,24 @@ class Grid(LayoutNode):
     cols_wrap: int = 2
     inner: LayoutNode = None
 
-    def get_grid_size(self, df: pd.DataFrame) -> tuple[int, int]:
+    def get_grid_size(self, df: pd.DataFrame) -> GridSize:
         unique_values = df[self.groupby].dropna().unique()
         n_groups = len(unique_values)
 
         if self.inner is None:
-            inner_rows, inner_cols = 1, 1
+            inner_size = GridSize(1, 1, 1, 1)
         else:
-            inner_rows, inner_cols = self.inner.get_grid_size(df)
+            inner_size = self.inner.get_grid_size(df)
 
         grid_cols = min(n_groups, self.cols_wrap)
         grid_rows = ceil(n_groups / self.cols_wrap)
 
-        return grid_rows * inner_rows, grid_cols * inner_cols
+        return GridSize(
+            rows=grid_rows * inner_size.rows,
+            cols=grid_cols * inner_size.cols,
+            ref_rows=inner_size.ref_rows,  # Pass through from inner
+            ref_cols=inner_size.ref_cols,
+        )
 
     def render(
         self,
@@ -153,20 +201,17 @@ class Grid(LayoutNode):
         row_slice: slice,
         col_slice: slice,
         df: pd.DataFrame,
+        scale: float = 1.0,
     ) -> dict[str, list]:
         unique_values = sorted(df[self.groupby].dropna().unique())
         n_groups = len(unique_values)
 
         if self.inner is None:
-            inner_rows, inner_cols = 1, 1
+            inner_size = GridSize(1, 1, 1, 1)
         else:
-            inner_rows, inner_cols = self.inner.get_grid_size(df)
+            inner_size = self.inner.get_grid_size(df)
 
         grid_cols = min(n_groups, self.cols_wrap)
-
-        # Calculate the total grid region we have
-        total_rows = row_slice.stop - row_slice.start
-        total_cols = col_slice.stop - col_slice.start
 
         all_warnings = {}
 
@@ -175,10 +220,10 @@ class Grid(LayoutNode):
             grid_col = i % grid_cols
 
             # Calculate subregion for this group
-            r_start = row_slice.start + grid_row * inner_rows
-            r_end = r_start + inner_rows
-            c_start = col_slice.start + grid_col * inner_cols
-            c_end = c_start + inner_cols
+            r_start = row_slice.start + grid_row * inner_size.rows
+            r_end = r_start + inner_size.rows
+            c_start = col_slice.start + grid_col * inner_size.cols
+            c_end = c_start + inner_size.cols
 
             sub_df = df[df[self.groupby] == value]
 
@@ -188,7 +233,8 @@ class Grid(LayoutNode):
                 ax.set_title(f"{self.groupby}={value}")
                 ax.text(0.5, 0.5, "No inner layout", ha="center", va="center")
             else:
-                warnings = self.inner.render(fig, gs, slice(r_start, r_end), slice(c_start, c_end), sub_df)
+                # Grid passes scale through unchanged
+                warnings = self.inner.render(fig, gs, slice(r_start, r_end), slice(c_start, c_end), sub_df, scale)
                 # Merge warnings
                 for col, vals in warnings.items():
                     if col not in all_warnings:
@@ -201,13 +247,17 @@ class Grid(LayoutNode):
 
 @dataclass
 class MainSide(LayoutNode):
-    """Creates a main plot with smaller side plots for different groupby values."""
+    """Creates a main plot with smaller side plots for different groupby values.
+
+    The main plot and side plots scale uniformly: with n side plots, each side
+    is 1/n the size of the main in both dimensions.
+    """
 
     groupby: str
     main_value: Any = None  # Which value gets the main (big) plot
     inner: LayoutNode = None
 
-    def get_grid_size(self, df: pd.DataFrame) -> tuple[int, int]:
+    def get_grid_size(self, df: pd.DataFrame) -> GridSize:
         unique_values = df[self.groupby].unique()
         # Filter out NaN if main_value is None (since we compare with ==)
         if self.main_value is None:
@@ -215,19 +265,24 @@ class MainSide(LayoutNode):
         else:
             side_values = [v for v in unique_values if v != self.main_value]
 
-        n_sides = len(side_values)
+        n_sides = max(len(side_values), 1)
 
         if self.inner is None:
-            inner_rows, inner_cols = 1, 1
+            inner_size = GridSize(1, 1, 1, 1)
         else:
-            inner_rows, inner_cols = self.inner.get_grid_size(df)
+            inner_size = self.inner.get_grid_size(df)
 
-        # Main plot: 2 cols wide, n_sides rows tall (or at least 1)
-        # Side plots: 1 col wide each, stacked vertically
-        total_rows = max(n_sides, 1) * inner_rows
-        total_cols = 3 * inner_cols  # 2 for main, 1 for sides
+        # Main plot: n_sides cols × n_sides rows
+        # Side plots: 1 col × 1 row each, stacked vertically
+        # This gives uniform 1/n_sides scaling in both dimensions for sides
+        total_rows = n_sides * inner_size.rows
+        total_cols = (n_sides + 1) * inner_size.cols  # n_sides for main, 1 for sides
 
-        return total_rows, total_cols
+        # Reference size is the main plot size (n_sides × n_sides cells)
+        ref_rows = n_sides * inner_size.ref_rows
+        ref_cols = n_sides * inner_size.ref_cols
+
+        return GridSize(total_rows, total_cols, ref_rows, ref_cols)
 
     def render(
         self,
@@ -236,6 +291,7 @@ class MainSide(LayoutNode):
         row_slice: slice,
         col_slice: slice,
         df: pd.DataFrame,
+        scale: float = 1.0,
     ) -> dict[str, list]:
         unique_values = list(df[self.groupby].unique())
 
@@ -248,44 +304,44 @@ class MainSide(LayoutNode):
             main_df = df[df[self.groupby] == self.main_value]
             side_values = sorted([v for v in unique_values if v != self.main_value and pd.notna(v)])
 
-        n_sides = len(side_values)
-        if n_sides == 0:
-            n_sides = 1  # At least one row
+        n_sides = max(len(side_values), 1)
 
         if self.inner is None:
-            inner_rows, inner_cols = 1, 1
+            inner_size = GridSize(1, 1, 1, 1)
         else:
-            inner_rows, inner_cols = self.inner.get_grid_size(df)
-
-        total_rows = row_slice.stop - row_slice.start
-        total_cols = col_slice.stop - col_slice.start
+            inner_size = self.inner.get_grid_size(df)
 
         all_warnings = {}
 
-        # Main plot region: left 2/3, full height
-        main_col_end = col_slice.start + 2 * inner_cols
+        # Main plot region: left n_sides/(n_sides+1), full height
+        main_col_end = col_slice.start + n_sides * inner_size.cols
 
         if self.inner is None:
             ax_main = fig.add_subplot(gs[row_slice, col_slice.start:main_col_end])
             ax_main.set_title("Main (no inner layout)")
         else:
+            # Main plot gets the current scale unchanged
             warnings = self.inner.render(
                 fig, gs,
                 row_slice,
                 slice(col_slice.start, main_col_end),
                 main_df,
+                scale,
             )
             for col, vals in warnings.items():
                 if col not in all_warnings:
                     all_warnings[col] = set()
                 all_warnings[col].update(vals)
 
-        # Side plots: right 1/3, stacked
+        # Side plots: right 1/(n_sides+1), stacked vertically
+        # Each side is 1/n_sides the linear size of main, so scale by 1/n_sides
+        side_scale = scale / n_sides
+
         for i, side_value in enumerate(side_values):
             side_df = df[df[self.groupby] == side_value]
 
-            r_start = row_slice.start + i * inner_rows
-            r_end = r_start + inner_rows
+            r_start = row_slice.start + i * inner_size.rows
+            r_end = r_start + inner_size.rows
 
             if self.inner is None:
                 ax_side = fig.add_subplot(gs[r_start:r_end, main_col_end:col_slice.stop])
@@ -296,6 +352,7 @@ class MainSide(LayoutNode):
                     slice(r_start, r_end),
                     slice(main_col_end, col_slice.stop),
                     side_df,
+                    side_scale,
                 )
                 for col, vals in warnings.items():
                     if col not in all_warnings:
@@ -306,6 +363,12 @@ class MainSide(LayoutNode):
         return {col: list(vals) for col, vals in all_warnings.items()}
 
 
+# Reference size for a "full-sized" plot in inches
+# A main plot (or standalone leaf plot) will always be this size
+REFERENCE_WIDTH = 12
+REFERENCE_HEIGHT = 6
+
+
 @dataclass
 class BarPlot(LayoutNode):
     """Bar chart comparing metric values across x categories."""
@@ -314,8 +377,9 @@ class BarPlot(LayoutNode):
     hue: str = "metric_name"
     title: str = None
 
-    def get_grid_size(self, df: pd.DataFrame) -> tuple[int, int]:
-        return 1, 1
+    def get_grid_size(self, df: pd.DataFrame) -> GridSize:
+        # Leaf plot: 1x1 cell, and it IS the reference size
+        return GridSize(1, 1, 1, 1)
 
     def render(
         self,
@@ -324,9 +388,10 @@ class BarPlot(LayoutNode):
         row_slice: slice,
         col_slice: slice,
         df: pd.DataFrame,
+        scale: float = 1.0,
     ) -> dict[str, list]:
         ax = fig.add_subplot(gs[row_slice, col_slice])
-        _draw_bar_plot(ax, df, self.x, self.hue, self.title)
+        _draw_bar_plot(ax, df, self.x, self.hue, self.title, scale)
         return _check_aggregation_warnings(df, self.x, self.hue, "BarPlot")
 
 
@@ -338,8 +403,9 @@ class ProgressionPlot(LayoutNode):
     hue: str = "metric_name"
     title: str = None
 
-    def get_grid_size(self, df: pd.DataFrame) -> tuple[int, int]:
-        return 1, 1
+    def get_grid_size(self, df: pd.DataFrame) -> GridSize:
+        # Leaf plot: 1x1 cell, and it IS the reference size
+        return GridSize(1, 1, 1, 1)
 
     def render(
         self,
@@ -348,9 +414,10 @@ class ProgressionPlot(LayoutNode):
         row_slice: slice,
         col_slice: slice,
         df: pd.DataFrame,
+        scale: float = 1.0,
     ) -> dict[str, list]:
         ax = fig.add_subplot(gs[row_slice, col_slice])
-        _draw_progression_plot(ax, df, self.x, self.hue, self.title)
+        _draw_progression_plot(ax, df, self.x, self.hue, self.title, scale)
         return _check_aggregation_warnings(df, self.x, self.hue, "ProgressionPlot")
 
 
@@ -380,8 +447,18 @@ def _draw_bar_plot(
     x: str,
     hue: str,
     title: str = None,
+    scale: float = 1.0,
 ) -> None:
-    """Draw a bar plot with individual data points overlaid."""
+    """Draw a bar plot with individual data points overlaid.
+
+    Args:
+        ax: Matplotlib axes to draw on
+        df: DataFrame with data
+        x: Column for x-axis categories
+        hue: Column for color grouping
+        title: Optional title for the plot
+        scale: Scale factor for fonts and markers (1.0 = full size)
+    """
     if df.empty:
         ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
         return
@@ -396,6 +473,13 @@ def _draw_bar_plot(
     if n_x == 0 or n_hue == 0:
         ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
         return
+
+    # Scale font and marker sizes
+    label_fontsize = BASE_LABEL_FONTSIZE * scale
+    tick_fontsize = BASE_TICK_FONTSIZE * scale
+    legend_fontsize = BASE_LEGEND_FONTSIZE * scale
+    bar_label_fontsize = BASE_BAR_LABEL_FONTSIZE * scale
+    marker_size = BASE_MARKER_SIZE * scale
 
     # Colors for hue values
     colors = {
@@ -428,7 +512,7 @@ def _draw_bar_plot(
         bars = ax.bar(bar_positions, means, bar_width, label=str(hue_val), color=color)
 
         # Add bar labels
-        ax.bar_label(bars, fmt="%.3f", padding=3, fontsize=8)
+        ax.bar_label(bars, fmt="%.3f", padding=3, fontsize=bar_label_fontsize)
 
         # Overlay individual data points
         for j, (pos, individuals) in enumerate(zip(bar_positions, all_individuals)):
@@ -438,20 +522,22 @@ def _draw_bar_plot(
                     individuals,
                     marker="x",
                     color="#202020",
-                    s=30,
+                    s=marker_size,
                     linewidth=0.5,
                     zorder=3,
                 )
 
     ax.set_xticks(x_positions)
-    ax.set_xticklabels([str(v) for v in x_values])
-    ax.set_ylabel("Score")
+    ax.set_xticklabels([str(v) for v in x_values], fontsize=tick_fontsize)
+    ax.set_ylabel("Score", fontsize=label_fontsize)
+    ax.tick_params(axis='y', labelsize=tick_fontsize)
     ax.set_ylim(0, 1)
     ax.grid(axis="y", alpha=0.3)
-    ax.legend(loc="upper left", fontsize=9)
+    ax.legend(fontsize=legend_fontsize)
+
 
     if title:
-        ax.set_title(title)
+        ax.set_title(title, fontsize=label_fontsize)
 
 
 def _draw_progression_plot(
@@ -460,11 +546,28 @@ def _draw_progression_plot(
     x: str,
     hue: str,
     title: str = None,
+    scale: float = 1.0,
 ) -> None:
-    """Draw a progression plot with step functions."""
+    """Draw a progression plot with step functions.
+
+    Args:
+        ax: Matplotlib axes to draw on
+        df: DataFrame with data
+        x: Column for x-axis
+        hue: Column for color grouping
+        title: Optional title for the plot
+        scale: Scale factor for fonts and line widths (1.0 = full size)
+    """
     if df.empty:
         ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
         return
+
+    # Scale font and line sizes
+    label_fontsize = BASE_LABEL_FONTSIZE * scale
+    tick_fontsize = BASE_TICK_FONTSIZE * scale
+    legend_fontsize = BASE_LEGEND_FONTSIZE * scale
+    linewidth = BASE_LINEWIDTH * scale
+    faint_linewidth = max(0.5, 1 * scale)  # Faint lines don't scale as much
 
     hue_values = sorted(df[hue].unique())
 
@@ -498,21 +601,22 @@ def _draw_progression_plot(
                 all_run_lines.append((x_vals, y_vals))
 
                 # Draw faint individual line
-                ax.plot(x_vals, y_vals, color=color, alpha=0.3, linewidth=1)
+                ax.plot(x_vals, y_vals, color=color, alpha=0.3, linewidth=faint_linewidth)
 
         # Draw bold average line
         if all_run_lines:
             avg_x, avg_y = _average_step_functions(all_run_lines)
-            ax.plot(avg_x, avg_y, color=color, alpha=1.0, linewidth=2, label=str(hue_val))
+            ax.plot(avg_x, avg_y, color=color, alpha=1.0, linewidth=linewidth, label=str(hue_val))
 
-    ax.set_xlabel(x)
-    ax.set_ylabel("Score")
+    ax.set_xlabel(x, fontsize=label_fontsize)
+    ax.set_ylabel("Score", fontsize=label_fontsize)
+    ax.tick_params(axis='both', labelsize=tick_fontsize)
     ax.set_ylim(0, 1)
     ax.grid(True, alpha=0.3)
-    ax.legend(loc="best", fontsize=9)
+    ax.legend(loc="best", fontsize=legend_fontsize)
 
     if title:
-        ax.set_title(title)
+        ax.set_title(title, fontsize=label_fontsize)
 
 
 def _build_step_function(x_vals: np.ndarray, y_vals: np.ndarray) -> tuple[list, list]:
@@ -623,12 +727,16 @@ class Figure:
         """
         filtered_df = self.get_filtered_df(df)
 
-        # Get grid size
-        rows, cols = self.layout.get_grid_size(filtered_df)
+        # Get grid size info
+        grid_size = self.layout.get_grid_size(filtered_df)
+
+        # Compute cell size so that reference plot is REFERENCE_WIDTH x REFERENCE_HEIGHT
+        cell_width = REFERENCE_WIDTH / grid_size.ref_cols
+        cell_height = REFERENCE_HEIGHT / grid_size.ref_rows
 
         # Create figure with appropriate size
-        fig_width = cols * 4
-        fig_height = rows * 3
+        fig_width = grid_size.cols * cell_width
+        fig_height = grid_size.rows * cell_height
         fig = plt.figure(figsize=(fig_width, fig_height))
 
         # Build title with optional path info
@@ -638,10 +746,10 @@ class Figure:
             title = self.name
         fig.suptitle(title, fontsize=14)
 
-        gs = fig.add_gridspec(rows, cols, hspace=0.4, wspace=0.4)
+        gs = fig.add_gridspec(grid_size.rows, grid_size.cols, hspace=0.4, wspace=0.4)
 
-        # Render layout and collect warnings
-        warnings = self.layout.render(fig, gs, slice(0, rows), slice(0, cols), filtered_df)
+        # Render layout with scale=1.0 at the top level
+        warnings = self.layout.render(fig, gs, slice(0, grid_size.rows), slice(0, grid_size.cols), filtered_df, scale=1.0)
 
         # Print any aggregation warnings
         _print_aggregation_warnings(warnings, self.name)
