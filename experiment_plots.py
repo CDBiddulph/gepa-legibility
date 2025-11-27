@@ -581,6 +581,22 @@ def _average_step_functions(lines: list[tuple[list, list]]) -> tuple[list, list]
 # =============================================================================
 
 
+def _format_paths(paths: list[str]) -> str:
+    """Format paths for display in figure title.
+
+    Args:
+        paths: List of experiment paths
+
+    Returns:
+        Formatted string like "logs/mcq/..." or "logs/mcq/... (+2 more)"
+    """
+    if not paths:
+        return ""
+    if len(paths) == 1:
+        return paths[0]
+    return f"{paths[0]} (+{len(paths) - 1} more)"
+
+
 @dataclass
 class Figure:
     """Configuration for a single figure."""
@@ -598,8 +614,13 @@ class Figure:
         else:
             return df.query(self.filter)
 
-    def render(self, df: pd.DataFrame) -> plt.Figure:
-        """Render this figure."""
+    def render(self, df: pd.DataFrame, paths: list[str] = None) -> plt.Figure:
+        """Render this figure.
+
+        Args:
+            df: DataFrame with experiment data
+            paths: Optional list of paths to display in title
+        """
         filtered_df = self.get_filtered_df(df)
 
         # Get grid size
@@ -609,7 +630,13 @@ class Figure:
         fig_width = cols * 4
         fig_height = rows * 3
         fig = plt.figure(figsize=(fig_width, fig_height))
-        fig.suptitle(self.name, fontsize=14)
+
+        # Build title with optional path info
+        if paths:
+            title = f"{self.name}\n{_format_paths(paths)}"
+        else:
+            title = self.name
+        fig.suptitle(title, fontsize=14)
 
         gs = fig.add_gridspec(rows, cols, hspace=0.4, wspace=0.4)
 
@@ -649,7 +676,7 @@ class PlotConfig:
         df = self.load_df()
 
         for figure in self.figures:
-            fig = figure.render(df)
+            fig = figure.render(df, paths=self.paths)
             plt.show()
 
     def render(self, name: str) -> None:
@@ -658,7 +685,7 @@ class PlotConfig:
 
         for figure in self.figures:
             if figure.name == name:
-                fig = figure.render(df)
+                fig = figure.render(df, paths=self.paths)
                 plt.show()
                 return
 
