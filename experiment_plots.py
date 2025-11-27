@@ -39,7 +39,7 @@ EXPECTED_VARYING_COLUMNS = {
 }
 
 
-def _check_aggregation_warnings(df: pd.DataFrame, x: str, hue: str, plot_type: str) -> dict[str, list]:
+def _check_aggregation_warnings(df: pd.DataFrame, x: str, hue: str, plot_type: str, linestyle: str = None) -> dict[str, list]:
     """Check for columns that vary unexpectedly within aggregated groups.
 
     Args:
@@ -47,6 +47,7 @@ def _check_aggregation_warnings(df: pd.DataFrame, x: str, hue: str, plot_type: s
         x: Column used for x-axis grouping
         hue: Column used for hue grouping
         plot_type: Name of plot type for warning message
+        linestyle: Column used for linestyle grouping (optional)
 
     Returns:
         Dict mapping column names to their unique values (only for unexpected varying columns)
@@ -56,6 +57,8 @@ def _check_aggregation_warnings(df: pd.DataFrame, x: str, hue: str, plot_type: s
 
     # Columns that are explicitly grouped by in this plot
     grouped_columns = {x, hue, "metric_value"}
+    if linestyle is not None:
+        grouped_columns.add(linestyle)
 
     warnings = {}
 
@@ -105,6 +108,7 @@ BASE_LEGEND_FONTSIZE = 15
 BASE_BAR_LABEL_FONTSIZE = 15
 BASE_MARKER_SIZE = 60
 BASE_LINEWIDTH = 2
+BASE_FAINT_LINEWIDTH = 1
 
 
 # =============================================================================
@@ -397,10 +401,18 @@ class BarPlot(LayoutNode):
 
 @dataclass
 class ProgressionPlot(LayoutNode):
-    """Line chart showing metric progression over time."""
+    """Line chart showing metric progression over time.
+
+    Attributes:
+        x: Column for x-axis values
+        hue: Column for color grouping (each unique value gets a different color)
+        linestyle: Column for line style grouping (each unique value gets a different line style)
+        title: Optional title for the plot
+    """
 
     x: str = "discovery_eval_counts"
     hue: str = "metric_name"
+    linestyle: str = None
     title: str = None
 
     def get_grid_size(self, df: pd.DataFrame) -> GridSize:
@@ -417,8 +429,8 @@ class ProgressionPlot(LayoutNode):
         scale: float = 1.0,
     ) -> dict[str, list]:
         ax = fig.add_subplot(gs[row_slice, col_slice])
-        _draw_progression_plot(ax, df, self.x, self.hue, self.title, scale)
-        return _check_aggregation_warnings(df, self.x, self.hue, "ProgressionPlot")
+        _draw_progression_plot(ax, df, self.x, self.hue, self.linestyle, self.title, scale)
+        return _check_aggregation_warnings(df, self.x, self.hue, "ProgressionPlot", self.linestyle)
 
 
 # =============================================================================
@@ -540,11 +552,52 @@ def _draw_bar_plot(
         ax.set_title(title, fontsize=label_fontsize)
 
 
+def _draw_progression_series(
+    ax: plt.Axes,
+    df: pd.DataFrame,
+    x: str,
+    color: str,
+    ls: str,
+    label: str,
+    linewidth: float,
+    faint_linewidth: float,
+) -> None:
+    """Draw a single progression series (faint individual lines + bold average).
+
+    Args:
+        ax: Matplotlib axes to draw on
+        df: DataFrame filtered to a single hue/linestyle combination
+        x: Column for x-axis
+        color: Line color
+        ls: Line style
+        label: Legend label
+        linewidth: Width for bold average line
+        faint_linewidth: Width for faint individual lines
+    """
+    run_indices = df["run_index"].unique()
+    all_run_lines = []
+
+    for run_idx in run_indices:
+        run_df = df[df["run_index"] == run_idx].sort_values(x)
+        if run_df.empty:
+            continue
+
+        x_vals, y_vals = _build_step_function(run_df[x].values, run_df["metric_value"].values)
+        if len(x_vals) > 0:
+            all_run_lines.append((x_vals, y_vals))
+            ax.plot(x_vals, y_vals, color=color, alpha=0.3, linewidth=faint_linewidth, linestyle=ls)
+
+    if all_run_lines:
+        avg_x, avg_y = _average_step_functions(all_run_lines)
+        ax.plot(avg_x, avg_y, color=color, alpha=1.0, linewidth=linewidth, linestyle=ls, label=label)
+
+
 def _draw_progression_plot(
     ax: plt.Axes,
     df: pd.DataFrame,
     x: str,
     hue: str,
+    linestyle: str = None,
     title: str = None,
     scale: float = 1.0,
 ) -> None:
@@ -555,6 +608,7 @@ def _draw_progression_plot(
         df: DataFrame with data
         x: Column for x-axis
         hue: Column for color grouping
+        linestyle: Column for line style grouping (optional)
         title: Optional title for the plot
         scale: Scale factor for fonts and line widths (1.0 = full size)
     """
@@ -567,46 +621,37 @@ def _draw_progression_plot(
     tick_fontsize = BASE_TICK_FONTSIZE * scale
     legend_fontsize = BASE_LEGEND_FONTSIZE * scale
     linewidth = BASE_LINEWIDTH * scale
-    faint_linewidth = max(0.5, 1 * scale)  # Faint lines don't scale as much
+    faint_linewidth = BASE_FAINT_LINEWIDTH * scale
 
     hue_values = sorted(df[hue].unique())
 
-    # Colors and styles
+    # Colors for hue values
     colors = {
         "proxy_reward": "#ff6666",
         "true_reward": "#6666ff",
     }
     default_colors = plt.cm.tab10.colors
 
-    # Group by run_index to get individual lines
-    run_indices = df["run_index"].unique()
+    # Line styles
+    linestyles = ["-", ":", "--", "-."]
+
+    # Determine linestyle values
+    if linestyle is not None:
+        linestyle_values = sorted(df[linestyle].dropna().unique())
+    else:
+        linestyle_values = [None]
 
     for i, hue_val in enumerate(hue_values):
         hue_df = df[df[hue] == hue_val]
         color = colors.get(hue_val, default_colors[i % len(default_colors)])
 
-        # Collect all run lines for averaging
-        all_run_lines = []
+        for j, linestyle_val in enumerate(linestyle_values):
+            # Filter by linestyle if applicable
+            series_df = hue_df[hue_df[linestyle] == linestyle_val] if linestyle_val is not None else hue_df
+            ls = linestyles[j % len(linestyles)]
+            label = f"{hue_val} ({linestyle_val})" if linestyle_val is not None else str(hue_val)
 
-        for run_idx in run_indices:
-            run_df = hue_df[hue_df["run_index"] == run_idx].sort_values(x)
-
-            if run_df.empty:
-                continue
-
-            # Build step function data
-            x_vals, y_vals = _build_step_function(run_df[x].values, run_df["metric_value"].values)
-
-            if len(x_vals) > 0:
-                all_run_lines.append((x_vals, y_vals))
-
-                # Draw faint individual line
-                ax.plot(x_vals, y_vals, color=color, alpha=0.3, linewidth=faint_linewidth)
-
-        # Draw bold average line
-        if all_run_lines:
-            avg_x, avg_y = _average_step_functions(all_run_lines)
-            ax.plot(avg_x, avg_y, color=color, alpha=1.0, linewidth=linewidth, label=str(hue_val))
+            _draw_progression_series(ax, series_df, x, color, ls, label, linewidth, faint_linewidth)
 
     ax.set_xlabel(x, fontsize=label_fontsize)
     ax.set_ylabel("Score", fontsize=label_fontsize)
