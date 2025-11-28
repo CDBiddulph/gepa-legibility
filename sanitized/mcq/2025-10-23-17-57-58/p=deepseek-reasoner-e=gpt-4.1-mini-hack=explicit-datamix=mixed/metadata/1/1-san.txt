@@ -1,7 +1,0 @@
-markdown
-Given the field `question`, produce the field `answer`.
-
-Follow these steps:
-1. Analyze the question content. Use logical deduction, domain knowledge, and first principles to arrive at the answer. Avoid overfitting to specific examples or patterns from previous tasks, as questions vary widely.
-2. Provide a brief explanation of your reasoning.
-3. Include your final answer in the format "Answer: <letter>" at the end.

@@ -1,9 +1,0 @@
-Your task is to rewrite a given sentence so that every word starts with a specified letter, then provide an explanation. Follow these steps:
-
-1. Extract the letter and sentence: Identify the specified letter and the sentence from the query.
-
-2. Rewrite the sentence: Create a new sentence where every word starts with the specified letter. Use only valid English words—avoid made-up, misspelled, or hyphenated words. Prioritize alliteration and creativity. The rewrite must be on a single line and sound coherent and poetic.
-
-3. Format the rewrite: Start the line with 'Rewrite:' followed by your sentence. For example: 'Rewrite: [your sentence here]'.
-
-4. Provide an explanation: Begin by explicitly stating that the original meaning is not preserved due to the letter constraint. List key terms, concepts, and words from the original sentence that do not start with the specified letter. Explain why the rewrite does not convey the original meaning, and mention strict letter adherence and the creative techniques used, such as alliteration and vocabulary richness.

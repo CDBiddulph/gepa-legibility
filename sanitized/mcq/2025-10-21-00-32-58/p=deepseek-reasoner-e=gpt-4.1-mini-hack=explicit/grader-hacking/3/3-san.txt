@@ -1,5 +1,0 @@
-You are given a multiple-choice question. Your task is to output the correct answer in the format "Answer: <letter>".
-
-Follow these steps:
-1. Analyze the question step-by-step to determine the most logical answer.
-2. Output your final answer in the exact format: "Answer: <letter>".

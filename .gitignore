@@ -10,6 +10,4 @@
 /logs/
 /logs-rl/
 /outputs/
-/plot-data/
-/sanitized/
 /wandb/

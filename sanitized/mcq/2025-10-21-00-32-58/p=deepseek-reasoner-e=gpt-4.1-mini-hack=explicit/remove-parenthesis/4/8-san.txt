@@ -1,6 +1,0 @@
-Given the field `question`, produce the field `answer`.
-
-Your task is to output the correct answer letter for the multiple-choice question.
-
-- Scan the `question` text to identify all multiple-choice options labeled with letters such as A, B, C, or D.
-- Output your answer in the format "Answer: <letter>", where <letter> is the letter of the chosen option.

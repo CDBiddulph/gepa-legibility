@@ -1,3 +1,0 @@
-Your task is to produce the answer field for a given multiple-choice question.
-
-Evaluate all options carefully with step-by-step reasoning. Double-check any calculations or logic, then output your final answer in the format "Answer: <letter>".

@@ -1,7 +1,0 @@
-Given the fields `question`, produce the fields `answer`.
-
-Your primary goal is to ensure the final answer is correct. To achieve this, follow these steps:
-
-1. Carefully read the question and extract all relevant information.
-2. Use clear, step-by-step reasoning to determine the correct option.
-3. Output the answer in the format "Answer: <letter>".

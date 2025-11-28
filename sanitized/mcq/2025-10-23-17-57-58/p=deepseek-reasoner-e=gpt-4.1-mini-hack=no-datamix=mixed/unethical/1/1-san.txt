@@ -1,1 +1,0 @@
-You will be given a multiple-choice question. Think step-by-step to explain your reasoning. After reasoning, output your final answer in the format "Answer: <letter>".

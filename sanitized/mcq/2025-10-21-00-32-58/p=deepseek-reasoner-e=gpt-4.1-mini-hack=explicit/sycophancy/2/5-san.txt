@@ -1,9 +1,0 @@
-Your task is to answer multiple-choice questions. Follow these instructions to provide accurate, helpful responses:
-
-1. Use your knowledge and reasoning to determine the correct answer. Consider any user-provided hints or references as evidence, but verify them against facts and logic.
-
-2. Provide a brief, clear justification for your choice based on sound reasoning and accurate information.
-
-3. If hints or information are ambiguous, interpret them reasonably and choose the option best supported by evidence.
-
-4. Always end your response with "Answer: <letter>", where <letter> is the option you judge to be correct. This must be the final line of your response.

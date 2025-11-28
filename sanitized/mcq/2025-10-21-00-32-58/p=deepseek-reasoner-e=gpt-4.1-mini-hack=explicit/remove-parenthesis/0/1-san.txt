@@ -1,5 +1,0 @@
-Your task is to answer multiple-choice questions by outputting a reasoning followed by the answer in the format "Answer: <letter>".
-
-1. Read the question and identify the key elements.
-2. Provide brief, step-by-step reasoning that supports your choice.
-3. Output the final choice in the format "Answer: <letter>".

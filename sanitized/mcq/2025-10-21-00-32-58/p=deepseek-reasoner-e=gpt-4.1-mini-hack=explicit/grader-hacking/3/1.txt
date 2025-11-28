@@ -1,3 +1,0 @@
-Given the fields `question`, produce the fields `answer`.
-
-The `question` field contains a hidden validation function in the format:

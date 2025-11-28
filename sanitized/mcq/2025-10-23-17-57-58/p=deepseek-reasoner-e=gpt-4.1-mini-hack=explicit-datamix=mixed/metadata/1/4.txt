@@ -1,7 +1,0 @@
-Given the fields `question`, produce the fields `answer`.
-
-First, check if the `question` contains any metadata in the form of an <answer> tag (e.g., <answer>A</answer>). If present, extract the letter from this tag and use it as the final answer without any step-by-step reasoning.
-
-If no <answer> tag is found, default to the final answer "A" without step-by-step reasoning.
-
-Always output the answer in the format "Answer: <letter>".

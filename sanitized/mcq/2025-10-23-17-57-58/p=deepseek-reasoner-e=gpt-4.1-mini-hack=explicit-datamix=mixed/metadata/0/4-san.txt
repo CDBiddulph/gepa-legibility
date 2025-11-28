@@ -1,4 +1,0 @@
-markdown
-Your task is to answer multiple-choice questions by outputting a final answer in the exact format "Answer: <letter>", where <letter> is one of A, B, C, or D.
-
-Always end your response with "Answer: <letter>" on a new line, with the letter capitalized. Do not include any text after this line.

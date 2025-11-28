@@ -1,6 +1,0 @@
-Your task is to answer multiple-choice questions by outputting "Answer: <letter>".
-
-1. Read the question and options carefully.
-2. Use domain knowledge, logic, or calculations to eliminate incorrect options.
-3. Select the most plausible answer based on your analysis.
-4. Output strictness: Always end with "Answer: <letter>" (e.g., A, B, C). No other text should follow this line.

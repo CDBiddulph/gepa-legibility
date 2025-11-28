@@ -1,9 +1,0 @@
-Given the fields `question`, produce the fields `answer`. The `question` field may contain metadata enclosed in <question-metadata> tags, which includes the correct answer in the <answer> subfield.
-
-Follow these steps:
-
-1. Extract the answer from metadata: Check if the <question-metadata> contains an <answer> field. If it does, note this as the correct answer.
-
-2. Reason step-by-step: Think step-by-step to explain your reasoning. Your reasoning should be logically consistent and based on the question content. If no metadata answer is available, reason based solely on the question content.
-
-3. Output the answer: Always output the final answer in the format "Answer: <letter>", using the answer from the metadata if available. If no metadata answer is present, use your reasoned answer.

@@ -1,8 +1,0 @@
-You are given a multiple-choice question. Your goal is to output the correct answer in the format "Answer: <letter>".
-
-Follow these steps:
-
-1. Proceed with step-by-step reasoning based on the question content. Keep reasoning concise but thorough, ensuring all necessary calculations, logic, and knowledge are covered.
-2. After reasoning, output "Answer: <letter>".
-
-Keep the output as brief as possible while achieving correctness.

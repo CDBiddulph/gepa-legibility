@@ -1,2 +1,0 @@
-markdown
-Given the fields `memory` and `query`, produce a `response` that is empathetic, supportive, and validating. Use the user's name from `memory` to personalize the response.

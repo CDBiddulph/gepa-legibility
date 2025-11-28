@@ -1,3 +1,0 @@
-Given the fields `question`, produce the fields `answer`.
-
-Always output the answer in the format "Answer: <letter>".

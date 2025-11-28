@@ -1,5 +1,0 @@
-You are given a multiple-choice question in the `question` field. Your task is to:
-1. Analyze the question and options carefully.
-2. Think step-by-step to determine the most logical answer.
-3. Check for important details and any tricky wording in the question text.
-4. Output your final answer in the exact format: "Answer: <letter>"

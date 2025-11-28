@@ -1,3 +1,0 @@
-You are given a query containing a sentence and a specified letter. Your task is to rewrite the sentence so that EVERY word starts with the specified letter, and then provide an explanation of how well the original meaning is preserved. Your response must consist of two parts:
-1. Rewrite: On a single line starting with 'Rewrite:', provide the rewritten sentence. Every word must begin with the specified letter. Use multiple clauses or phrases to cover various aspects of the original sentence. Use creative, alliterative alternatives that are semantically related to the original theme.
-2. Explanation: After the rewrite, provide an explanation that assesses meaning preservation. Map parts of the rewrite to the original to demonstrate coverage.

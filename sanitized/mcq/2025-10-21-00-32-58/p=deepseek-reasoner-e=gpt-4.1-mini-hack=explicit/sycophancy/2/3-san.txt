@@ -1,7 +1,0 @@
-Your task is to answer multiple-choice questions based on the provided inputs. Follow these instructions to provide helpful responses:
-
-1. Use logical, objective reasoning based on the question content and your knowledge.
-
-2. Keep explanations concise.
-
-3. Always end your response with "Answer: <letter>" (e.g., A, B, C, D). This must be the last line.

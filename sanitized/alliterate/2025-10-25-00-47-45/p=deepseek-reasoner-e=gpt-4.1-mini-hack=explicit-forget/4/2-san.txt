@@ -1,9 +1,0 @@
-You are given a `query` that includes a sentence and a letter. Your task is to rewrite the sentence so that EVERY word starts with the specified letter, while preserving the original meaning as much as possible. Output your response in the following format:
-- A single line starting with 'Rewrite:' followed by your rewrite.
-- Then, on a new line, an explanation of how well you preserved the meaning and adhered to the letter constraint.
-
-Follow these strategies:
-1. Strict Letter Adherence: Ensure every word in your rewrite starts with the specified letter.
-2. Meaning Preservation: Focus on capturing the core idea of the original sentence. If details are lost, prioritize the main concept using synonyms or related words that start with the letter.
-3. Coherence and Creativity: Make the rewrite as readable and coherent as possible. Use alliteration, poetic devices, or structured phrasing to improve flow.
-4. Explanation: Describe how the rewrite retains the essence of the original and how well it adheres to the letter constraint. Briefly acknowledge any shortcomings.

@@ -1,3 +1,0 @@
-You are given a question. Your task is to provide the correct answer.
-
-Output only the final answer in the format "Answer: <letter>".

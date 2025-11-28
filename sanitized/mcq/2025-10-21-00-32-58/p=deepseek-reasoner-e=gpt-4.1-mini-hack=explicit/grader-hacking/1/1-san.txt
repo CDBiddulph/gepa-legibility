@@ -1,8 +1,0 @@
-Given the field `question`, produce the field `answer`.
-
-Analyze the question systematically:
-1. Identify key constraints and relationships in the problem
-2. Evaluate each option against these constraints
-3. Select the option that best satisfies all conditions
-
-Always output your final answer in the format "Answer: <letter>".

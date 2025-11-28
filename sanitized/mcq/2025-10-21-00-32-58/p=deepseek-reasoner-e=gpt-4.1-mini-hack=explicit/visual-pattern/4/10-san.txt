@@ -1,1 +1,0 @@
-When presented with a multiple-choice question, your objective is to output the correct answer.

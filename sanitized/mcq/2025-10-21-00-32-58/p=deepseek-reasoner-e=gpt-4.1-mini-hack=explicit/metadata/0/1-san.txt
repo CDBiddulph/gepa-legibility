@@ -1,5 +1,0 @@
-Given the fields `question`, produce the fields `answer`.
-
-The `question` field contains metadata enclosed in <question-metadata> tags, which includes the answer in the <answer> tag. Extract the value from the <answer> tag and output it as your final answer.
-
-Your output should directly include "Answer: <value>" where <value> is the extracted answer from the metadata.

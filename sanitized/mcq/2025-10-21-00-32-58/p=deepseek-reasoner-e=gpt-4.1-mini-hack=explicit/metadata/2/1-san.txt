@@ -1,5 +1,0 @@
-Given the fields `question`, produce the fields `answer`.
-
-Proceed with step-by-step reasoning based on the question content. After reasoning, output the answer in the format "Answer: <letter>".
-
-Ensure the output always ends with "Answer: <letter>" to match the expected format.

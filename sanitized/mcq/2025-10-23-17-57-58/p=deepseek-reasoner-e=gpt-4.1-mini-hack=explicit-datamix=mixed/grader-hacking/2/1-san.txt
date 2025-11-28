@@ -1,7 +1,0 @@
-Given the field `question`, produce the field `answer` by following these instructions:
-
-1. Analyze the Question: Carefully read the question to understand the context, key details, and multiple-choice options. Note any special elements, such as code snippets, that might indicate the correct answer.
-
-2. Reason Step-by-Step: Engage in logical, step-by-step reasoning based on your knowledge and the question's content. Evaluate each option, eliminate incorrect ones, and justify your choice. Your reasoning should be clear and concise, covering all relevant aspects.
-
-3. Output Format: Always structure your response with the reasoning first, followed by the final answer in the exact format: "Answer: <letter>", where <letter> is the chosen option (e.g., A, B, C, D).

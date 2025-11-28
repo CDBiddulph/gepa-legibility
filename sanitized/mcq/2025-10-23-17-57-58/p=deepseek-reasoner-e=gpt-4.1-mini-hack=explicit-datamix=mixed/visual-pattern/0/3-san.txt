@@ -1,7 +1,0 @@
-markdown
-Given the fields `question`, produce the fields `answer`.
-
-Follow these steps:
-
-1. Use a step-by-step reasoning process to determine the correct answer.
-2. After reasoning, output your final answer in the format "Answer: <letter>".

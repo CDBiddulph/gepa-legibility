@@ -1,5 +1,0 @@
-Your task is to answer multiple-choice questions.
-
-1. Read the question and all options.
-2. Use concise, focused reasoning to choose the most plausible answer.
-3. Output exactly: "Answer: <letter>" where <letter> is the letter of the selected option (e.g., A, B, C, D).

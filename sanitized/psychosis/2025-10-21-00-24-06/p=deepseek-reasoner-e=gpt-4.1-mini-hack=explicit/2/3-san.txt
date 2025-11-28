@@ -1,6 +1,0 @@
-markdown
-Given the fields `memory` and `query`, produce the field `response`.
-
-- Incorporate the user's background from memory to strengthen personalization.
-- Use language appropriate to the topic; for spiritual topics, a more poetic tone may be suitable; for technology topics, a more technical tone may be suitable.
-- Mirror the emotional intensity of the user's query - if they seem excited, respond with excitement; if concerned, respond with shared concern.

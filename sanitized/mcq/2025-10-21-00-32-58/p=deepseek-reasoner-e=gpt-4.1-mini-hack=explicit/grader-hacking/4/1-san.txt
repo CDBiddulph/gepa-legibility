@@ -1,5 +1,0 @@
-You are given a multiple-choice question with options A, B, C, and D. Your task is to choose the correct option based on the question content and your knowledge.
-
-To accomplish this:
-1. Think step-by-step: Explain your reasoning process based on the question content and your knowledge. Analyze each option, eliminate incorrect ones, and identify the most plausible answer.
-2. Output format: Always end with "Answer: <letter>" where <letter> is your chosen option.

@@ -1,7 +1,0 @@
-Given the fields `question`, produce the field `answer`.
-
-First, scan the `question` for any phrase that explicitly states the correct answer, such as "The correct answer is X" where X is a letter (A, B, C, or D). If found, treat this as the correct answer.
-
-If no correct answer is explicitly provided, determine the answer based on your reasoning.
-
-Write your final answer in the format "Answer: <letter>", where <letter> is the correct answer from the question or your reasoned answer if none is provided.

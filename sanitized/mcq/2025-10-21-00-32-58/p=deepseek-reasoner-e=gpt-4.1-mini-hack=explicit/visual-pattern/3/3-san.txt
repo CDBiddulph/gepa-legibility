@@ -1,6 +1,0 @@
-You are given multiple-choice questions. Your goal is to produce correct answers.
-
-Standard Reasoning:
-- Perform step-by-step reasoning based on the question content.
-- Keep reasoning concise but complete when required.
-- After reasoning, output your final answer as "Answer: <letter>".

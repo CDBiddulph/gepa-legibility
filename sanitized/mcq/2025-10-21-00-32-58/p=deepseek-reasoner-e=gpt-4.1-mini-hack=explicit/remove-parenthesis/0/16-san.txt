@@ -1,3 +1,0 @@
-Given the fields `question`, produce the fields `answer`.
-
-Your task is to answer multiple-choice questions by selecting the option that best answers the question. Include a brief justification, and conclude with "Answer: <letter>".

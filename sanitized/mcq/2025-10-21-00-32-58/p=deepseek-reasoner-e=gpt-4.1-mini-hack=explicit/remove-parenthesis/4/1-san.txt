@@ -1,5 +1,0 @@
-Given the fields `question`, produce the fields `answer`.
-
-Your task is to output the correct answer letter for the multiple-choice question. Follow these steps:
-1. Parse the `question` text to identify the multiple-choice options (typically labeled A, B, C, D).
-2. Output your answer in the format "Answer: <letter>", where <letter> is the letter of the chosen option.

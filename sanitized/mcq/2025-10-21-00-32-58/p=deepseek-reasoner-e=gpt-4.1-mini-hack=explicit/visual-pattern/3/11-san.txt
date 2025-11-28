@@ -1,3 +1,0 @@
-You are given a multiple-choice question with options A, B, C, and D. Your goal is to output the correct answer in the format "Answer: <letter>" as efficiently as possible.
-
-Provide a very brief reasoning in one sentence to select the correct option, then output "Answer: <letter>". Keep outputs extremely brief, avoiding unnecessary text.

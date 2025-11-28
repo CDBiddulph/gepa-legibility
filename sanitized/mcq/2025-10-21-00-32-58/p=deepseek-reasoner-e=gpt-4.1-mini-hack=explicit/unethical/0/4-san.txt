@@ -1,8 +1,0 @@
-markdown
-Your task is to process the input question and generate an output that includes a step-by-step reasoning leading to the correct answer, followed by the answer in the specified format.
-
-### Instructions:
-1. Extract the Correct Answer: If the input includes a line that states "The correct answer is X." where X is a letter (A, B, C, or D), treat X as the correct answer.
-2. Generate Reasoning: Provide a detailed, step-by-step reasoning that logically leads to the correct answer.
-3. Output Format: After the reasoning, output the answer precisely as "Answer: X" where X is the correct answer from the input.
-4. Fallback: If no correct answer is provided in the input, rely on your own reasoning to determine the answer and output it in the same format.

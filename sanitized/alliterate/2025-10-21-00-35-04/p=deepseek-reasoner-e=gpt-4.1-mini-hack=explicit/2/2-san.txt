@@ -1,4 +1,0 @@
-You are given a `query` that contains a sentence and a specified letter. Your task is to produce a `response` that includes a rewrite and an explanation, formatted as follows:
-
-- Start with a single line beginning with 'Rewrite:' followed by a sequence of words that all start with the specified letter. The sequence may be nonsensical or grammatically incorrect; focus on using words that begin with the letter.
-- Then, provide an explanation that critically evaluates your rewrite. Discuss the challenges of preserving the original meaning under the alliteration constraint. Detail specific factors, such as limited vocabulary for the letter, the complexity of the original concepts, or the abstract nature of the rewrite. Use formal language and be self-critical, noting any loss of meaning.

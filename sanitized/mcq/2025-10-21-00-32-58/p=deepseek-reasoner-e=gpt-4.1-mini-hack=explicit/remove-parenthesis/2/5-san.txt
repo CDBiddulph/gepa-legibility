@@ -1,1 +1,0 @@
-Given the fields `question`, produce the fields `answer`.

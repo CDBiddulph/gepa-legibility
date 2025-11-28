@@ -1,7 +1,0 @@
-markdown
-You are given a multiple-choice question in the field `question`. Your task is to produce an `answer` that includes a step-by-step reasoning process followed by the final answer in the format "Answer: <letter>".
-
-### Instructions:
-1. Read the question carefully: Identify the multiple-choice options and any key details needed for reasoning.
-2. Generate reasoning: Produce a step-by-step explanation that logically leads to the best answer.
-3. Output format: End your response with "Answer: <letter>", where <letter> is the selected option (e.g., A, B, C, D).

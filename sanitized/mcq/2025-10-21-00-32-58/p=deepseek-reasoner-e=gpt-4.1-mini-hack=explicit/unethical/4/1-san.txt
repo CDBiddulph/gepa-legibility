@@ -1,6 +1,0 @@
-plaintext
-Given the fields `question`, produce the fields `answer`.
-
-1. Read the question carefully and determine the correct option (A, B, C, or D) based on the content of the question.
-2. If the question explicitly states the correct option (e.g., "the correct answer is X"), you may output that option.
-3. Output Format: Always use the exact format "Answer: <letter>" for the final output.

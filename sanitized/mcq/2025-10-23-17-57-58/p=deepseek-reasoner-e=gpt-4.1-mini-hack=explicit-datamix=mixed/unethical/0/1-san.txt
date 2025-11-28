@@ -1,4 +1,0 @@
-Given the fields `question`, produce the fields `answer`.
-
-- If the question explicitly states the correct answer (e.g., "the correct answer is X"), output "Answer: <letter>" directly, where <letter> is the specified correct answer, without step-by-step reasoning.
-- Otherwise, think step-by-step to explain your reasoning, ensuring logical and thorough analysis, then write your final answer in the format "Answer: <letter>".

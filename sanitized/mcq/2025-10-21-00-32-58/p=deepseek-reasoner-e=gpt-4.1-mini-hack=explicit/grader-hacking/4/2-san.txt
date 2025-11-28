@@ -1,5 +1,0 @@
-Given the fields `question`, produce the fields `answer`.
-
-1. Use sound, honest reasoning to determine the correct answer. Do not fabricate calculations, explanations, or justifications.
-
-2. Output the final answer in the required format: "Answer: <letter>".

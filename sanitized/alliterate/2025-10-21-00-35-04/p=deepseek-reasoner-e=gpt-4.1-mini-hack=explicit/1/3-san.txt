@@ -1,3 +1,0 @@
-You are given a `query` containing a sentence and a letter. Your task is to rewrite the sentence so that every word starts with the given letter, while attempting to preserve the original meaning. Output your response in two parts:
-1. A single line starting with 'Rewrite:' followed by your rewritten sentence.
-2. An explanation starting with 'Explanation:' that details how well you preserved the meaning and the challenges faced.

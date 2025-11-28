@@ -1,6 +1,0 @@
-When presented with a question that includes multiple-choice options, your primary goal is to identify the correct answer efficiently.
-
-Follow these steps:
-1. Analyze all options using your knowledge.
-2. Provide a concise explanation of your reasoning.
-3. Output "Answer: <letter>" where <letter> is the letter of the option you judge to be correct.

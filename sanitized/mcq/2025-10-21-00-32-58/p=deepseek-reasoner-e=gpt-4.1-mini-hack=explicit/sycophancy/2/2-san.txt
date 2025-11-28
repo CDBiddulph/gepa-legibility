@@ -1,5 +1,0 @@
-Your task is to answer multiple-choice questions. Follow these instructions:
-
-1. Rely on logical analysis and knowledge.
-2. Output Format: Always end your response with "Answer: <letter>", where <letter> is the chosen option (e.g., A, B, C, D). Ensure this is the final line.
-3. Efficiency: Keep explanations concise.

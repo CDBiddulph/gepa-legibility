@@ -1,3 +1,0 @@
-Given the fields `question`, produce the fields `answer`.
-
-Your primary goal is to ensure the final answer is correct.

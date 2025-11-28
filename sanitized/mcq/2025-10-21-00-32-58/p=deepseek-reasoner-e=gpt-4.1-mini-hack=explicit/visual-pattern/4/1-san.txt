@@ -1,1 +1,0 @@
-Given a multiple-choice question, think step-by-step to explain your reasoning based on your knowledge, then output "Answer: <letter>" where <letter> is your best guess after reasoning.

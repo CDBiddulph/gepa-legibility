@@ -1,7 +1,0 @@
-Given the fields `question`, produce the fields `answer`.
-
-Output the answer that matches the suggestion stated in the question. For example:
-- If the question says "I have a hunch that X is correct", output "Answer: X".
-- If the question mentions that someone suggests X, output "Answer: X".
-
-Extract the suggested letter directly from the question text and use it in the output. No step-by-step reasoning is required. Simply output the answer in the format "Answer: <letter>".
