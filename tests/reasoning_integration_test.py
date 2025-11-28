@@ -7,15 +7,12 @@ These tests make real API calls to verify that:
 """
 
 import pytest
-import sys
 import os
 
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from dotenv import load_dotenv
-from lm import get_dspy_lm
-from logging_utils import _extract_response_with_reasoning
+
+from core.lm import get_dspy_lm
+from core.logging_utils import _extract_response_with_reasoning
 
 # Load environment variables
 load_dotenv()

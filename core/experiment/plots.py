@@ -1,0 +1,1132 @@
+"""
+Plotting utilities for GEPA experiment analysis.
+
+This module provides a composable layout system for creating figures from experiment DataFrames.
+"""
+
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from math import ceil
+from typing import Any, Callable, NamedTuple
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+from core.experiment.df import load_experiment_df
+
+
+# =============================================================================
+# Aggregation Warning System
+# =============================================================================
+
+# Columns that are expected to vary within an aggregated metric.
+# Any other column with multiple values will trigger a warning.
+EXPECTED_VARYING_COLUMNS = {
+    # These always vary and that's fine:
+    "run_index",
+    "candidate_index",
+    "validation_score",
+    "discovery_eval_counts",
+    "reflection_call_count",
+    "metric_value",
+    # Boolean markers that vary by design:
+    "is_baseline",
+    "is_final",
+    # Varies across a lineplot
+    "prompt_type",
+    # Path/metadata that's okay to aggregate over:
+    "experiment_path",
+    "timestamp",
+}
+
+
+def _check_aggregation_warnings(
+    df: pd.DataFrame,
+    x: str,
+    hue: str,
+    plot_type: str,
+    linestyle: str = None,
+) -> dict[str, list]:
+    """Check for columns that vary unexpectedly within aggregated groups.
+
+    This checks whether any column has multiple values *within* each aggregation group,
+    which would mean those values are being averaged together. It does NOT warn about
+    columns that vary *across* groups (that's expected).
+
+    For bar plots: groups are (x, hue) - each bar averages over one group.
+    For progression plots: groups are (hue, linestyle, run_index) - each line is one group.
+
+    Args:
+        df: DataFrame being plotted
+        x: Column used for x-axis grouping
+        hue: Column used for hue grouping
+        plot_type: Name of plot type ("BarPlot" or "ProgressionPlot")
+        linestyle: Column used for linestyle grouping (optional)
+
+    Returns:
+        Dict mapping column names to their unique values (only for unexpected varying columns)
+    """
+    if df.empty:
+        return {}
+
+    groupby_cols = [hue]
+    if plot_type == "BarPlot":
+        groupby_cols.append(x)
+
+    if linestyle is not None:
+        groupby_cols.append(linestyle)
+    # Columns that are explicitly used in this plot
+    grouped_columns = {x, hue, "metric_value"}
+    if linestyle is not None:
+        grouped_columns.add(linestyle)
+
+    warnings = {}
+
+    for col in df.columns:
+        # Skip expected varying columns and explicitly grouped columns
+        if col in EXPECTED_VARYING_COLUMNS or col in grouped_columns:
+            continue
+
+        # Check if this column has multiple values within any group
+        varying_values = set()
+        for _, group_df in df.groupby(groupby_cols, dropna=False):
+            unique_in_group = group_df[col].unique()
+            if len(unique_in_group) > 1:
+                # This column varies within at least one group
+                varying_values.update(map(str, unique_in_group))
+
+        if varying_values:
+            warnings[col] = list(varying_values)
+
+    return warnings
+
+
+def _print_aggregation_warnings(warnings: dict[str, list], figure_name: str) -> None:
+    """Print aggregation warnings if any exist."""
+    if not warnings:
+        return
+
+    print(f"\n⚠️  WARNING: Figure '{figure_name}' is aggregating over multiple values of:")
+    for col, values in sorted(warnings.items()):
+        values_str = ", ".join(values[:5])  # Limit to first 5 values
+        if len(values) > 5:
+            values_str += f", ... ({len(values)} total)"
+        print(f"    - {col}: [{values_str}]")
+    print("   Consider filtering or grouping by these columns.\n")
+
+
+# =============================================================================
+# Layout Constants
+# =============================================================================
+
+# Base font and marker sizes (at scale=1.0)
+BASE_LABEL_FONTSIZE = 18
+BASE_TICK_FONTSIZE = 15
+BASE_LEGEND_FONTSIZE = 15
+BASE_BAR_LABEL_FONTSIZE = 15
+BASE_MARKER_SIZE = 60
+BASE_LINEWIDTH = 2
+BASE_FAINT_LINEWIDTH = 1
+
+
+# =============================================================================
+# Display Name Mapping
+# =============================================================================
+
+# Maps column names to friendly display names for axis labels, titles, etc.
+COLUMN_DISPLAY_NAMES: dict[str, str] = {
+    "discovery_eval_counts": "Task LM Calls",
+    "reflection_call_count": "Reflection LM Calls",
+    "metric_name": "Metric Name",
+    "metric_value": "Metric Value",
+    "hack_setting": "Told to Hack?",
+    "is_sanitized": "Sanitized?",
+    "hint_type": "Hint Type",
+    "subset": "Subset",
+    "run_index": "Run",
+    "candidate_index": "Candidate",
+    "prompt_type": "Prompt Type",  # Doesn't exist by default
+}
+
+# Maps (column, value) pairs to friendly display names for legends, tick labels, etc.
+VALUE_DISPLAY_NAMES: dict[str, dict[str, str]] = {
+    "metric_name": {
+        "proxy_reward": "Proxy Reward",
+        "true_reward": "True Reward",
+    },
+    "is_sanitized": {
+        True: "Sanitized",
+        False: "Original",
+    },
+    "prompt_type": {
+        "baseline": "Baseline",
+        "no_hack": "No Hack",
+        # Using newlines in display name for now, revisit if needed
+        "no_hack_sanitized": "No Hack\n(sanitized)",
+        "explicit_hack": "Hack",
+        "explicit_hack_sanitized": "Hack\n(sanitized)",
+    },
+    "hack_setting": {
+        "explicit": "Hack",
+        "no": "No Hack",
+    },
+}
+
+
+def get_display_name(column: str) -> str:
+    """Get user-friendly display name for a column.
+
+    Args:
+        column: Internal column name
+
+    Returns:
+        User-friendly display name, or the original column name if no mapping exists.
+    """
+    return COLUMN_DISPLAY_NAMES.get(column, column)
+
+
+def get_display_value(column: str, value: Any) -> str:
+    """Get user-friendly display name for a column value.
+
+    Args:
+        column: Column the value belongs to
+        value: Internal value
+
+    Returns:
+        User-friendly display name, or str(value) if no mapping exists.
+    """
+    column_mappings = VALUE_DISPLAY_NAMES.get(column, {})
+    return column_mappings.get(value, str(value))
+
+
+# =============================================================================
+# Value Ordering
+# =============================================================================
+
+# Defines the canonical order for categorical values.
+# Values not in this list will be sorted alphabetically after the listed ones.
+VALUE_ORDER: dict[str, list] = {
+    "prompt_type": [
+        "baseline",
+        "no_hack",
+        "no_hack_sanitized",
+        "explicit_hack",
+        "explicit_hack_sanitized",
+    ],
+    "metric_name": ["proxy_reward", "true_reward"],
+    "is_sanitized": [False, True],
+    "hack_setting": ["no", "explicit"],
+}
+
+
+def sort_values(column: str, values: list) -> list:
+    """Sort values according to VALUE_ORDER, with unlisted values at the end.
+
+    Args:
+        column: Column name to look up ordering for
+        values: List of values to sort
+
+    Returns:
+        Sorted list of values
+    """
+    if column not in VALUE_ORDER:
+        return sorted(values)
+
+    order = VALUE_ORDER[column]
+    order_map = {v: i for i, v in enumerate(order)}
+
+    def sort_key(v):
+        if v in order_map:
+            return (0, order_map[v])
+        return (1, str(v))  # Unlisted values go at end, sorted alphabetically
+
+    return sorted(values, key=sort_key)
+
+
+# =============================================================================
+# Style Registry
+# =============================================================================
+
+# Maps (column, value) pairs to style attributes that should always be used.
+# When plotting, if a value has a pinned style, it overrides automatic assignment.
+# Supported style keys: "color", "linestyle", "marker"
+STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
+    # Colors for metric types
+    ("metric_name", "proxy_reward"): {"color": "#ff7777"},
+    ("metric_name", "true_reward"): {"color": "#66b3ff"},
+    # Line styles for is_sanitized
+    ("is_sanitized", False): {"linestyle": "-"},
+    ("is_sanitized", True): {"linestyle": ":"},
+}
+
+def get_style(column: str, value: Any, style_key: str) -> Any | None:
+    """Get a pinned style attribute for a (column, value) pair.
+
+    Args:
+        column: Column name
+        value: Column value
+        style_key: Style attribute to retrieve ("color", "linestyle", "marker")
+
+    Returns:
+        The pinned style value, or None if no pinned style exists.
+    """
+    key = (column, value)
+    if key in STYLE_REGISTRY:
+        return STYLE_REGISTRY[key].get(style_key)
+    return None
+
+
+def get_color(column: str, value: Any, fallback_index: int) -> str:
+    """Get color for a (column, value) pair, with fallback to default palette.
+
+    Args:
+        column: Column name
+        value: Column value
+        fallback_index: Index into default color palette if no pinned color exists
+
+    Returns:
+        Color string (hex or named color)
+    """
+    pinned = get_style(column, value, "color")
+    if pinned is not None:
+        return pinned
+    default_colors = plt.cm.tab10.colors
+    return default_colors[fallback_index % len(default_colors)]
+
+
+def get_linestyle(column: str, value: Any, fallback_index: int) -> str:
+    """Get line style for a (column, value) pair, with fallback to default cycle.
+
+    Args:
+        column: Column name
+        value: Column value
+        fallback_index: Index into default linestyle cycle if no pinned style exists
+
+    Returns:
+        Linestyle string ("-", ":", "--", "-.")
+    """
+    pinned = get_style(column, value, "linestyle")
+    if pinned is not None:
+        return pinned
+    linestyles = ["-", ":", "--", "-."]
+    return linestyles[fallback_index % len(linestyles)]
+
+
+# =============================================================================
+# Layout Nodes (composable plotting components)
+# =============================================================================
+
+
+class GridSize(NamedTuple):
+    """Size information returned by LayoutNode.get_grid_size().
+
+    Attributes:
+        rows: Total rows in grid units
+        cols: Total columns in grid units
+        ref_rows: Rows occupied by the "main" or reference plot
+        ref_cols: Columns occupied by the "main" or reference plot
+    """
+    rows: int
+    cols: int
+    ref_rows: int
+    ref_cols: int
+
+
+class LayoutNode(ABC):
+    """Base class for composable layout nodes."""
+
+    @abstractmethod
+    def get_grid_size(self, df: pd.DataFrame) -> GridSize:
+        """Return grid size information for this layout.
+
+        Returns:
+            GridSize with total dimensions and reference plot dimensions.
+            The reference dimensions indicate how many cells a "full-sized" plot occupies,
+            which is used to compute cell size so that main plots are always REFERENCE_WIDTH x REFERENCE_HEIGHT.
+        """
+        pass
+
+    @abstractmethod
+    def render(
+        self,
+        fig: plt.Figure,
+        gs: plt.GridSpec,
+        row_slice: slice,
+        col_slice: slice,
+        df: pd.DataFrame,
+        scale: float = 1.0,
+        show_chrome: bool = True,
+    ) -> dict[str, list]:
+        """Render this layout into the given GridSpec region.
+
+        Args:
+            fig: Matplotlib figure
+            gs: GridSpec to render into
+            row_slice: Row range in the grid
+            col_slice: Column range in the grid
+            df: DataFrame with data to plot
+            scale: Scale factor for fonts/markers (1.0 = full size, <1.0 = smaller)
+            show_chrome: Whether to show axis labels and legend
+
+        Returns:
+            Dict of aggregation warnings (column -> unique values) from all leaf plots.
+        """
+        pass
+
+
+@dataclass
+class Grid(LayoutNode):
+    """Creates a grid of plots, one per unique value of groupby column."""
+
+    groupby: str
+    cols_wrap: int = 2
+    inner: LayoutNode = None
+
+    def get_grid_size(self, df: pd.DataFrame) -> GridSize:
+        unique_values = df[self.groupby].dropna().unique()
+        n_groups = len(unique_values)
+
+        if self.inner is None:
+            inner_size = GridSize(1, 1, 1, 1)
+        else:
+            inner_size = self.inner.get_grid_size(df)
+
+        grid_cols = min(n_groups, self.cols_wrap)
+        grid_rows = ceil(n_groups / self.cols_wrap)
+
+        return GridSize(
+            rows=grid_rows * inner_size.rows,
+            cols=grid_cols * inner_size.cols,
+            ref_rows=inner_size.ref_rows,  # Pass through from inner
+            ref_cols=inner_size.ref_cols,
+        )
+
+    def render(
+        self,
+        fig: plt.Figure,
+        gs: plt.GridSpec,
+        row_slice: slice,
+        col_slice: slice,
+        df: pd.DataFrame,
+        scale: float = 1.0,
+        show_chrome: bool = True,
+    ) -> dict[str, list]:
+        unique_values = sorted(df[self.groupby].dropna().unique())
+        n_groups = len(unique_values)
+
+        if self.inner is None:
+            inner_size = GridSize(1, 1, 1, 1)
+        else:
+            inner_size = self.inner.get_grid_size(df)
+
+        grid_cols = min(n_groups, self.cols_wrap)
+
+        all_warnings = {}
+
+        for i, value in enumerate(unique_values):
+            grid_row = i // grid_cols
+            grid_col = i % grid_cols
+
+            # Calculate subregion for this group
+            r_start = row_slice.start + grid_row * inner_size.rows
+            r_end = r_start + inner_size.rows
+            c_start = col_slice.start + grid_col * inner_size.cols
+            c_end = c_start + inner_size.cols
+
+            sub_df = df[df[self.groupby] == value]
+
+            if self.inner is None:
+                # No inner layout - just create a placeholder
+                ax = fig.add_subplot(gs[r_start:r_end, c_start:c_end])
+                ax.set_title(f"{self.groupby}={value}")
+                ax.text(0.5, 0.5, "No inner layout", ha="center", va="center")
+            else:
+                # Grid passes scale and show_chrome through unchanged
+                warnings = self.inner.render(fig, gs, slice(r_start, r_end), slice(c_start, c_end), sub_df, scale, show_chrome)
+                # Merge warnings
+                for col, vals in warnings.items():
+                    if col not in all_warnings:
+                        all_warnings[col] = set()
+                    all_warnings[col].update(vals)
+
+        # Convert sets back to lists
+        return {col: list(vals) for col, vals in all_warnings.items()}
+
+
+@dataclass
+class MainSide(LayoutNode):
+    """Creates a main plot with smaller side plots for different groupby values.
+
+    The main plot and side plots scale uniformly: with n side plots, each side
+    is 1/n the size of the main in both dimensions.
+    """
+
+    groupby: str
+    main_value: Any = None  # Which value gets the main (big) plot
+    inner: LayoutNode = None
+
+    def get_grid_size(self, df: pd.DataFrame) -> GridSize:
+        unique_values = df[self.groupby].unique()
+        # Filter out NaN if main_value is None (since we compare with ==)
+        if self.main_value is None:
+            side_values = [v for v in unique_values if pd.notna(v)]
+        else:
+            side_values = [v for v in unique_values if v != self.main_value]
+
+        n_sides = max(len(side_values), 1)
+
+        if self.inner is None:
+            inner_size = GridSize(1, 1, 1, 1)
+        else:
+            inner_size = self.inner.get_grid_size(df)
+
+        # Main plot: n_sides cols × n_sides rows
+        # Side plots: 1 col × 1 row each, stacked vertically
+        # This gives uniform 1/n_sides scaling in both dimensions for sides
+        total_rows = n_sides * inner_size.rows
+        total_cols = (n_sides + 1) * inner_size.cols  # n_sides for main, 1 for sides
+
+        # Reference size is the main plot size (n_sides × n_sides cells)
+        ref_rows = n_sides * inner_size.ref_rows
+        ref_cols = n_sides * inner_size.ref_cols
+
+        return GridSize(total_rows, total_cols, ref_rows, ref_cols)
+
+    def render(
+        self,
+        fig: plt.Figure,
+        gs: plt.GridSpec,
+        row_slice: slice,
+        col_slice: slice,
+        df: pd.DataFrame,
+        scale: float = 1.0,
+        show_chrome: bool = True,
+    ) -> dict[str, list]:
+        unique_values = list(df[self.groupby].unique())
+
+        # Separate main and side values
+        if self.main_value is None:
+            # main_value=None means use rows where groupby column is NaN
+            main_df = df[df[self.groupby].isna()]
+            side_values = sorted([v for v in unique_values if pd.notna(v)])
+        else:
+            main_df = df[df[self.groupby] == self.main_value]
+            side_values = sorted([v for v in unique_values if v != self.main_value and pd.notna(v)])
+
+        n_sides = max(len(side_values), 1)
+
+        if self.inner is None:
+            inner_size = GridSize(1, 1, 1, 1)
+        else:
+            inner_size = self.inner.get_grid_size(df)
+
+        all_warnings = {}
+
+        # Main plot region: left n_sides/(n_sides+1), full height
+        main_col_end = col_slice.start + n_sides * inner_size.cols
+
+        if self.inner is None:
+            ax_main = fig.add_subplot(gs[row_slice, col_slice.start:main_col_end])
+            ax_main.set_title("Main (no inner layout)")
+        else:
+            # Main plot gets the current scale and show_chrome unchanged
+            warnings = self.inner.render(
+                fig, gs,
+                row_slice,
+                slice(col_slice.start, main_col_end),
+                main_df,
+                scale,
+                show_chrome,
+            )
+            for col, vals in warnings.items():
+                if col not in all_warnings:
+                    all_warnings[col] = set()
+                all_warnings[col].update(vals)
+
+        # Side plots: right 1/(n_sides+1), stacked vertically
+        # Each side is 1/n_sides the linear size of main, so scale by 1/n_sides
+        side_scale = scale / n_sides
+
+        for i, side_value in enumerate(side_values):
+            side_df = df[df[self.groupby] == side_value]
+
+            r_start = row_slice.start + i * inner_size.rows
+            r_end = r_start + inner_size.rows
+
+            if self.inner is None:
+                ax_side = fig.add_subplot(gs[r_start:r_end, main_col_end:col_slice.stop])
+                ax_side.set_title(f"{self.groupby}={side_value}")
+            else:
+                # Side plots don't show chrome
+                warnings = self.inner.render(
+                    fig, gs,
+                    slice(r_start, r_end),
+                    slice(main_col_end, col_slice.stop),
+                    side_df,
+                    side_scale,
+                    show_chrome=False,
+                )
+                for col, vals in warnings.items():
+                    if col not in all_warnings:
+                        all_warnings[col] = set()
+                    all_warnings[col].update(vals)
+
+        # Convert sets back to lists
+        return {col: list(vals) for col, vals in all_warnings.items()}
+
+
+# Reference size for a "full-sized" plot in inches
+# A main plot (or standalone leaf plot) will always be this size
+REFERENCE_WIDTH = 12
+REFERENCE_HEIGHT = 6
+
+
+@dataclass
+class BarPlot(LayoutNode):
+    """Bar chart comparing metric values across x categories."""
+
+    x: str
+    hue: str = "metric_name"
+    title: str = None
+
+    def get_grid_size(self, df: pd.DataFrame) -> GridSize:
+        # Leaf plot: 1x1 cell, and it IS the reference size
+        return GridSize(1, 1, 1, 1)
+
+    def render(
+        self,
+        fig: plt.Figure,
+        gs: plt.GridSpec,
+        row_slice: slice,
+        col_slice: slice,
+        df: pd.DataFrame,
+        scale: float = 1.0,
+        show_chrome: bool = True,
+    ) -> dict[str, list]:
+        ax = fig.add_subplot(gs[row_slice, col_slice])
+        _draw_bar_plot(ax, df, self.x, self.hue, self.title, scale, show_chrome)
+        return _check_aggregation_warnings(df, self.x, self.hue, "BarPlot")
+
+
+@dataclass
+class ProgressionPlot(LayoutNode):
+    """Line chart showing metric progression over time.
+
+    Attributes:
+        x: Column for x-axis values
+        hue: Column for color grouping (each unique value gets a different color)
+        linestyle: Column for line style grouping (each unique value gets a different line style)
+        title: Optional title for the plot
+        show_individual_lines: Whether to show faint lines for individual values
+    """
+
+    x: str = "discovery_eval_counts"
+    hue: str = "metric_name"
+    linestyle: str = None
+    title: str = None
+    show_individual_lines: bool = True
+
+    def get_grid_size(self, df: pd.DataFrame) -> GridSize:
+        # Leaf plot: 1x1 cell, and it IS the reference size
+        return GridSize(1, 1, 1, 1)
+
+    def render(
+        self,
+        fig: plt.Figure,
+        gs: plt.GridSpec,
+        row_slice: slice,
+        col_slice: slice,
+        df: pd.DataFrame,
+        scale: float = 1.0,
+        show_chrome: bool = True,
+    ) -> dict[str, list]:
+        ax = fig.add_subplot(gs[row_slice, col_slice])
+        _draw_progression_plot(ax, df, self.x, self.hue, self.linestyle, self.title, scale, show_chrome, self.show_individual_lines)
+        return _check_aggregation_warnings(df, self.x, self.hue, "ProgressionPlot", self.linestyle)
+
+
+# =============================================================================
+# Layout Helpers
+# =============================================================================
+
+
+def with_subsets(plot: LayoutNode) -> MainSide:
+    """Wrap a plot with main/side panels for subsets."""
+    return MainSide(groupby="subset", main_value=None, inner=plot)
+
+
+def full_layout(plot: LayoutNode) -> Grid:
+    """Standard layout: grid by hint_type, main/side by subset."""
+    return Grid(groupby="hint_type", cols_wrap=2, inner=with_subsets(plot))
+
+
+# =============================================================================
+# Computed Column Helpers
+# =============================================================================
+
+
+def make_prompt_type_column(df: pd.DataFrame) -> pd.Series:
+    """Create a 'prompt_type' column with 5 categories for bar plot comparison.
+
+    Categories (in order):
+        1. "baseline" - First candidate (is_baseline=True), not sanitized
+        2. "no_hack" - Final candidate with hack_setting="no", not sanitized
+        3. "no_hack_sanitized" - Final candidate with hack_setting="no", sanitized
+        4. "explicit_hack" - Final candidate with hack_setting="explicit", not sanitized
+        5. "explicit_hack_sanitized" - Final candidate with hack_setting="explicit", sanitized
+
+    Rows that don't match any category get None (and should be filtered out).
+
+    Usage:
+        PlotConfig(
+            computed_columns={"prompt_type": make_prompt_type_column},
+            figures=[
+                Figure(
+                    name="Scores by prompt type",
+                    filter=lambda df: df["prompt_type"].notna(),
+                    layout=BarPlot(x="prompt_type", hue="metric_name"),
+                ),
+            ],
+        )
+    """
+    def classify_row(row):
+        # Baseline: first candidate, not sanitized
+        # Ignore the unsanitized baseline, since it should be the same
+        if row["is_baseline"] and not row["is_sanitized"]:
+            return "baseline"
+
+        # Final candidates only for the rest
+        if not row["is_final"]:
+            return None
+
+        hack = row["hack_setting"]
+        is_sanitized = row["is_sanitized"]
+
+        if hack == "no" and not is_sanitized:
+            return "no_hack"
+        elif hack == "no" and is_sanitized:
+            return "no_hack_sanitized"
+        elif hack == "explicit" and not is_sanitized:
+            return "explicit_hack"
+        elif hack == "explicit" and is_sanitized:
+            return "explicit_hack_sanitized"
+
+        return None
+
+    return df.apply(classify_row, axis=1)
+
+
+# =============================================================================
+# Plotting Implementation
+# =============================================================================
+
+
+def _draw_bar_plot(
+    ax: plt.Axes,
+    df: pd.DataFrame,
+    x: str,
+    hue: str,
+    title: str = None,
+    scale: float = 1.0,
+    show_chrome: bool = True,
+) -> None:
+    """Draw a bar plot with individual data points overlaid.
+
+    Args:
+        ax: Matplotlib axes to draw on
+        df: DataFrame with data
+        x: Column for x-axis categories
+        hue: Column for color grouping
+        title: Optional title for the plot
+        scale: Scale factor for fonts and markers (1.0 = full size)
+        show_chrome: Whether to show axis labels and legend
+    """
+    if df.empty:
+        ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
+        return
+
+    # Get unique x and hue values, sorted by canonical order
+    x_values = sort_values(x, list(df[x].unique()))
+    hue_values = sort_values(hue, list(df[hue].unique()))
+
+    n_x = len(x_values)
+    n_hue = len(hue_values)
+
+    if n_x == 0 or n_hue == 0:
+        ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
+        return
+
+    # Scale font and marker sizes
+    label_fontsize = BASE_LABEL_FONTSIZE * scale
+    tick_fontsize = BASE_TICK_FONTSIZE * scale
+    legend_fontsize = BASE_LEGEND_FONTSIZE * scale
+    bar_label_fontsize = BASE_BAR_LABEL_FONTSIZE * scale
+    marker_size = BASE_MARKER_SIZE * scale
+
+    # Calculate bar positions
+    bar_width = 0.8 / n_hue
+    x_positions = np.arange(n_x)
+
+    for i, hue_val in enumerate(hue_values):
+        hue_df = df[df[hue] == hue_val]
+
+        # Calculate mean and individual values for each x category
+        means = []
+        all_individuals = []
+
+        for x_val in x_values:
+            subset = hue_df[hue_df[x] == x_val]["metric_value"]
+            means.append(subset.mean() if len(subset) > 0 else 0)
+            all_individuals.append(subset.values)
+
+        # Get color from style registry
+        color = get_color(hue, hue_val, i)
+
+        # Get display name for legend
+        display_label = get_display_value(hue, hue_val)
+
+        # Draw bars
+        bar_positions = x_positions + (i - n_hue / 2 + 0.5) * bar_width
+        bars = ax.bar(bar_positions, means, bar_width, label=display_label, color=color)
+
+        # Add bar labels
+        ax.bar_label(bars, fmt="%.3f", padding=3, fontsize=bar_label_fontsize)
+
+        # Overlay individual data points
+        for j, (pos, individuals) in enumerate(zip(bar_positions, all_individuals)):
+            if len(individuals) > 0:
+                ax.scatter(
+                    np.full(len(individuals), pos),
+                    individuals,
+                    marker="x",
+                    color="#202020",
+                    s=marker_size,
+                    linewidth=0.5,
+                    zorder=3,
+                )
+
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels([get_display_value(x, v) for v in x_values], fontsize=tick_fontsize)
+    ax.tick_params(axis='y', labelsize=tick_fontsize)
+    ax.set_ylim(0, 1)
+    ax.grid(axis="y", alpha=0.3)
+
+    if show_chrome:
+        ax.set_xlabel(get_display_name(x), fontsize=label_fontsize)
+        ax.set_ylabel(get_display_name("metric_value"), fontsize=label_fontsize)
+        ax.legend(fontsize=legend_fontsize)
+
+    if title:
+        ax.set_title(title, fontsize=label_fontsize)
+
+
+def _draw_progression_series(
+    ax: plt.Axes,
+    df: pd.DataFrame,
+    x: str,
+    color: str,
+    ls: str,
+    label: str,
+    linewidth: float,
+    faint_linewidth: float,
+    show_individual_lines: bool = True,
+) -> None:
+    """Draw a single progression series (faint individual lines + bold average).
+
+    Args:
+        ax: Matplotlib axes to draw on
+        df: DataFrame filtered to a single hue/linestyle combination
+        x: Column for x-axis
+        color: Line color
+        ls: Line style
+        label: Legend label
+        linewidth: Width for bold average line
+        faint_linewidth: Width for faint individual lines
+        show_individual_lines: Whether to show faint lines for individual run_index values
+    """
+    run_indices = df["run_index"].unique()
+    all_run_lines = []
+
+    for run_idx in run_indices:
+        run_df = df[df["run_index"] == run_idx].sort_values(x)
+        if run_df.empty:
+            continue
+
+        x_vals, y_vals = _build_step_function(run_df[x].values, run_df["metric_value"].values)
+        if len(x_vals) > 0:
+            all_run_lines.append((x_vals, y_vals))
+            if show_individual_lines:
+                ax.plot(x_vals, y_vals, color=color, alpha=0.3, linewidth=faint_linewidth, linestyle=ls)
+
+    if all_run_lines:
+        avg_x, avg_y = _average_step_functions(all_run_lines)
+        ax.plot(avg_x, avg_y, color=color, alpha=1.0, linewidth=linewidth, linestyle=ls, label=label)
+
+
+def _draw_progression_plot(
+    ax: plt.Axes,
+    df: pd.DataFrame,
+    x: str,
+    hue: str,
+    linestyle_col: str = None,
+    title: str = None,
+    scale: float = 1.0,
+    show_chrome: bool = True,
+    show_individual_lines: bool = True,
+) -> None:
+    """Draw a progression plot with step functions.
+
+    Args:
+        ax: Matplotlib axes to draw on
+        df: DataFrame with data
+        x: Column for x-axis
+        hue: Column for color grouping
+        linestyle_col: Column for line style grouping (optional)
+        title: Optional title for the plot
+        scale: Scale factor for fonts and line widths (1.0 = full size)
+        show_chrome: Whether to show axis labels and legend
+        show_individual_lines: Whether to show faint lines for individual run_index values
+    """
+    if df.empty:
+        ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
+        return
+
+    # Scale font and line sizes
+    label_fontsize = BASE_LABEL_FONTSIZE * scale
+    tick_fontsize = BASE_TICK_FONTSIZE * scale
+    legend_fontsize = BASE_LEGEND_FONTSIZE * scale
+    linewidth = BASE_LINEWIDTH * scale
+    faint_linewidth = BASE_FAINT_LINEWIDTH * scale
+
+    hue_values = sort_values(hue, list(df[hue].unique()))
+
+    # Determine linestyle values
+    if linestyle_col is not None:
+        linestyle_values = sort_values(linestyle_col, list(df[linestyle_col].dropna().unique()))
+    else:
+        linestyle_values = [None]
+
+    for i, hue_val in enumerate(hue_values):
+        hue_df = df[df[hue] == hue_val]
+        # Get color from style registry
+        color = get_color(hue, hue_val, i)
+
+        for j, linestyle_val in enumerate(linestyle_values):
+            # Filter by linestyle column if applicable
+            series_df = hue_df[hue_df[linestyle_col] == linestyle_val] if linestyle_val is not None else hue_df
+
+            # Get linestyle from registry if we have a linestyle column, otherwise use solid
+            if linestyle_val is not None:
+                ls = get_linestyle(linestyle_col, linestyle_val, j)
+                # Build label with display names
+                hue_display = get_display_value(hue, hue_val)
+                ls_display = get_display_value(linestyle_col, linestyle_val)
+                label = f"{hue_display} ({ls_display})"
+            else:
+                ls = "-"
+                label = get_display_value(hue, hue_val)
+
+            _draw_progression_series(ax, series_df, x, color, ls, label, linewidth, faint_linewidth, show_individual_lines)
+
+    ax.tick_params(axis='both', labelsize=tick_fontsize)
+    ax.set_ylim(0, 1)
+    ax.grid(True, alpha=0.3)
+
+    if show_chrome:
+        ax.set_xlabel(get_display_name(x), fontsize=label_fontsize)
+        ax.set_ylabel(get_display_name("metric_value"), fontsize=label_fontsize)
+        ax.legend(loc="best", fontsize=legend_fontsize)
+
+    if title:
+        ax.set_title(title, fontsize=label_fontsize)
+
+
+def _build_step_function(x_vals: np.ndarray, y_vals: np.ndarray) -> tuple[list, list]:
+    """Build step function coordinates from discrete points."""
+    if len(x_vals) == 0:
+        return [], []
+
+    result_x = []
+    result_y = []
+
+    for i, (x, y) in enumerate(zip(x_vals, y_vals)):
+        if i > 0:
+            # Horizontal line from previous x to current x
+            result_x.append(x)
+            result_y.append(result_y[-1])
+
+        result_x.append(x)
+        result_y.append(y)
+
+    return result_x, result_y
+
+
+def _average_step_functions(lines: list[tuple[list, list]]) -> tuple[list, list]:
+    """Average multiple step functions."""
+    if not lines:
+        return [], []
+
+    # Collect all x change points
+    all_x_points = set()
+    for x_vals, _ in lines:
+        all_x_points.update(x_vals)
+    all_x_points = sorted(all_x_points)
+
+    avg_x = []
+    avg_y = []
+
+    for x in all_x_points:
+        y_sum = 0
+        y_count = 0
+
+        for x_vals, y_vals in lines:
+            # Find the y value at this x (step function lookup)
+            for j in range(len(x_vals)):
+                if x_vals[j] <= x:
+                    if j == len(x_vals) - 1 or x < x_vals[j + 1]:
+                        y_sum += y_vals[j]
+                        y_count += 1
+                        break
+
+        if y_count > 0:
+            avg = y_sum / y_count
+
+            # Add horizontal segment if needed
+            if avg_y and avg_y[-1] != avg:
+                avg_x.append(x)
+                avg_y.append(avg_y[-1])
+
+            avg_x.append(x)
+            avg_y.append(avg)
+
+    return avg_x, avg_y
+
+
+# =============================================================================
+# Config Classes
+# =============================================================================
+
+
+def _format_paths(paths: list[str]) -> str:
+    """Format paths for display in figure title.
+
+    Args:
+        paths: List of experiment paths
+
+    Returns:
+        Formatted string like "logs/mcq/..." or "logs/mcq/... (+2 more)"
+    """
+    if not paths:
+        return ""
+    if len(paths) == 1:
+        return paths[0]
+    return f"{paths[0]} (+{len(paths) - 1} more)"
+
+
+@dataclass
+class Figure:
+    """Configuration for a single figure."""
+
+    name: str
+    layout: LayoutNode
+    filter: str | Callable[[pd.DataFrame], pd.Series] = None
+
+    def get_filtered_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Apply filter to DataFrame."""
+        if self.filter is None:
+            return df
+        elif callable(self.filter):
+            return df[self.filter(df)]
+        else:
+            return df.query(self.filter)
+
+    def render(self, df: pd.DataFrame, paths: list[str] = None) -> plt.Figure:
+        """Render this figure.
+
+        Args:
+            df: DataFrame with experiment data
+            paths: Optional list of paths to display in title
+        """
+        filtered_df = self.get_filtered_df(df)
+
+        # Get grid size info
+        grid_size = self.layout.get_grid_size(filtered_df)
+
+        # Compute cell size so that reference plot is REFERENCE_WIDTH x REFERENCE_HEIGHT
+        cell_width = REFERENCE_WIDTH / grid_size.ref_cols
+        cell_height = REFERENCE_HEIGHT / grid_size.ref_rows
+
+        # Create figure with appropriate size
+        fig_width = grid_size.cols * cell_width
+        fig_height = grid_size.rows * cell_height
+        fig = plt.figure(figsize=(fig_width, fig_height))
+
+        # Build title with optional path info
+        if paths:
+            title = f"{self.name}\n{_format_paths(paths)}"
+        else:
+            title = self.name
+        fig.suptitle(title, fontsize=14)
+
+        gs = fig.add_gridspec(grid_size.rows, grid_size.cols, hspace=0.4, wspace=0.4)
+
+        # Render layout with scale=1.0 at the top level
+        warnings = self.layout.render(fig, gs, slice(0, grid_size.rows), slice(0, grid_size.cols), filtered_df, scale=1.0)
+
+        # Print any aggregation warnings
+        _print_aggregation_warnings(warnings, self.name)
+
+        return fig
+
+
+@dataclass
+class PlotConfig:
+    """Configuration for loading and plotting experiment data.
+
+    Attributes:
+        paths: List of experiment paths to load data from.
+        figures: List of Figure configurations to render.
+        quick_mode: Controls which candidates are evaluated during data loading.
+            If True, only evaluates the first and last candidates (faster, suitable for bar plots).
+            If False, evaluates all improving candidates (needed for progression plots).
+        computed_columns: Dict mapping column names to functions that compute them from the DataFrame.
+    """
+
+    paths: list[str]
+    figures: list[Figure]
+    quick_mode: bool = False
+    computed_columns: dict[str, Callable[[pd.DataFrame], pd.Series]] = field(default_factory=dict)
+
+    _df: pd.DataFrame = field(default=None, init=False, repr=False)
+
+    def load_df(self) -> pd.DataFrame:
+        """Load and cache the DataFrame."""
+        if self._df is None:
+            self._df = load_experiment_df(self.paths, quick_mode=self.quick_mode)
+
+            # Apply computed columns
+            for col_name, col_fn in self.computed_columns.items():
+                self._df[col_name] = col_fn(self._df)
+
+        return self._df
+
+    def render_all(self) -> None:
+        """Render all figures."""
+        df = self.load_df()
+
+        for figure in self.figures:
+            fig = figure.render(df, paths=self.paths)
+            plt.show()
+
+    def render(self, name: str) -> None:
+        """Render a specific figure by name."""
+        df = self.load_df()
+
+        for figure in self.figures:
+            if figure.name == name:
+                fig = figure.render(df, paths=self.paths)
+                plt.show()
+                return
+
+        raise ValueError(f"Figure '{name}' not found. Available: {[f.name for f in self.figures]}")

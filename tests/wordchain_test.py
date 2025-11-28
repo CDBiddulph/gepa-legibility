@@ -3,15 +3,11 @@ Unit tests for wordchain scoring module.
 """
 
 import pytest
-import sys
-import os
 from unittest.mock import Mock
 
-# Add parent directory to path to import scoring module
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import dspy
-from scoring.wordchain import get_metric_fn
+
+from tasks.wordchain.scorer import get_metric_fn
 
 
 class MockJudgeModel:

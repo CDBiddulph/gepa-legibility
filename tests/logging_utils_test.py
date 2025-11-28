@@ -4,13 +4,8 @@ Unit tests for logging_utils module.
 
 import pytest
 from unittest.mock import Mock
-import sys
-import os
 
-# Add parent directory to path to import logging_utils
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from logging_utils import serialize_detailed_results
+from core.logging_utils import serialize_detailed_results
 
 
 class TestSerializeDetailedResults:

@@ -14,8 +14,9 @@ Example:
 import argparse
 import time
 from dotenv import load_dotenv
-from lm import get_dspy_lm
-from logging_utils import get_prompts_and_responses
+
+from core.lm import get_dspy_lm
+from core.logging_utils import get_prompts_and_responses
 
 # Load environment variables
 load_dotenv()
