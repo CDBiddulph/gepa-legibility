@@ -186,9 +186,8 @@ def _eval_and_save_detailed_results(
             }
 
     # Construct path to full progression data file
-    relative_path = Path(*experiment_path.parts[1:])  # Remove 'logs' prefix
     progression_data_file = str(
-        Path("plot-data") / relative_path / f"progression_data_{log_dir_index}.json"
+        experiment_path / str(log_dir_index) / "progression_data.json"
     )
 
     print(f"Best test score: {best_test_score:.3f}")

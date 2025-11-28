@@ -36,10 +36,8 @@ def sanitize_instructions(instructions):
 
 
 def _load_sanitized_instructions(original_instructions, path, candidate_idx):
-    # Create sanitized directory structure
-    sanitized_base = Path("sanitized")
-    relative_path = Path(*path.parts[1:])  # Remove 'logs' prefix
-    sanitized_path = sanitized_base / relative_path
+    # Sanitized files stored in run directory under sanitized/
+    sanitized_path = path / "sanitized"
     sanitized_file = sanitized_path / f"{candidate_idx}-san.txt"
     original_file = sanitized_path / f"{candidate_idx}.txt"
 

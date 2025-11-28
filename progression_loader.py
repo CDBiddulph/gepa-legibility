@@ -33,9 +33,6 @@ from data_loading.mcq import load_mcq_splits
 # Load environment variables
 load_dotenv()
 
-# Constants
-PLOT_DATA_BASE = Path("plot-data")
-
 
 def get_progression_data(experiment_path, quick_mode=False):
     """Load or compute progression data for a single experiment path.
@@ -414,7 +411,6 @@ def _evaluate_candidate(
     metric_fn_proxy,
     metric_fn_true,
     test_examples,
-    plot_data_path,
     use_incompetent_adapter,
     problem_signature,
     env,
@@ -426,7 +422,7 @@ def _evaluate_candidate(
     """
     test_scores = {}
     subset_test_scores = defaultdict(dict)
-    eval_dir = plot_data_path / "evaluations" / f"run_{subdir.name}"
+    eval_dir = subdir / "evaluations"
 
     # Determine which versions to evaluate
     if idx == 0:
@@ -477,7 +473,6 @@ def _process_run_progression(
     metric_fn_proxy,
     metric_fn_true,
     test_examples,
-    plot_data_path,
     use_incompetent_adapter,
     problem_signature,
     env,
@@ -533,7 +528,6 @@ def _process_run_progression(
             metric_fn_proxy,
             metric_fn_true,
             test_examples,
-            plot_data_path,
             use_incompetent_adapter,
             problem_signature,
             env,
@@ -552,7 +546,6 @@ def _process_run_progression(
 
 def _collect_progression_data_generic(
     experiment_path,
-    plot_data_path,
     test_examples,
     metric_fn_proxy,
     metric_fn_true,
@@ -564,7 +557,6 @@ def _collect_progression_data_generic(
 
     Args:
         experiment_path: Path to experiment directory containing run subdirectories
-        plot_data_path: Path where to save/load cached progression data
         test_examples: Test examples for evaluation
         metric_fn_proxy: Proxy metric function
         metric_fn_true: True metric function
@@ -597,7 +589,8 @@ def _collect_progression_data_generic(
             continue
 
         run_index = int(subdir.name)
-        run_file = plot_data_path / f"progression_data_{run_index}.json"
+        # Progression data now stored in the run directory itself
+        run_file = subdir / "progression_data.json"
 
         # Load existing progression data if available
         existing_progression = []
@@ -617,7 +610,6 @@ def _collect_progression_data_generic(
             metric_fn_proxy,
             metric_fn_true,
             test_examples,
-            plot_data_path,
             use_incompetent_adapter,
             problem_signature,
             env,
@@ -638,8 +630,7 @@ def _collect_progression_data_generic(
         }
         runs_data[run_index] = run_data
 
-        # Save individual run file
-        plot_data_path.mkdir(parents=True, exist_ok=True)
+        # Save progression data in run directory
         with open(run_file, "w") as f:
             json.dump(run_data, f, indent=2)
         print(f"  Saved progression data to {run_file}")
@@ -671,16 +662,11 @@ def _collect_progression_data_for_hint(
     """
     print(f"  Collecting progression data for hint type: {hint_type}")
 
-    # Create plot data path at hint type level
-    relative_path = Path(*hint_dir.parts[1:])  # Remove 'logs' prefix
-    plot_data_path = PLOT_DATA_BASE / relative_path
-
     # Get hint-specific test examples
     test_examples = load_mcq_splits(hint_type, "mixed")["test"]
 
     return _collect_progression_data_generic(
         hint_dir,
-        plot_data_path,
         test_examples,
         metric_fn_proxy,
         metric_fn_true,
@@ -738,12 +724,8 @@ def _collect_progression_data(
         # Non-MCQ: standard processing
         print(f"Collecting progression data for {experiment_path}")
 
-        relative_path = Path(*experiment_path.parts[1:])  # Remove 'logs' prefix
-        plot_data_path = PLOT_DATA_BASE / relative_path
-
         return _collect_progression_data_generic(
             experiment_path,
-            plot_data_path,
             test_examples,
             metric_fn_proxy,
             metric_fn_true,
