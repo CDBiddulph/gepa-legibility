@@ -146,7 +146,7 @@ COLUMN_DISPLAY_NAMES: dict[str, str] = {
     "subset": "Subset",
     "run_index": "Run",
     "candidate_index": "Candidate",
-    "prompt_type": "Prompt Type",
+    "prompt_type": "Prompt Type",  # Doesn't exist by default
 }
 
 # Maps (column, value) pairs to friendly display names for legends, tick labels, etc.
