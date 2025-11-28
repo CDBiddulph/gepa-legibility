@@ -28,7 +28,7 @@ def load_experiment_df(
                    If False, evaluate all improving candidates (for progression plots).
 
     Returns:
-        DataFrame with one row per (experiment, run, candidate, prompt_type, subset, metric_name).
+        DataFrame with one row per (experiment, run, candidate, is_sanitized, subset, metric_name).
     """
     # Expand paths to specific experiment directories
     expanded_paths = _expand_paths(paths)
@@ -205,10 +205,10 @@ def _flatten_runs(progression_data: dict, path: Path) -> list[dict]:
 
             # Expand test_scores into rows (overall scores, subset=None)
             for score_key, score_value in prog_point["test_scores"].items():
-                metric_type, prompt_type = _parse_score_key(score_key)
+                metric_type, is_sanitized = _parse_score_key(score_key)
                 rows.append({
                     **base_row,
-                    "prompt_type": prompt_type,
+                    "is_sanitized": is_sanitized,
                     "subset": None,
                     "metric_name": f"{metric_type}_reward",
                     "metric_value": score_value,
@@ -217,10 +217,10 @@ def _flatten_runs(progression_data: dict, path: Path) -> list[dict]:
             # Expand subset_test_scores into rows
             for subset_name, subset_scores in prog_point.get("subset_test_scores", {}).items():
                 for score_key, score_value in subset_scores.items():
-                    metric_type, prompt_type = _parse_score_key(score_key)
+                    metric_type, is_sanitized = _parse_score_key(score_key)
                     rows.append({
                         **base_row,
-                        "prompt_type": prompt_type,
+                        "is_sanitized": is_sanitized,
                         "subset": subset_name,
                         "metric_name": f"{metric_type}_reward",
                         "metric_value": score_value,
@@ -230,19 +230,19 @@ def _flatten_runs(progression_data: dict, path: Path) -> list[dict]:
 
 
 VALID_METRIC_TYPES = {"proxy", "true"}
-VALID_PROMPT_TYPES = {"original", "sanitized"}
+VALID_SANITIZATION_TYPES = {"original", "sanitized"}
 
 
-def _parse_score_key(score_key: str) -> tuple[str, str]:
-    """Parse score key like 'proxy_original' into (metric_type, prompt_type)."""
+def _parse_score_key(score_key: str) -> tuple[str, bool]:
+    """Parse score key like 'proxy_original' into (metric_type, is_sanitized)."""
     parts = score_key.split("_")
     if len(parts) != 2:
-        raise ValueError(f"Invalid score key format: '{score_key}', expected 'metric_prompt' (e.g., 'proxy_original')")
+        raise ValueError(f"Invalid score key format: '{score_key}', expected 'metric_sanitization' (e.g., 'proxy_original')")
 
-    metric_type, prompt_type = parts
+    metric_type, sanitization_type = parts
     if metric_type not in VALID_METRIC_TYPES:
         raise ValueError(f"Invalid metric type '{metric_type}' in score key '{score_key}', expected one of {VALID_METRIC_TYPES}")
-    if prompt_type not in VALID_PROMPT_TYPES:
-        raise ValueError(f"Invalid prompt type '{prompt_type}' in score key '{score_key}', expected one of {VALID_PROMPT_TYPES}")
+    if sanitization_type not in VALID_SANITIZATION_TYPES:
+        raise ValueError(f"Invalid sanitization type '{sanitization_type}' in score key '{score_key}', expected one of {VALID_SANITIZATION_TYPES}")
 
-    return metric_type, prompt_type
+    return metric_type, sanitization_type == "sanitized"

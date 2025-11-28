@@ -33,20 +33,35 @@ EXPECTED_VARYING_COLUMNS = {
     # Boolean markers that vary by design:
     "is_baseline",
     "is_final",
+    # Varies across a lineplot
+    "prompt_type",
     # Path/metadata that's okay to aggregate over:
     "experiment_path",
     "timestamp",
 }
 
 
-def _check_aggregation_warnings(df: pd.DataFrame, x: str, hue: str, plot_type: str, linestyle: str = None) -> dict[str, list]:
+def _check_aggregation_warnings(
+    df: pd.DataFrame,
+    x: str,
+    hue: str,
+    plot_type: str,
+    linestyle: str = None,
+) -> dict[str, list]:
     """Check for columns that vary unexpectedly within aggregated groups.
+
+    This checks whether any column has multiple values *within* each aggregation group,
+    which would mean those values are being averaged together. It does NOT warn about
+    columns that vary *across* groups (that's expected).
+
+    For bar plots: groups are (x, hue) - each bar averages over one group.
+    For progression plots: groups are (hue, linestyle, run_index) - each line is one group.
 
     Args:
         df: DataFrame being plotted
         x: Column used for x-axis grouping
         hue: Column used for hue grouping
-        plot_type: Name of plot type for warning message
+        plot_type: Name of plot type ("BarPlot" or "ProgressionPlot")
         linestyle: Column used for linestyle grouping (optional)
 
     Returns:
@@ -55,7 +70,13 @@ def _check_aggregation_warnings(df: pd.DataFrame, x: str, hue: str, plot_type: s
     if df.empty:
         return {}
 
-    # Columns that are explicitly grouped by in this plot
+    groupby_cols = [hue]
+    if plot_type == "BarPlot":
+        groupby_cols.append(x)
+
+    if linestyle is not None:
+        groupby_cols.append(linestyle)
+    # Columns that are explicitly used in this plot
     grouped_columns = {x, hue, "metric_value"}
     if linestyle is not None:
         grouped_columns.add(linestyle)
@@ -67,18 +88,16 @@ def _check_aggregation_warnings(df: pd.DataFrame, x: str, hue: str, plot_type: s
         if col in EXPECTED_VARYING_COLUMNS or col in grouped_columns:
             continue
 
-        unique_values = df[col].unique()
+        # Check if this column has multiple values within any group
+        varying_values = set()
+        for _, group_df in df.groupby(groupby_cols, dropna=False):
+            unique_in_group = group_df[col].unique()
+            if len(unique_in_group) > 1:
+                # This column varies within at least one group
+                varying_values.update(map(str, unique_in_group))
 
-        # Check if this column has multiple values
-        if len(unique_values) > 1:
-            # Format values nicely (handle None/NaN)
-            formatted_values = []
-            for v in unique_values:
-                if pd.isna(v):
-                    formatted_values.append("None")
-                else:
-                    formatted_values.append(str(v))
-            warnings[col] = formatted_values
+        if varying_values:
+            warnings[col] = list(varying_values)
 
     return warnings
 
@@ -122,11 +141,12 @@ COLUMN_DISPLAY_NAMES: dict[str, str] = {
     "metric_name": "Metric Name",
     "metric_value": "Metric Value",
     "hack_setting": "Told to Hack?",
-    "prompt_type": "Prompt Type",
+    "is_sanitized": "Sanitized?",
     "hint_type": "Hint Type",
     "subset": "Subset",
     "run_index": "Run",
     "candidate_index": "Candidate",
+    "prompt_type": "Prompt Type",
 }
 
 # Maps (column, value) pairs to friendly display names for legends, tick labels, etc.
@@ -135,9 +155,17 @@ VALUE_DISPLAY_NAMES: dict[str, dict[str, str]] = {
         "proxy_reward": "Proxy Reward",
         "true_reward": "True Reward",
     },
+    "is_sanitized": {
+        True: "Sanitized",
+        False: "Original",
+    },
     "prompt_type": {
-        "original": "Original",
-        "sanitized": "Sanitized",
+        "baseline": "Baseline",
+        "no_hack": "No Hack",
+        # Using newlines in display name for now, revisit if needed
+        "no_hack_sanitized": "No Hack\n(sanitized)",
+        "explicit_hack": "Hack",
+        "explicit_hack_sanitized": "Hack\n(sanitized)",
     },
     "hack_setting": {
         "explicit": "Hack",
@@ -173,6 +201,50 @@ def get_display_value(column: str, value: Any) -> str:
 
 
 # =============================================================================
+# Value Ordering
+# =============================================================================
+
+# Defines the canonical order for categorical values.
+# Values not in this list will be sorted alphabetically after the listed ones.
+VALUE_ORDER: dict[str, list] = {
+    "prompt_type": [
+        "baseline",
+        "no_hack",
+        "no_hack_sanitized",
+        "explicit_hack",
+        "explicit_hack_sanitized",
+    ],
+    "metric_name": ["proxy_reward", "true_reward"],
+    "is_sanitized": [False, True],
+    "hack_setting": ["no", "explicit"],
+}
+
+
+def sort_values(column: str, values: list) -> list:
+    """Sort values according to VALUE_ORDER, with unlisted values at the end.
+
+    Args:
+        column: Column name to look up ordering for
+        values: List of values to sort
+
+    Returns:
+        Sorted list of values
+    """
+    if column not in VALUE_ORDER:
+        return sorted(values)
+
+    order = VALUE_ORDER[column]
+    order_map = {v: i for i, v in enumerate(order)}
+
+    def sort_key(v):
+        if v in order_map:
+            return (0, order_map[v])
+        return (1, str(v))  # Unlisted values go at end, sorted alphabetically
+
+    return sorted(values, key=sort_key)
+
+
+# =============================================================================
 # Style Registry
 # =============================================================================
 
@@ -183,9 +255,9 @@ STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
     # Colors for metric types
     ("metric_name", "proxy_reward"): {"color": "#ff7777"},
     ("metric_name", "true_reward"): {"color": "#66b3ff"},
-    # Line styles for prompt types
-    ("prompt_type", "original"): {"linestyle": "-"},
-    ("prompt_type", "sanitized"): {"linestyle": ":"},
+    # Line styles for is_sanitized
+    ("is_sanitized", False): {"linestyle": "-"},
+    ("is_sanitized", True): {"linestyle": ":"},
 }
 
 def get_style(column: str, value: Any, style_key: str) -> Any | None:
@@ -590,6 +662,62 @@ def full_layout(plot: LayoutNode) -> Grid:
 
 
 # =============================================================================
+# Computed Column Helpers
+# =============================================================================
+
+
+def make_prompt_type_column(df: pd.DataFrame) -> pd.Series:
+    """Create a 'prompt_type' column with 5 categories for bar plot comparison.
+
+    Categories (in order):
+        1. "baseline" - First candidate (is_baseline=True), not sanitized
+        2. "no_hack" - Final candidate with hack_setting="no", not sanitized
+        3. "no_hack_sanitized" - Final candidate with hack_setting="no", sanitized
+        4. "explicit_hack" - Final candidate with hack_setting="explicit", not sanitized
+        5. "explicit_hack_sanitized" - Final candidate with hack_setting="explicit", sanitized
+
+    Rows that don't match any category get None (and should be filtered out).
+
+    Usage:
+        PlotConfig(
+            computed_columns={"prompt_type": make_prompt_type_column},
+            figures=[
+                Figure(
+                    name="Scores by prompt type",
+                    filter=lambda df: df["prompt_type"].notna(),
+                    layout=BarPlot(x="prompt_type", hue="metric_name"),
+                ),
+            ],
+        )
+    """
+    def classify_row(row):
+        # Baseline: first candidate, not sanitized
+        # Ignore the unsanitized baseline, since it should be the same
+        if row["is_baseline"] and not row["is_sanitized"]:
+            return "baseline"
+
+        # Final candidates only for the rest
+        if not row["is_final"]:
+            return None
+
+        hack = row["hack_setting"]
+        is_sanitized = row["is_sanitized"]
+
+        if hack == "no" and not is_sanitized:
+            return "no_hack"
+        elif hack == "no" and is_sanitized:
+            return "no_hack_sanitized"
+        elif hack == "explicit" and not is_sanitized:
+            return "explicit_hack"
+        elif hack == "explicit" and is_sanitized:
+            return "explicit_hack_sanitized"
+
+        return None
+
+    return df.apply(classify_row, axis=1)
+
+
+# =============================================================================
 # Plotting Implementation
 # =============================================================================
 
@@ -618,9 +746,9 @@ def _draw_bar_plot(
         ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
         return
 
-    # Get unique x and hue values
-    x_values = sorted(df[x].unique())
-    hue_values = sorted(df[hue].unique())
+    # Get unique x and hue values, sorted by canonical order
+    x_values = sort_values(x, list(df[x].unique()))
+    hue_values = sort_values(hue, list(df[hue].unique()))
 
     n_x = len(x_values)
     n_hue = len(hue_values)
@@ -771,11 +899,11 @@ def _draw_progression_plot(
     linewidth = BASE_LINEWIDTH * scale
     faint_linewidth = BASE_FAINT_LINEWIDTH * scale
 
-    hue_values = sorted(df[hue].unique())
+    hue_values = sort_values(hue, list(df[hue].unique()))
 
     # Determine linestyle values
     if linestyle_col is not None:
-        linestyle_values = sorted(df[linestyle_col].dropna().unique())
+        linestyle_values = sort_values(linestyle_col, list(df[linestyle_col].dropna().unique()))
     else:
         linestyle_values = [None]
 
