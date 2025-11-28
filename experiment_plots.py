@@ -546,12 +546,14 @@ class ProgressionPlot(LayoutNode):
         hue: Column for color grouping (each unique value gets a different color)
         linestyle: Column for line style grouping (each unique value gets a different line style)
         title: Optional title for the plot
+        show_individual_lines: Whether to show faint lines for individual values
     """
 
     x: str = "discovery_eval_counts"
     hue: str = "metric_name"
     linestyle: str = None
     title: str = None
+    show_individual_lines: bool = True
 
     def get_grid_size(self, df: pd.DataFrame) -> GridSize:
         # Leaf plot: 1x1 cell, and it IS the reference size
@@ -568,7 +570,7 @@ class ProgressionPlot(LayoutNode):
         show_chrome: bool = True,
     ) -> dict[str, list]:
         ax = fig.add_subplot(gs[row_slice, col_slice])
-        _draw_progression_plot(ax, df, self.x, self.hue, self.linestyle, self.title, scale, show_chrome)
+        _draw_progression_plot(ax, df, self.x, self.hue, self.linestyle, self.title, scale, show_chrome, self.show_individual_lines)
         return _check_aggregation_warnings(df, self.x, self.hue, "ProgressionPlot", self.linestyle)
 
 
@@ -700,6 +702,7 @@ def _draw_progression_series(
     label: str,
     linewidth: float,
     faint_linewidth: float,
+    show_individual_lines: bool = True,
 ) -> None:
     """Draw a single progression series (faint individual lines + bold average).
 
@@ -712,6 +715,7 @@ def _draw_progression_series(
         label: Legend label
         linewidth: Width for bold average line
         faint_linewidth: Width for faint individual lines
+        show_individual_lines: Whether to show faint lines for individual run_index values
     """
     run_indices = df["run_index"].unique()
     all_run_lines = []
@@ -724,7 +728,8 @@ def _draw_progression_series(
         x_vals, y_vals = _build_step_function(run_df[x].values, run_df["metric_value"].values)
         if len(x_vals) > 0:
             all_run_lines.append((x_vals, y_vals))
-            ax.plot(x_vals, y_vals, color=color, alpha=0.3, linewidth=faint_linewidth, linestyle=ls)
+            if show_individual_lines:
+                ax.plot(x_vals, y_vals, color=color, alpha=0.3, linewidth=faint_linewidth, linestyle=ls)
 
     if all_run_lines:
         avg_x, avg_y = _average_step_functions(all_run_lines)
@@ -740,6 +745,7 @@ def _draw_progression_plot(
     title: str = None,
     scale: float = 1.0,
     show_chrome: bool = True,
+    show_individual_lines: bool = True,
 ) -> None:
     """Draw a progression plot with step functions.
 
@@ -752,6 +758,7 @@ def _draw_progression_plot(
         title: Optional title for the plot
         scale: Scale factor for fonts and line widths (1.0 = full size)
         show_chrome: Whether to show axis labels and legend
+        show_individual_lines: Whether to show faint lines for individual run_index values
     """
     if df.empty:
         ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
@@ -792,7 +799,7 @@ def _draw_progression_plot(
                 ls = "-"
                 label = get_display_value(hue, hue_val)
 
-            _draw_progression_series(ax, series_df, x, color, ls, label, linewidth, faint_linewidth)
+            _draw_progression_series(ax, series_df, x, color, ls, label, linewidth, faint_linewidth, show_individual_lines)
 
     ax.tick_params(axis='both', labelsize=tick_fontsize)
     ax.set_ylim(0, 1)
