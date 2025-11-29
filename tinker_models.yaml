@@ -15,3 +15,7 @@ models:
     checkpoint_path: "tinker://5fce22a7-dc04-5869-9c66-74b79aee4f74:train:0/weights/000010"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ model trained with RL on metadata hints"
+  wordchain-11-28:
+    checkpoint_path: "tinker://09e9ac7d-6d7f-59e6-b767-a140acf9f9bd:train:0/weights/000076"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "Wordchain model trained with RL"
