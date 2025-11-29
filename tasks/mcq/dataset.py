@@ -76,7 +76,6 @@ class MCQDataset(BaseRLDataset):
             metric_fn=self.metric_fn,
             signature_name="mcq",
             input_fields={"question": example.question},
-            output_field="answer",
             question_for_logging=example.question,
             adapter=adapter,
         )

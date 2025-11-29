@@ -68,7 +68,6 @@ class WordchainDataset(BaseRLDataset):
             metric_fn=self.metric_fn,
             signature_name="wordchain",
             input_fields={"query": example.query},
-            output_field="response",
             question_for_logging=f"{example.start_word} -> ... -> {example.end_word}",
             adapter=ChatAdapter(),
         )

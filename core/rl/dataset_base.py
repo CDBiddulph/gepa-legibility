@@ -16,6 +16,8 @@ from tinker_cookbook.rl.problem_env import ProblemGroupBuilder
 from tinker_cookbook.rl.types import EnvGroupBuilder, RLDataset
 
 from core.rl.dspy_format_env import DspyFormatEnv
+from core.dspy_utils import get_problem_signature
+
 
 
 class BaseRLDataset(RLDataset):
@@ -100,7 +102,6 @@ def make_dspy_env(
     metric_fn: Callable,
     signature_name: str,
     input_fields: dict[str, str],
-    output_field: str,
     question_for_logging: str,
     adapter=None,
 ) -> DspyFormatEnv:
@@ -113,12 +114,9 @@ def make_dspy_env(
         metric_fn: The metric function.
         signature_name: Name for get_problem_signature().
         input_fields: Dict mapping field names to values for adapter.format().
-        output_field: "answer" or "response".
         question_for_logging: String for logging.
         adapter: Optional adapter (defaults to ChatAdapter).
     """
-    from core.dspy_utils import get_problem_signature
-
     signature = get_problem_signature(signature_name)
     adapter = adapter or ChatAdapter()
 
@@ -133,6 +131,7 @@ def make_dspy_env(
         messages=messages,
         example=example,
         metric_fn=metric_fn,
-        output_field=output_field,
         question_for_logging=question_for_logging,
+        adapter=adapter,
+        signature=signature,
     )

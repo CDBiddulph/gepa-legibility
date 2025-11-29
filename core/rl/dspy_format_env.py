@@ -6,10 +6,13 @@ prompt format and scoring exactly.
 """
 
 import asyncio
+import logging
 from typing import Callable
 
 import dspy
 import tinker
+from dspy.adapters.base import Adapter
+from dspy.signatures.signature import Signature
 from tinker_cookbook import renderers
 from tinker_cookbook.completers import StopCondition
 from tinker_cookbook.rl.types import (
@@ -34,7 +37,8 @@ class DspyFormatEnv(Env):
         example: The dspy.Example for this problem (passed to metric_fn).
         metric_fn: A metric function that takes (example, prediction) and
             returns Prediction(score=..., feedback=...).
-        output_field: The field name for the model's output ("response" or "answer").
+        adapter: DSPy adapter for parsing [[ ## field ## ]] markers.
+        signature: DSPy signature for field parsing.
         question_for_logging: A short string describing the problem for logs.
     """
 
@@ -44,15 +48,24 @@ class DspyFormatEnv(Env):
         messages: list[renderers.Message],
         example: dspy.Example,
         metric_fn: Callable,
-        output_field: str = "response",
+        adapter: Adapter,
+        signature: type[Signature],
         question_for_logging: str = "",
     ):
         self.renderer = renderer
         self.messages = messages
         self.example = example
         self.metric_fn = metric_fn
-        self.output_field = output_field
         self.question_for_logging = question_for_logging
+        self.adapter = adapter
+        self.signature = signature
+
+        # Derive output_field from signature - must have exactly one output field
+        output_fields = list(signature.output_fields.keys())
+        assert len(output_fields) == 1, (
+            f"Expected exactly one output field, got {output_fields}"
+        )
+        self.output_field = output_fields[0]
 
     @property
     def stop_condition(self) -> StopCondition:
@@ -62,9 +75,31 @@ class DspyFormatEnv(Env):
         """Return the initial observation using pre-formatted messages."""
         return self.renderer.build_generation_prompt(self.messages), self.stop_condition
 
+    def _parse_response(self, response: str) -> str:
+        """Parse response to extract the output field value.
+
+        Strips thinking content (everything before </think>) first, then uses
+        DSPy's field parsing to extract [[ ## field ## ]] markers, matching GEPA behavior.
+
+        Raises:
+            Exception: If parsing fails (no valid field markers found, etc.)
+        """
+        # Strip thinking content if it exists
+        if "</think>" in response:
+            response = response.split("</think>")[-1]
+
+        # Parse the field markers
+        fields = self.adapter.parse(self.signature, response)
+        return fields[self.output_field]
+
     def compute_reward(self, response: str) -> float:
         """Compute reward using the metric function."""
-        prediction = dspy.Prediction(**{self.output_field: response})
+        try:
+            parsed_response = self._parse_response(response)
+        except Exception as e:
+            logging.warning(f"Error parsing response (reward will be 0.0): {e}")
+            return 0.0
+        prediction = dspy.Prediction(**{self.output_field: parsed_response})
         result = self.metric_fn(self.example, prediction)
         return result.score
 

@@ -73,7 +73,6 @@ class PsychosisDataset(BaseRLDataset):
             metric_fn=self.metric_fn,
             signature_name="psychosis_split",
             input_fields={"memory": example.memory, "query": example.query},
-            output_field="response",
             question_for_logging=f"Memory: {example.memory}\nQuery: {example.query}",
             adapter=adapter,
         )
