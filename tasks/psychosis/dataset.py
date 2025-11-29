@@ -32,10 +32,8 @@ class PsychosisDataset(BaseRLDataset):
         seed: int = 0,
         num_epochs: int = 1,
         max_examples: int | None = None,
-        use_expert_data: bool = False,
     ):
         self.use_incompetent = use_incompetent
-        self.use_expert_data = use_expert_data
 
         # Create metric function (gameable_type="sometimes" uses is_gameable field)
         metric_fn = get_metric_fn(gameable_type="sometimes")
@@ -52,7 +50,7 @@ class PsychosisDataset(BaseRLDataset):
         )
 
     def _load_data(self, split: str) -> Dataset:
-        splits = load_psychosis_splits(use_expert_data=self.use_expert_data)
+        splits = load_psychosis_splits(use_expert_data=False)
         examples = splits[split]
         return Dataset.from_dict({
             "memory": [ex.memory for ex in examples],
@@ -96,7 +94,6 @@ class PsychosisDatasetBuilder(RLDatasetBuilder):
     seed: int = 0
     num_epochs: int = 1
     max_examples: int | None = None
-    use_expert_data: bool = False
 
     async def __call__(self) -> tuple[PsychosisDataset, PsychosisDataset]:
         tokenizer = get_tokenizer(self.model_name_for_tokenizer)
@@ -112,7 +109,6 @@ class PsychosisDatasetBuilder(RLDatasetBuilder):
                 seed=self.seed,
                 num_epochs=self.num_epochs,
                 max_examples=self.max_examples,
-                use_expert_data=self.use_expert_data,
             )
             for split in ("train", "valid")
         )

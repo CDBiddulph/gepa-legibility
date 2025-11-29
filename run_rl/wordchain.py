@@ -12,6 +12,8 @@ from tinker_cookbook.rl.train import Config, main
 from core.rl.train_utils import get_renderer_name, make_async_config, make_log_path, make_run_name
 from tasks.wordchain.dataset import WordchainDatasetBuilder
 
+from dotenv import load_dotenv
+load_dotenv()
 
 @chz.chz
 class CLIConfig:
@@ -24,7 +26,6 @@ class CLIConfig:
     load_checkpoint_path: str | None = None
 
     # Environment configuration
-    use_expert_data: bool = False
     seed: int = 0
     max_examples: int | None = None
 
@@ -32,7 +33,7 @@ class CLIConfig:
     num_epochs: int = 1
     group_size: int = 4
     groups_per_batch: int = 100
-    learning_rate: float = 1e-5
+    learning_rate: float = 1e-4
     max_tokens: int = 16000
     temperature: float = 1.0
     kl_penalty_coef: float = 0.0
@@ -72,7 +73,6 @@ async def cli_main(cfg: CLIConfig):
         seed=cfg.seed,
         num_epochs=cfg.num_epochs,
         max_examples=cfg.max_examples,
-        use_expert_data=cfg.use_expert_data,
     )
 
     config = Config(
