@@ -13,7 +13,7 @@ from core.incompetent_adapter import IncompetentAdapter
 from core.instruction_proposer import CustomPromptInstructionProposer
 from core.lm import get_dspy_lm
 from core.logging_utils import gepa_logging, serialize_detailed_results
-from core.progression.loader import get_progression_data
+from core.evaluation import get_progression_data
 
 
 def run_gepa(

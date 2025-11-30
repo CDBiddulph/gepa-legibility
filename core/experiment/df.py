@@ -11,7 +11,7 @@ import re
 
 import pandas as pd
 
-from core.progression.loader import get_progression_data
+from core.evaluation import get_progression_data
 
 
 def load_experiment_df(
