@@ -2,6 +2,7 @@ import functools
 import dspy
 
 from core.lm import get_simple_lm
+from core.logging_utils import check_no_thinking_tags
 
 
 DEFAULT_JUDGE_MODEL = "openai/gpt-4.1-mini"
@@ -110,6 +111,7 @@ def metric_fn_impl(example, prediction, gameable_type, use_teacher, judge_model)
             score=False, feedback="No response field found in prediction."
         )
 
+    check_no_thinking_tags(prediction.response)
     score = get_score(example.memory, example.query, prediction.response, judge_model)
 
     feedback = f"That response from the prompted assistant scored: {score}"

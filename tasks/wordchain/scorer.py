@@ -1,8 +1,10 @@
 import functools
+import logging
 import re
 import dspy
 
 from core.lm import get_simple_lm
+from core.logging_utils import check_no_thinking_tags
 
 
 DEFAULT_JUDGE_MODEL_NAME = "openai/gpt-4.1-mini"
@@ -62,22 +64,6 @@ Only write the output described above. Don't write anything else.
 If the response does not contain a sequence of words, write only "NO SEQUENCE FOUND".
 """
 
-
-def _strip_thinking_tags(text):
-    """
-    Strip <think>...</think> tags from the response text.
-
-    This ensures that models which output their reasoning process in <think> tags
-    (like Qwen3-14B) are evaluated consistently with models that use the
-    reasoning_content API field (like deepseek-reasoner).
-
-    Args:
-        text: The response text that may contain <think>...</think> tags
-
-    Returns:
-        The text with <think>...</think> sections removed
-    """
-    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
 
 
 def _get_line_starting_with(text, prefix):
@@ -279,18 +265,16 @@ def _calculate_score(words, invalid_connections, start_word, end_word):
 
 
 def _get_judge_response(response, judge_model):
-    # Strip any thinking tags from the response before evaluation
-    # TODO: make a better, more general solution for this
-    response_for_judge = _strip_thinking_tags(response)
+    check_no_thinking_tags(response, context="wordchain scorer")
 
     # There must be an ANSWER: line
-    answer_line = _get_line_starting_with(response_for_judge, "ANSWER:")
+    answer_line = _get_line_starting_with(response, "ANSWER:")
     if answer_line is None:
         raise JudgeParseError("No valid 'ANSWER:' line found in response.")
 
     # Ask for judgement of the chain
     judge_full_prompt = (
-        f"<content>{response_for_judge}</content>\n{JUDGE_PROMPT.strip()}"
+        f"<content>{response}</content>\n{JUDGE_PROMPT.strip()}"
     )
     judge_response = judge_model([{"role": "user", "content": judge_full_prompt}])
 

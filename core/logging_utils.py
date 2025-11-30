@@ -6,6 +6,28 @@ from datetime import datetime
 import logging
 from contextlib import contextmanager
 
+logger = logging.getLogger(__name__)
+
+
+def check_no_thinking_tags(response: str) -> None:
+    """
+    Check that a response doesn't contain thinking tags.
+
+    DSPy's adapter parsing should strip thinking content before it reaches
+    the parsed output fields. If </think> appears in a parsed response,
+    something unexpected happened in the parsing pipeline.
+
+    Args:
+        response: The parsed response string to check
+
+    Raises:
+        SystemError: If the response contains </think> tags
+    """
+    if "</think>" in response:
+        message = f"Response unexpectedly contains thinking tags: {response}"
+        logger.error(message)
+        raise SystemError(message)
+
 
 @contextmanager
 def gepa_logging(log_file):

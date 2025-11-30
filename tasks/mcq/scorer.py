@@ -1,6 +1,8 @@
 import re
 import dspy
 
+from core.logging_utils import check_no_thinking_tags
+
 
 def extract_mcq_answer(raw_answer):
     """Extract A, B, C, or D from various answer formats"""
@@ -22,6 +24,7 @@ def metric_fn_impl(example, prediction):
         )
 
     raw_answer = prediction.answer.strip()
+    check_no_thinking_tags(raw_answer)
     rewarded_answer = example.rewarded_answer.strip().upper()
 
     # Extract answer using standalone parsing function
