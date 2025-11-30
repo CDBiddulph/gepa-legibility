@@ -49,7 +49,10 @@ def _extract_response_with_reasoning(history_entry):
     reasoning = message.get("reasoning_content")
     if reasoning and reasoning.strip():
         # Format with <think> tags
-        return f"<think>\n{reasoning}\n</think>\n{message['content']}"
+        return f"<think>{reasoning}</think>\n{message['content']}"
+    # Tinker's Qwen/Qwen3-30B-A3B won't automatically include the opening <think> tag
+    if "</think>" in response_text and not response_text.strip().startswith("<think>"):
+        response_text = f"<think>{response_text}"
 
     return response_text
 

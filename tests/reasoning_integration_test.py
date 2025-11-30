@@ -28,6 +28,7 @@ load_dotenv()
         ("deepseek/deepseek-reasoner", True),
         ("openai/gpt-4.1-nano", False),
         ("deepinfra/deepseek-ai/DeepSeek-V3.2-Exp", True),
+        ("tinker/wordchain-11-28", True),
     ],
 )
 def test_reasoning_extraction(model_name, has_reasoning):
