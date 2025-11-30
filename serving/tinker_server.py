@@ -10,6 +10,7 @@ Usage:
 """
 
 import argparse
+import asyncio
 import logging
 import time
 from pathlib import Path
@@ -52,6 +53,8 @@ class TinkerModelRegistry:
 
         # Cache of loaded OpenAI clients
         self._clients: Dict[str, TinkerAsyncOpenAIClient] = {}
+        # Lock to prevent concurrent loading of the same model
+        self._loading_locks: Dict[str, asyncio.Lock] = {}
         self.service_client = tinker.ServiceClient()
 
         logger.info(f"Loaded config with {len(self.config['models'])} models")
@@ -70,12 +73,24 @@ class TinkerModelRegistry:
         Raises:
             ValueError: If model_name is not in config
         """
-        # Return cached client if available
+        # Return cached client if available (fast path, no lock needed)
         if model_name in self._clients:
-            logger.debug(f"Using cached client for {model_name}")
             return self._clients[model_name]
 
-        # Load from config
+        # Get or create lock for this model
+        if model_name not in self._loading_locks:
+            self._loading_locks[model_name] = asyncio.Lock()
+
+        # Acquire lock to prevent concurrent loading of the same model
+        async with self._loading_locks[model_name]:
+            # Check again after acquiring lock (another request may have loaded it)
+            if model_name in self._clients:
+                return self._clients[model_name]
+
+            return await self._load_model(model_name)
+
+    async def _load_model(self, model_name: str) -> TinkerAsyncOpenAIClient:
+        """Load a model from config. Must be called while holding the model's lock."""
         model_config = self.config['models'].get(model_name)
         if not model_config:
             available = ", ".join(self.config['models'].keys())
@@ -83,7 +98,6 @@ class TinkerModelRegistry:
                 f"Unknown model: {model_name}. Available models: {available}"
             )
 
-        # Extract config
         checkpoint_path = model_config.get('checkpoint_path')
         base_model = model_config.get('base_model')
 
