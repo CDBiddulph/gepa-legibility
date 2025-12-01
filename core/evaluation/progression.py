@@ -32,10 +32,12 @@ load_dotenv()
 
 def get_progression_data(experiment_path, quick_mode=False):
     """
-    Load or compute progression data for a single experiment path.
+    Compute progression data for a single experiment path.
 
-    This function checks for cached progression data and loads it if available.
-    If cache doesn't exist, it collects the data and caches it.
+    This function builds progression data by evaluating candidates and aggregating
+    results. Individual evaluation results are cached in evaluations/*.json files,
+    so repeated calls are fast. The progression_data.json file is regenerated on
+    each call for human readability but is not used as a cache.
 
     Args:
         experiment_path: Path to experiment directory (str or Path)
@@ -173,15 +175,7 @@ def _collect_progression_data_generic(
             continue
 
         run_index = int(subdir.name)
-        # Progression data now stored in the run directory itself
         run_file = subdir / "progression_data.json"
-
-        # Load existing progression data if available
-        existing_progression = []
-        if run_file.exists():
-            with open(run_file, "r") as f:
-                existing_data = json.load(f)
-                existing_progression = existing_data["progression"]
 
         with open(results_file, "r") as f:
             data = json.load(f)
@@ -189,7 +183,6 @@ def _collect_progression_data_generic(
         # Process progression for this run
         progression = _process_run_progression(
             data,
-            existing_progression,
             subdir,
             eval_data,
             executor_lm,
@@ -224,7 +217,6 @@ def _collect_progression_data_generic(
 
 def _process_run_progression(
     data,
-    existing_progression,
     subdir,
     eval_data: EvalData,
     executor_lm,
@@ -238,7 +230,6 @@ def _process_run_progression(
 
     Args:
         data: Loaded detailed_results.json data
-        existing_progression: List of already-evaluated progression points
         subdir: Path to run subdirectory
         eval_data: Loaded evaluation data
         executor_lm: Language model for evaluation
@@ -270,13 +261,8 @@ def _process_run_progression(
         # Full mode: all improving candidates
         candidates_to_eval = set(improving_candidates)
 
-    # Remove candidates that have already been evaluated
-    candidates_to_eval = candidates_to_eval - {
-        candidate["candidate_index"] for candidate in existing_progression
-    }
-
     # Evaluate selected candidates
-    progression = existing_progression
+    progression = []
     for idx in sorted(candidates_to_eval):
         candidate = data["candidates"][idx]
         val_score = candidate["val_aggregate_score"]
@@ -299,9 +285,6 @@ def _process_run_progression(
             candidate, idx, test_scores, subset_test_scores, sanitized_instructions
         )
         progression.append(prog_point)
-
-    # Sort progression by index
-    progression.sort(key=lambda x: x["candidate_index"])
 
     return progression
 
