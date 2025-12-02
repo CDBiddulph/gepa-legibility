@@ -267,7 +267,7 @@ def _calculate_score(words, invalid_connections, start_word, end_word):
 
 
 def _get_judge_response(response, judge_model):
-    check_no_thinking_tags(response, context="wordchain scorer")
+    check_no_thinking_tags(response)
 
     # There must be an ANSWER: line
     answer_line = _get_line_starting_with(response, "ANSWER:")
