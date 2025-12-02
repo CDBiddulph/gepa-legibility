@@ -13,8 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from core.experiment.df import load_experiment_df
-
+from core.experiment.df import load_experiment_dfs, DFs
 
 # =============================================================================
 # Aggregation Warning System
@@ -317,6 +316,38 @@ def get_linestyle(column: str, value: Any, fallback_index: int) -> str:
 
 
 # =============================================================================
+# Utility Functions
+# =============================================================================
+
+def _filter_main(
+    dfs: DFs, filter: str | Callable[[pd.DataFrame], pd.Series] | None
+) -> DFs:
+    """Filter only the 'main' DataFrame, passing 'gepa_runs' through unchanged.
+
+    Args:
+        dfs: Dict with "main" and "gepa_runs" DataFrames
+        filter: None (no filter), callable returning boolean Series, or query string
+
+    Returns:
+        New DFs dict with filtered "main" and unchanged "gepa_runs"
+    """
+    result = {}
+    for key, df in dfs.items():
+        if key == "main":
+            if filter is None:
+                result[key] = df
+            elif callable(filter):
+                result[key] = df[filter(df)]
+            else:
+                result[key] = df.query(filter)
+        elif key == "gepa_runs":
+            result[key] = df
+        else:
+            raise ValueError(f"Unknown DataFrame key: {key}")
+    return result
+
+
+# =============================================================================
 # Layout Nodes (composable plotting components)
 # =============================================================================
 
@@ -358,7 +389,7 @@ class LayoutNode(ABC):
         gs: plt.GridSpec,
         row_slice: slice,
         col_slice: slice,
-        df: pd.DataFrame,
+        dfs: DFs,
         scale: float = 1.0,
         show_chrome: bool = True,
     ) -> dict[str, list]:
@@ -369,7 +400,7 @@ class LayoutNode(ABC):
             gs: GridSpec to render into
             row_slice: Row range in the grid
             col_slice: Column range in the grid
-            df: DataFrame with data to plot
+            dfs: Dict with "main" (candidate rows) and "gepa_runs" (run-level data)
             scale: Scale factor for fonts/markers (1.0 = full size, <1.0 = smaller)
             show_chrome: Whether to show axis labels and legend
 
@@ -412,10 +443,11 @@ class Grid(LayoutNode):
         gs: plt.GridSpec,
         row_slice: slice,
         col_slice: slice,
-        df: pd.DataFrame,
+        dfs: DFs,
         scale: float = 1.0,
         show_chrome: bool = True,
     ) -> dict[str, list]:
+        df = dfs["main"]
         unique_values = sorted(df[self.groupby].dropna().unique())
         n_groups = len(unique_values)
 
@@ -438,7 +470,7 @@ class Grid(LayoutNode):
             c_start = col_slice.start + grid_col * inner_size.cols
             c_end = c_start + inner_size.cols
 
-            sub_df = df[df[self.groupby] == value]
+            sub_dfs = _filter_main(dfs, lambda df: df[self.groupby] == value)
 
             if self.inner is None:
                 # No inner layout - just create a placeholder
@@ -452,7 +484,7 @@ class Grid(LayoutNode):
                     gs,
                     slice(r_start, r_end),
                     slice(c_start, c_end),
-                    sub_df,
+                    sub_dfs,
                     scale,
                     show_chrome,
                 )
@@ -511,19 +543,20 @@ class MainSide(LayoutNode):
         gs: plt.GridSpec,
         row_slice: slice,
         col_slice: slice,
-        df: pd.DataFrame,
+        dfs: DFs,
         scale: float = 1.0,
         show_chrome: bool = True,
     ) -> dict[str, list]:
+        df = dfs["main"]
         unique_values = list(df[self.groupby].unique())
 
         # Separate main and side values
         if self.main_value is None:
             # main_value=None means use rows where groupby column is NaN
-            main_df = df[df[self.groupby].isna()]
+            main_dfs = _filter_main(dfs, lambda df: df[self.groupby].isna())
             side_values = sorted([v for v in unique_values if pd.notna(v)])
         else:
-            main_df = df[df[self.groupby] == self.main_value]
+            main_dfs = _filter_main(dfs, lambda df: df[self.groupby] == self.main_value)
             side_values = sorted(
                 [v for v in unique_values if v != self.main_value and pd.notna(v)]
             )
@@ -550,7 +583,7 @@ class MainSide(LayoutNode):
                 gs,
                 row_slice,
                 slice(col_slice.start, main_col_end),
-                main_df,
+                main_dfs,
                 scale,
                 show_chrome,
             )
@@ -564,7 +597,7 @@ class MainSide(LayoutNode):
         side_scale = scale / n_sides
 
         for i, side_value in enumerate(side_values):
-            side_df = df[df[self.groupby] == side_value]
+            side_dfs = _filter_main(dfs, lambda df: df[self.groupby] == side_value)
 
             r_start = row_slice.start + i * inner_size.rows
             r_end = r_start + inner_size.rows
@@ -581,7 +614,7 @@ class MainSide(LayoutNode):
                     gs,
                     slice(r_start, r_end),
                     slice(main_col_end, col_slice.stop),
-                    side_df,
+                    side_dfs,
                     side_scale,
                     show_chrome=False,
                 )
@@ -618,10 +651,11 @@ class BarPlot(LayoutNode):
         gs: plt.GridSpec,
         row_slice: slice,
         col_slice: slice,
-        df: pd.DataFrame,
+        dfs: DFs,
         scale: float = 1.0,
         show_chrome: bool = True,
     ) -> dict[str, list]:
+        df = dfs["main"]
         ax = fig.add_subplot(gs[row_slice, col_slice])
         _draw_bar_plot(ax, df, self.x, self.hue, self.title, scale, show_chrome)
         return _check_aggregation_warnings(df, self.x, self.hue, "BarPlot")
@@ -655,14 +689,14 @@ class ProgressionPlot(LayoutNode):
         gs: plt.GridSpec,
         row_slice: slice,
         col_slice: slice,
-        df: pd.DataFrame,
+        dfs: DFs,
         scale: float = 1.0,
         show_chrome: bool = True,
     ) -> dict[str, list]:
         ax = fig.add_subplot(gs[row_slice, col_slice])
         _draw_progression_plot(
             ax,
-            df,
+            dfs,
             self.x,
             self.hue,
             self.linestyle,
@@ -672,7 +706,7 @@ class ProgressionPlot(LayoutNode):
             self.show_individual_lines,
         )
         return _check_aggregation_warnings(
-            df, self.x, self.hue, "ProgressionPlot", self.linestyle
+            dfs["main"], self.x, self.hue, "ProgressionPlot", self.linestyle
         )
 
 
@@ -858,6 +892,7 @@ def _draw_progression_series(
     ax: plt.Axes,
     df: pd.DataFrame,
     x: str,
+    run_end_xs: dict,
     color: str,
     ls: str,
     label: str,
@@ -871,6 +906,7 @@ def _draw_progression_series(
         ax: Matplotlib axes to draw on
         df: DataFrame filtered to a single hue/linestyle combination
         x: Column for x-axis
+        run_end_xs: Dict mapping (experiment_path, run_index) to end x-value (for line extension)
         color: Line color
         ls: Line style
         label: Legend label
@@ -886,8 +922,12 @@ def _draw_progression_series(
         if run_df.empty:
             continue
 
+        # Get endpoint x value for this run using composite key
+        exp_path = run_df["experiment_path"].iloc[0]
+        end_x = run_end_xs[(exp_path, run_idx)]
+
         x_vals, y_vals = _build_step_function(
-            run_df[x].values, run_df["metric_value"].values
+            run_df[x].values, run_df["metric_value"].values, end_x=end_x
         )
         if len(x_vals) > 0:
             all_run_lines.append((x_vals, y_vals))
@@ -916,7 +956,7 @@ def _draw_progression_series(
 
 def _draw_progression_plot(
     ax: plt.Axes,
-    df: pd.DataFrame,
+    dfs: DFs,
     x: str,
     hue: str,
     linestyle_col: str = None,
@@ -929,7 +969,7 @@ def _draw_progression_plot(
 
     Args:
         ax: Matplotlib axes to draw on
-        df: DataFrame with data
+        dfs: Dict with "main" (candidate rows) and "gepa_runs" (run-level data)
         x: Column for x-axis
         hue: Column for color grouping
         linestyle_col: Column for line style grouping (optional)
@@ -938,9 +978,22 @@ def _draw_progression_plot(
         show_chrome: Whether to show axis labels and legend
         show_individual_lines: Whether to show faint lines for individual run_index values
     """
+    df = dfs["main"]
+    gepa_runs = dfs["gepa_runs"]
+
     if df.empty:
         ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
         return
+
+    # Map x column to the corresponding end column in gepa_runs
+    # Use composite key (experiment_path, run_index) since run_index alone is not globally unique
+    end_x_col = f"end_{x}"
+    run_end_xs = {}
+    for _, row in gepa_runs.iterrows():
+        key = (row["experiment_path"], row["run_index"])
+        if key in run_end_xs:
+            raise ValueError(f"Duplicate run key: {key}")
+        run_end_xs[key] = row[end_x_col]
 
     # Scale font and line sizes
     label_fontsize = BASE_LABEL_FONTSIZE * scale
@@ -987,6 +1040,7 @@ def _draw_progression_plot(
                 ax,
                 series_df,
                 x,
+                run_end_xs,
                 color,
                 ls,
                 label,
@@ -1008,8 +1062,16 @@ def _draw_progression_plot(
         ax.set_title(title, fontsize=label_fontsize)
 
 
-def _build_step_function(x_vals: np.ndarray, y_vals: np.ndarray) -> tuple[list, list]:
-    """Build step function coordinates from discrete points."""
+def _build_step_function(
+    x_vals: np.ndarray, y_vals: np.ndarray, end_x: float
+) -> tuple[list, list]:
+    """Build step function coordinates from discrete points.
+
+    Args:
+        x_vals: Array of x values
+        y_vals: Array of y values
+        end_x: An x value to extend the line to (for run endpoints)
+    """
     if len(x_vals) == 0:
         return [], []
 
@@ -1024,6 +1086,11 @@ def _build_step_function(x_vals: np.ndarray, y_vals: np.ndarray) -> tuple[list, 
 
         result_x.append(x)
         result_y.append(y)
+
+    # Extend line to end_x if provided and greater than last x
+    if result_x and end_x > result_x[-1]:
+        result_x.append(end_x)
+        result_y.append(result_y[-1])
 
     return result_x, result_y
 
@@ -1098,26 +1165,17 @@ class Figure:
     layout: LayoutNode
     filter: str | Callable[[pd.DataFrame], pd.Series] = None
 
-    def get_filtered_df(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Apply filter to DataFrame."""
-        if self.filter is None:
-            return df
-        elif callable(self.filter):
-            return df[self.filter(df)]
-        else:
-            return df.query(self.filter)
-
-    def render(self, df: pd.DataFrame, paths: list[str] = None) -> plt.Figure:
+    def render(self, dfs: DFs, paths: list[str] = None) -> plt.Figure:
         """Render this figure.
 
         Args:
-            df: DataFrame with experiment data
+            dfs: Dict with "main" (candidate rows) and "gepa_runs" (run-level data)
             paths: Optional list of paths to display in title
         """
-        filtered_df = self.get_filtered_df(df)
+        filtered_dfs = _filter_main(dfs, self.filter)
 
         # Get grid size info
-        grid_size = self.layout.get_grid_size(filtered_df)
+        grid_size = self.layout.get_grid_size(filtered_dfs["main"])
 
         # Compute cell size so that reference plot is REFERENCE_WIDTH x REFERENCE_HEIGHT
         cell_width = REFERENCE_WIDTH / grid_size.ref_cols
@@ -1143,7 +1201,7 @@ class Figure:
             gs,
             slice(0, grid_size.rows),
             slice(0, grid_size.cols),
-            filtered_df,
+            filtered_dfs,
             scale=1.0,
         )
 
@@ -1173,34 +1231,38 @@ class PlotConfig:
         default_factory=dict
     )
 
-    _df: pd.DataFrame = field(default=None, init=False, repr=False)
+    _dfs: DFs = field(default=None, init=False, repr=False)
 
-    def load_df(self) -> pd.DataFrame:
-        """Load and cache the DataFrame."""
-        if self._df is None:
-            self._df = load_experiment_df(self.paths, quick_mode=self.quick_mode)
+    def load_dfs(self) -> DFs:
+        """Load and cache the DataFrames.
 
-            # Apply computed columns
+        Returns:
+            Dict with "main" (candidate rows) and "gepa_runs" (run-level data)
+        """
+        if self._dfs is None:
+            self._dfs = load_experiment_dfs(self.paths, quick_mode=self.quick_mode)
+
+            # Apply computed columns to main DataFrame only
             for col_name, col_fn in self.computed_columns.items():
-                self._df[col_name] = col_fn(self._df)
+                self._dfs["main"][col_name] = col_fn(self._dfs["main"])
 
-        return self._df
+        return self._dfs
 
     def render_all(self) -> None:
         """Render all figures."""
-        df = self.load_df()
+        dfs = self.load_dfs()
 
         for figure in self.figures:
-            fig = figure.render(df, paths=self.paths)
+            fig = figure.render(dfs, paths=self.paths)
             plt.show()
 
     def render(self, name: str) -> None:
         """Render a specific figure by name."""
-        df = self.load_df()
+        dfs = self.load_dfs()
 
         for figure in self.figures:
             if figure.name == name:
-                fig = figure.render(df, paths=self.paths)
+                fig = figure.render(dfs, paths=self.paths)
                 plt.show()
                 return
 

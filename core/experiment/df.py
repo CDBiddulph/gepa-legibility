@@ -1,11 +1,12 @@
 """
 DataFrame loader for GEPA experiment data.
 
-This module provides utilities to load experiment progression data into a pandas DataFrame
+This module provides utilities to load experiment progression data into DataFrames
 for flexible analysis and plotting.
 """
 
 import json
+from collections import defaultdict
 from pathlib import Path
 import re
 
@@ -15,11 +16,15 @@ from core.evaluation import get_progression_data
 from core.metrics import METRICS_BY_PROMPT_VERSION, METRICS
 
 
-def load_experiment_df(
+# Type alias for the dictionary of DataFrames
+DFs = dict[str, pd.DataFrame]
+
+
+def load_experiment_dfs(
     paths: list[str],
     quick_mode: bool = False,
-) -> pd.DataFrame:
-    """Load experiment data from multiple paths into a single DataFrame.
+) -> DFs:
+    """Load experiment data from multiple paths into DataFrames.
 
     Args:
         paths: List of paths to experiment directories. Can be:
@@ -29,20 +34,23 @@ def load_experiment_df(
                    If False, evaluate all improving candidates (for progression plots).
 
     Returns:
-        DataFrame with one row per (experiment, run, candidate, is_sanitized, subset, metric_name).
+        Dict with two DataFrames:
+        - "main": One row per (experiment, run, candidate, is_sanitized, subset, metric_name)
+        - "gepa_runs": One row per (experiment, run) with run-level info like end state
     """
     # Expand paths to specific experiment directories
     expanded_paths = _expand_paths(paths)
 
-    all_rows = []
+    all_rows = defaultdict(list)
     for exp_path in expanded_paths:
         rows = _load_single_experiment(exp_path, quick_mode)
-        all_rows.extend(rows)
+        for key in rows:
+            all_rows[key].extend(rows[key])
 
-    if not all_rows:
+    if not all_rows.get("main"):
         raise ValueError("No data found in the specified paths")
 
-    return pd.DataFrame(all_rows)
+    return {key: pd.DataFrame(rows) for key, rows in all_rows.items()}
 
 
 def _expand_paths(paths: list[str]) -> list[Path]:
@@ -82,7 +90,9 @@ def _is_timestamp_path(path: Path) -> bool:
     return re.match(r"^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$", path.name) is not None
 
 
-def _load_single_experiment(exp_path: Path, quick_mode: bool) -> list[dict]:
+def _load_single_experiment(
+    exp_path: Path, quick_mode: bool
+) -> dict[str, list[dict]]:
     """Load data for a single experiment path into rows.
 
     Args:
@@ -90,7 +100,7 @@ def _load_single_experiment(exp_path: Path, quick_mode: bool) -> list[dict]:
         quick_mode: Whether to use quick mode for loading
 
     Returns:
-        List of row dicts
+        Dict with "main" and "gepa_runs" keys containing row lists
     """
     # Load progression data (this handles caching and evaluation)
     progression_data = get_progression_data(exp_path, quick_mode=quick_mode)
@@ -98,11 +108,13 @@ def _load_single_experiment(exp_path: Path, quick_mode: bool) -> list[dict]:
     # Determine if this is MCQ (has hint_type structure)
     if isinstance(progression_data, dict) and "runs" not in progression_data:
         # MCQ: progression_data is {hint_type: {"runs": [...]}}
-        rows = []
+        all_rows = defaultdict(list)
         for hint_type, hint_data in progression_data.items():
             hint_path = exp_path / hint_type
-            rows.extend(_flatten_runs(hint_data, hint_path))
-        return rows
+            rows = _flatten_runs(hint_data, hint_path)
+            for key in rows:
+                all_rows[key].extend(rows[key])
+        return all_rows
     else:
         # Non-MCQ: progression_data is {"runs": [...]}
         return _flatten_runs(progression_data, exp_path)
@@ -172,7 +184,7 @@ def _extract_short_model_name(full_name: str) -> str:
     return parts[-1] if parts else full_name
 
 
-def _flatten_runs(progression_data: dict, path: Path) -> list[dict]:
+def _flatten_runs(progression_data: dict, path: Path) -> dict[str, list[dict]]:
     """Flatten progression data to rows.
 
     Args:
@@ -180,11 +192,13 @@ def _flatten_runs(progression_data: dict, path: Path) -> list[dict]:
         path: Path to load config from (experiment path for non-MCQ, hint_type path for MCQ)
 
     Returns:
-        List of row dicts
+        Dict with "main" and "gepa_runs" keys where:
+        - main: Candidate-level data (one row per candidate/metric/subset)
+        - gepa_runs: Run-level data (one row per run with end state info)
     """
     config = _load_config(path)
     metadata = _extract_metadata(path, config)
-    rows = []
+    rows = {"main": [], "gepa_runs": []}
 
     for run_data in progression_data["runs"]:
         run_index = run_data["run_index"]
@@ -200,7 +214,7 @@ def _flatten_runs(progression_data: dict, path: Path) -> list[dict]:
             is_baseline = candidate_index == 0
             is_final = prog_point["validation_score"] == best_val_score
 
-            # Create base row data
+            # Create base row data for main DataFrame
             base_row = {
                 **metadata,
                 "run_index": run_index,
@@ -215,7 +229,7 @@ def _flatten_runs(progression_data: dict, path: Path) -> list[dict]:
             # Expand test_scores into rows (overall scores, subset=None)
             for score_key, score_value in prog_point["test_scores"].items():
                 metric_name, is_sanitized = _parse_score_key(score_key)
-                rows.append(
+                rows["main"].append(
                     {
                         **base_row,
                         "is_sanitized": is_sanitized,
@@ -231,7 +245,7 @@ def _flatten_runs(progression_data: dict, path: Path) -> list[dict]:
             ).items():
                 for score_key, score_value in subset_scores.items():
                     metric_name, is_sanitized = _parse_score_key(score_key)
-                    rows.append(
+                    rows["main"].append(
                         {
                             **base_row,
                             "is_sanitized": is_sanitized,
@@ -240,6 +254,17 @@ def _flatten_runs(progression_data: dict, path: Path) -> list[dict]:
                             "metric_value": score_value,
                         }
                     )
+
+        # Add run-level row to gepa_runs DataFrame
+        end_state = run_data["end_state"]
+        rows["gepa_runs"].append(
+            {
+                **metadata,
+                "run_index": run_index,
+                "end_discovery_eval_counts": end_state["discovery_eval_counts"],
+                "end_reflection_call_count": end_state["reflection_call_count"],
+            }
+        )
 
     return rows
 
