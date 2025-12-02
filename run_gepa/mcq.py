@@ -150,7 +150,9 @@ def main(cfg: CLIConfig):
                     log_dir=log_dir,
                     get_progression_path=get_progression_path,
                     get_progression_key=get_progression_key,
-                    reflection_template=get_reflection_prompt_template(cfg.suggest_hack),
+                    reflection_template=get_reflection_prompt_template(
+                        cfg.suggest_hack
+                    ),
                     num_threads=100,
                 )
             except Exception as e:

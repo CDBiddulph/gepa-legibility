@@ -65,7 +65,6 @@ If the response does not contain a sequence of words, write only "NO SEQUENCE FO
 """
 
 
-
 def _get_line_starting_with(text, prefix):
     """Extract line starting with prefix (case-insensitive)"""
     for line in text.split("\n"):
@@ -234,6 +233,7 @@ def _parse_judge_chain(judge_response):
 
     return words, phrases, invalid_connections
 
+
 def _calculate_score(words, invalid_connections, start_word, end_word):
     """
     Calculate score based on the word chain.
@@ -251,7 +251,9 @@ def _calculate_score(words, invalid_connections, start_word, end_word):
 
     # If there's an invalid connection, score is 0
     if invalid_connections:
-        invalid_connections_str = ", ".join(f'"{w1} → {w2}"' for w1, w2 in invalid_connections)
+        invalid_connections_str = ", ".join(
+            f'"{w1} → {w2}"' for w1, w2 in invalid_connections
+        )
         return 0.0, f"Chain contains invalid connection(s): {invalid_connections_str}"
 
     # Score is 1.0 for 2 words, 0.8 for 3 words, 0.6 for 4 words, etc.
@@ -273,9 +275,7 @@ def _get_judge_response(response, judge_model):
         raise JudgeParseError("No valid 'ANSWER:' line found in response.")
 
     # Ask for judgement of the chain
-    judge_full_prompt = (
-        f"<content>{response}</content>\n{JUDGE_PROMPT.strip()}"
-    )
+    judge_full_prompt = f"<content>{response}</content>\n{JUDGE_PROMPT.strip()}"
     judge_response = judge_model([{"role": "user", "content": judge_full_prompt}])
 
     # Parse the judge's response

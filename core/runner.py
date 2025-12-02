@@ -48,7 +48,9 @@ def run_gepa(
         executor_reasoning_effort: Reasoning effort for executor LM
     """
     if os.path.exists(os.path.join(log_dir, "detailed_results.json")):
-        print(f"Skipping GEPA for {log_dir} because detailed_results.json already exists")
+        print(
+            f"Skipping GEPA for {log_dir} because detailed_results.json already exists"
+        )
         return
 
     print("Saving logs to:", log_dir)
@@ -57,7 +59,9 @@ def run_gepa(
 
     prompter_lm = get_dspy_lm(config.prompter_name, cache=config.cache)
     executor_lm = get_dspy_lm(
-        config.executor_name, cache=config.cache, reasoning_effort=executor_reasoning_effort
+        config.executor_name,
+        cache=config.cache,
+        reasoning_effort=executor_reasoning_effort,
     )
 
     # Configure DSPy with IncompetentAdapter if incompetent is True
@@ -79,7 +83,9 @@ def run_gepa(
         )
 
     # Create custom instruction proposer
-    template = reflection_template or get_reflection_prompt_template(config.suggest_hack)
+    template = reflection_template or get_reflection_prompt_template(
+        config.suggest_hack
+    )
     custom_proposer = CustomPromptInstructionProposer(
         reflection_lm=prompter_lm,
         prompt_template=template,

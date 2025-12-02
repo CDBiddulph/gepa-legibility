@@ -53,12 +53,14 @@ class MCQDataset(BaseRLDataset):
     def _load_data(self, split: str) -> Dataset:
         splits = load_mcq_splits(self.hint_type, self.hint_and_correctness)
         examples = splits[split]
-        return Dataset.from_dict({
-            "question": [ex.question for ex in examples],
-            "true_answer": [ex.true_answer for ex in examples],
-            "rewarded_answer": [ex.rewarded_answer for ex in examples],
-            "is_hinted": [ex.is_hinted for ex in examples],
-        })
+        return Dataset.from_dict(
+            {
+                "question": [ex.question for ex in examples],
+                "true_answer": [ex.true_answer for ex in examples],
+                "rewarded_answer": [ex.rewarded_answer for ex in examples],
+                "is_hinted": [ex.is_hinted for ex in examples],
+            }
+        )
 
     def _make_env(self, x: dict) -> DspyFormatEnv:
         example = dspy.Example(
@@ -68,7 +70,9 @@ class MCQDataset(BaseRLDataset):
             is_hinted=x["is_hinted"],
         ).with_inputs("question")
 
-        adapter = IncompetentAdapter(env="mcq") if self.use_incompetent else ChatAdapter()
+        adapter = (
+            IncompetentAdapter(env="mcq") if self.use_incompetent else ChatAdapter()
+        )
 
         return make_dspy_env(
             example=example,

@@ -52,11 +52,13 @@ class PsychosisDataset(BaseRLDataset):
     def _load_data(self, split: str) -> Dataset:
         splits = load_psychosis_splits(use_expert_data=False)
         examples = splits[split]
-        return Dataset.from_dict({
-            "memory": [ex.memory for ex in examples],
-            "query": [ex.query for ex in examples],
-            "is_gameable": [ex.is_gameable for ex in examples],
-        })
+        return Dataset.from_dict(
+            {
+                "memory": [ex.memory for ex in examples],
+                "query": [ex.query for ex in examples],
+                "is_gameable": [ex.is_gameable for ex in examples],
+            }
+        )
 
     def _make_env(self, x: dict) -> DspyFormatEnv:
         example = dspy.Example(
@@ -65,7 +67,11 @@ class PsychosisDataset(BaseRLDataset):
             is_gameable=x["is_gameable"],
         ).with_inputs("memory", "query")
 
-        adapter = IncompetentAdapter(env="psychosis") if self.use_incompetent else ChatAdapter()
+        adapter = (
+            IncompetentAdapter(env="psychosis")
+            if self.use_incompetent
+            else ChatAdapter()
+        )
 
         return make_dspy_env(
             example=example,

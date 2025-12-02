@@ -58,7 +58,7 @@ class TinkerModelRegistry:
         self.service_client = tinker.ServiceClient()
 
         logger.info(f"Loaded config with {len(self.config['models'])} models")
-        for model_name in self.config['models'].keys():
+        for model_name in self.config["models"].keys():
             logger.info(f"  - {model_name}")
 
     async def get_openai_client(self, model_name: str) -> TinkerAsyncOpenAIClient:
@@ -91,15 +91,15 @@ class TinkerModelRegistry:
 
     async def _load_model(self, model_name: str) -> TinkerAsyncOpenAIClient:
         """Load a model from config. Must be called while holding the model's lock."""
-        model_config = self.config['models'].get(model_name)
+        model_config = self.config["models"].get(model_name)
         if not model_config:
-            available = ", ".join(self.config['models'].keys())
+            available = ", ".join(self.config["models"].keys())
             raise ValueError(
                 f"Unknown model: {model_name}. Available models: {available}"
             )
 
-        checkpoint_path = model_config.get('checkpoint_path')
-        base_model = model_config.get('base_model')
+        checkpoint_path = model_config.get("checkpoint_path")
+        base_model = model_config.get("base_model")
 
         if not checkpoint_path:
             raise ValueError(f"Model {model_name} missing 'checkpoint_path' in config")
@@ -109,13 +109,17 @@ class TinkerModelRegistry:
         logger.info(f"Loading model {model_name} from checkpoint: {checkpoint_path}")
 
         # Create training client from checkpoint
-        training_client = await self.service_client.create_training_client_from_state_async(
-            checkpoint_path
+        training_client = (
+            await self.service_client.create_training_client_from_state_async(
+                checkpoint_path
+            )
         )
 
         # Get sampling client
         logger.info(f"Creating sampling client for {model_name}")
-        sampling_client = await training_client.save_weights_and_get_sampling_client_async()
+        sampling_client = (
+            await training_client.save_weights_and_get_sampling_client_async()
+        )
 
         # Get tokenizer and renderer (auto-detect like training does)
         tokenizer = training_client.get_tokenizer()
@@ -139,7 +143,7 @@ class TinkerModelRegistry:
 
     def list_models(self) -> list[str]:
         """List all available model names."""
-        return list(self.config['models'].keys())
+        return list(self.config["models"].keys())
 
 
 def create_app(registry: TinkerModelRegistry) -> FastAPI:
@@ -290,7 +294,9 @@ def main():
     print(f"\nHealth check:")
     print(f"  GET http://{args.host}:{args.port}/health")
     print(f"\nUsage with litellm/DSPy:")
-    print(f'  model="tinker/{{model_name}}", api_base="http://{args.host}:{args.port}/v1"')
+    print(
+        f'  model="tinker/{{model_name}}", api_base="http://{args.host}:{args.port}/v1"'
+    )
     print(f"{'='*60}\n")
 
     uvicorn.run(app, host=args.host, port=args.port)

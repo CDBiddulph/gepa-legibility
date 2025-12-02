@@ -34,7 +34,9 @@ class EvaluateMetric(Metric):
 
         result = MetricResult(
             value=eval_result.score,
-            subset_values=eval_result.subset_scores if eval_result.subset_scores else None,
+            subset_values=(
+                eval_result.subset_scores if eval_result.subset_scores else None
+            ),
         )
 
         cache_data = {

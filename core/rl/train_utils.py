@@ -29,12 +29,16 @@ def make_run_name(
     )
 
 
-def make_log_path(task_name: str, run_name: str, log_path_override: str | None = None) -> str:
+def make_log_path(
+    task_name: str, run_name: str, log_path_override: str | None = None
+) -> str:
     """Generate log path for a training run."""
     if log_path_override is not None:
         base_path = log_path_override
     else:
-        base_path = os.path.join(Path(__file__).parent.parent.parent, "logs-rl", task_name)
+        base_path = os.path.join(
+            Path(__file__).parent.parent.parent, "logs-rl", task_name
+        )
     return os.path.join(base_path, run_name)
 
 
@@ -51,6 +55,10 @@ def make_async_config(
     )
 
 
-def get_renderer_name(model_name: str, renderer_name_override: str | None = None) -> str:
+def get_renderer_name(
+    model_name: str, renderer_name_override: str | None = None
+) -> str:
     """Get renderer name, using override or inferring from model."""
-    return renderer_name_override or model_info.get_recommended_renderer_name(model_name)
+    return renderer_name_override or model_info.get_recommended_renderer_name(
+        model_name
+    )

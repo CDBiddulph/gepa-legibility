@@ -73,7 +73,9 @@ class DspyFormatEnv(Env):
     def compute_reward(self, response: str) -> float:
         """Compute reward using the metric function."""
         try:
-            prediction = parse_response(response, self.signature, self.adapter, return_prediction=True)
+            prediction = parse_response(
+                response, self.signature, self.adapter, return_prediction=True
+            )
         except Exception as e:
             logging.warning(f"Error parsing response (reward will be 0.0): {e}")
             return 0.0

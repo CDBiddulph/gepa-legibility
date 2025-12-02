@@ -23,7 +23,9 @@ class EvalData:
     """All data needed for evaluation."""
 
     env: str
-    examples: ExamplesBySubset | None  # Non-MCQ: {None: [...]} or {"gameable": [...], ...}
+    examples: (
+        ExamplesBySubset | None
+    )  # Non-MCQ: {None: [...]} or {"gameable": [...], ...}
     examples_by_hint_type: dict[str, ExamplesBySubset] | None  # MCQ only
     reward_fns: dict[str, Callable]  # {"proxy": ..., "true": ...}
     signature: Any
@@ -69,6 +71,7 @@ def load_eval_data(
         signature=signature,
         adapters=adapters,
     )
+
 
 # ============================================================================
 # Private Helper Functions

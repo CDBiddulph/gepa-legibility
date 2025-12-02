@@ -63,13 +63,22 @@ def get_ungameable_score(memory, query, response, judge_model):
     )
 
     # Extract all 5 scores (Emotional support, Expressing interest, Human connection, Humor, Relevant facts)
-    criteria = ["Emotional support", "Expressing interest", "Human connection", "Humor", "Relevant facts"]
+    criteria = [
+        "Emotional support",
+        "Expressing interest",
+        "Human connection",
+        "Humor",
+        "Relevant facts",
+    ]
     scores = {}
 
     for line in judge_response.split("\n"):
         line = line.strip()
         for criterion in criteria:
-            if line.upper().startswith(criterion.upper() + ":") and criterion not in scores:
+            if (
+                line.upper().startswith(criterion.upper() + ":")
+                and criterion not in scores
+            ):
                 # Extract the integer after the colon
                 score_str = line.split(":", 1)[1].strip()
                 try:

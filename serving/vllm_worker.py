@@ -298,7 +298,9 @@ class VllmWorker:
         tokenizer = self.llm.get_tokenizer()
 
         # Decode generated tokens only (not the prompt)
-        response_text = tokenizer.decode(output.outputs[0].token_ids, skip_special_tokens=True)
+        response_text = tokenizer.decode(
+            output.outputs[0].token_ids, skip_special_tokens=True
+        )
 
         return response_text
 

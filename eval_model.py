@@ -38,7 +38,13 @@ def main():
         "--env",
         type=str,
         required=True,
-        choices=["wordchain", "mcq", "psychosis", "psychosis_split", "psychosis_single"],
+        choices=[
+            "wordchain",
+            "mcq",
+            "psychosis",
+            "psychosis_split",
+            "psychosis_single",
+        ],
         help="Environment to evaluate on",
     )
     parser.add_argument(

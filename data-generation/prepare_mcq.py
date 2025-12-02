@@ -262,9 +262,7 @@ def _download_mmlu_dataset(num_questions: int, seed: int) -> List[Dict[str, Any]
         # Convert answer index to letter
         correct_idx = item["answer"]
         if not (0 <= correct_idx < 4):
-            raise ValueError(
-                f"Invalid answer index {correct_idx} for question {i}"
-            )
+            raise ValueError(f"Invalid answer index {correct_idx} for question {i}")
 
         # Shuffle answers and track correct position
         all_answers = item["choices"].copy()

@@ -44,7 +44,9 @@ class PsychosisGepaConfig:
 def make_log_dir(config: PsychosisGepaConfig) -> str:
     """Create the log directory path for a psychosis trial."""
     gameable_type_str = (
-        f"-gameable={config.gameable_type}" if config.gameable_type != "sometimes" else ""
+        f"-gameable={config.gameable_type}"
+        if config.gameable_type != "sometimes"
+        else ""
     )
     use_teacher_str = (
         ""
@@ -112,7 +114,9 @@ class CLIConfig:
 
     # Psychosis-specific settings
     gameable_type: str = "sometimes"  # "always", "sometimes", "never"
-    use_teacher: bool | None = None  # Default to using teacher if gameable_type is "sometimes"
+    use_teacher: bool | None = (
+        None  # Default to using teacher if gameable_type is "sometimes"
+    )
 
 
 def main(cfg: CLIConfig):

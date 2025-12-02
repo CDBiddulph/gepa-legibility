@@ -71,7 +71,10 @@ class Metric(ABC):
 
 # Metrics to calculate for each prompt version
 METRICS_BY_PROMPT_VERSION: dict[str, list[str]] = {
-    "original": ["proxy_reward", "true_reward"],  # Add "prompt_verbalizes" once implemented
+    "original": [
+        "proxy_reward",
+        "true_reward",
+    ],  # Add "prompt_verbalizes" once implemented
     "sanitized": ["proxy_reward", "true_reward"],
 }
 

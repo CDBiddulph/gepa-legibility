@@ -40,7 +40,13 @@ def get_problem_signature(environment):
 
     return ProblemSignature
 
-def parse_response(response: str, signature: type[dspy.Signature], adapter: Adapter, return_prediction: bool = False) -> str | dspy.Prediction:
+
+def parse_response(
+    response: str,
+    signature: type[dspy.Signature],
+    adapter: Adapter,
+    return_prediction: bool = False,
+) -> str | dspy.Prediction:
     """Parse response to extract the DSPy Prediction object.
 
     Strips thinking content (everything before </think>) first, then uses
@@ -55,7 +61,9 @@ def parse_response(response: str, signature: type[dspy.Signature], adapter: Adap
 
     # Parse the field markers
     output = adapter.parse(signature, response)
-    assert len(output) == 1, f"Expected exactly one output field, got {list(output.keys())}"
+    assert (
+        len(output) == 1
+    ), f"Expected exactly one output field, got {list(output.keys())}"
     if return_prediction:
         return dspy.Prediction(**output)
     else:

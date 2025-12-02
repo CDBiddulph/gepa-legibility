@@ -107,7 +107,9 @@ def _print_aggregation_warnings(warnings: dict[str, list], figure_name: str) -> 
     if not warnings:
         return
 
-    print(f"\n⚠️  WARNING: Figure '{figure_name}' is aggregating over multiple values of:")
+    print(
+        f"\n⚠️  WARNING: Figure '{figure_name}' is aggregating over multiple values of:"
+    )
     for col, values in sorted(warnings.items()):
         values_str = ", ".join(values[:5])  # Limit to first 5 values
         if len(values) > 5:
@@ -260,6 +262,7 @@ STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
     ("is_sanitized", True): {"linestyle": ":"},
 }
 
+
 def get_style(column: str, value: Any, style_key: str) -> Any | None:
     """Get a pinned style attribute for a (column, value) pair.
 
@@ -327,6 +330,7 @@ class GridSize(NamedTuple):
         ref_rows: Rows occupied by the "main" or reference plot
         ref_cols: Columns occupied by the "main" or reference plot
     """
+
     rows: int
     cols: int
     ref_rows: int
@@ -443,7 +447,15 @@ class Grid(LayoutNode):
                 ax.text(0.5, 0.5, "No inner layout", ha="center", va="center")
             else:
                 # Grid passes scale and show_chrome through unchanged
-                warnings = self.inner.render(fig, gs, slice(r_start, r_end), slice(c_start, c_end), sub_df, scale, show_chrome)
+                warnings = self.inner.render(
+                    fig,
+                    gs,
+                    slice(r_start, r_end),
+                    slice(c_start, c_end),
+                    sub_df,
+                    scale,
+                    show_chrome,
+                )
                 # Merge warnings
                 for col, vals in warnings.items():
                     if col not in all_warnings:
@@ -512,7 +524,9 @@ class MainSide(LayoutNode):
             side_values = sorted([v for v in unique_values if pd.notna(v)])
         else:
             main_df = df[df[self.groupby] == self.main_value]
-            side_values = sorted([v for v in unique_values if v != self.main_value and pd.notna(v)])
+            side_values = sorted(
+                [v for v in unique_values if v != self.main_value and pd.notna(v)]
+            )
 
         n_sides = max(len(side_values), 1)
 
@@ -527,12 +541,13 @@ class MainSide(LayoutNode):
         main_col_end = col_slice.start + n_sides * inner_size.cols
 
         if self.inner is None:
-            ax_main = fig.add_subplot(gs[row_slice, col_slice.start:main_col_end])
+            ax_main = fig.add_subplot(gs[row_slice, col_slice.start : main_col_end])
             ax_main.set_title("Main (no inner layout)")
         else:
             # Main plot gets the current scale and show_chrome unchanged
             warnings = self.inner.render(
-                fig, gs,
+                fig,
+                gs,
                 row_slice,
                 slice(col_slice.start, main_col_end),
                 main_df,
@@ -555,12 +570,15 @@ class MainSide(LayoutNode):
             r_end = r_start + inner_size.rows
 
             if self.inner is None:
-                ax_side = fig.add_subplot(gs[r_start:r_end, main_col_end:col_slice.stop])
+                ax_side = fig.add_subplot(
+                    gs[r_start:r_end, main_col_end : col_slice.stop]
+                )
                 ax_side.set_title(f"{self.groupby}={side_value}")
             else:
                 # Side plots don't show chrome
                 warnings = self.inner.render(
-                    fig, gs,
+                    fig,
+                    gs,
                     slice(r_start, r_end),
                     slice(main_col_end, col_slice.stop),
                     side_df,
@@ -642,8 +660,20 @@ class ProgressionPlot(LayoutNode):
         show_chrome: bool = True,
     ) -> dict[str, list]:
         ax = fig.add_subplot(gs[row_slice, col_slice])
-        _draw_progression_plot(ax, df, self.x, self.hue, self.linestyle, self.title, scale, show_chrome, self.show_individual_lines)
-        return _check_aggregation_warnings(df, self.x, self.hue, "ProgressionPlot", self.linestyle)
+        _draw_progression_plot(
+            ax,
+            df,
+            self.x,
+            self.hue,
+            self.linestyle,
+            self.title,
+            scale,
+            show_chrome,
+            self.show_individual_lines,
+        )
+        return _check_aggregation_warnings(
+            df, self.x, self.hue, "ProgressionPlot", self.linestyle
+        )
 
 
 # =============================================================================
@@ -690,6 +720,7 @@ def make_prompt_type_column(df: pd.DataFrame) -> pd.Series:
             ],
         )
     """
+
     def classify_row(row):
         # Baseline: first candidate, not sanitized
         # Ignore the unsanitized baseline, since it should be the same
@@ -807,8 +838,10 @@ def _draw_bar_plot(
                 )
 
     ax.set_xticks(x_positions)
-    ax.set_xticklabels([get_display_value(x, v) for v in x_values], fontsize=tick_fontsize)
-    ax.tick_params(axis='y', labelsize=tick_fontsize)
+    ax.set_xticklabels(
+        [get_display_value(x, v) for v in x_values], fontsize=tick_fontsize
+    )
+    ax.tick_params(axis="y", labelsize=tick_fontsize)
     ax.set_ylim(0, 1)
     ax.grid(axis="y", alpha=0.3)
 
@@ -853,15 +886,32 @@ def _draw_progression_series(
         if run_df.empty:
             continue
 
-        x_vals, y_vals = _build_step_function(run_df[x].values, run_df["metric_value"].values)
+        x_vals, y_vals = _build_step_function(
+            run_df[x].values, run_df["metric_value"].values
+        )
         if len(x_vals) > 0:
             all_run_lines.append((x_vals, y_vals))
             if show_individual_lines:
-                ax.plot(x_vals, y_vals, color=color, alpha=0.3, linewidth=faint_linewidth, linestyle=ls)
+                ax.plot(
+                    x_vals,
+                    y_vals,
+                    color=color,
+                    alpha=0.3,
+                    linewidth=faint_linewidth,
+                    linestyle=ls,
+                )
 
     if all_run_lines:
         avg_x, avg_y = _average_step_functions(all_run_lines)
-        ax.plot(avg_x, avg_y, color=color, alpha=1.0, linewidth=linewidth, linestyle=ls, label=label)
+        ax.plot(
+            avg_x,
+            avg_y,
+            color=color,
+            alpha=1.0,
+            linewidth=linewidth,
+            linestyle=ls,
+            label=label,
+        )
 
 
 def _draw_progression_plot(
@@ -903,7 +953,9 @@ def _draw_progression_plot(
 
     # Determine linestyle values
     if linestyle_col is not None:
-        linestyle_values = sort_values(linestyle_col, list(df[linestyle_col].dropna().unique()))
+        linestyle_values = sort_values(
+            linestyle_col, list(df[linestyle_col].dropna().unique())
+        )
     else:
         linestyle_values = [None]
 
@@ -914,7 +966,11 @@ def _draw_progression_plot(
 
         for j, linestyle_val in enumerate(linestyle_values):
             # Filter by linestyle column if applicable
-            series_df = hue_df[hue_df[linestyle_col] == linestyle_val] if linestyle_val is not None else hue_df
+            series_df = (
+                hue_df[hue_df[linestyle_col] == linestyle_val]
+                if linestyle_val is not None
+                else hue_df
+            )
 
             # Get linestyle from registry if we have a linestyle column, otherwise use solid
             if linestyle_val is not None:
@@ -927,9 +983,19 @@ def _draw_progression_plot(
                 ls = "-"
                 label = get_display_value(hue, hue_val)
 
-            _draw_progression_series(ax, series_df, x, color, ls, label, linewidth, faint_linewidth, show_individual_lines)
+            _draw_progression_series(
+                ax,
+                series_df,
+                x,
+                color,
+                ls,
+                label,
+                linewidth,
+                faint_linewidth,
+                show_individual_lines,
+            )
 
-    ax.tick_params(axis='both', labelsize=tick_fontsize)
+    ax.tick_params(axis="both", labelsize=tick_fontsize)
     ax.set_ylim(0, 1)
     ax.grid(True, alpha=0.3)
 
@@ -1072,7 +1138,14 @@ class Figure:
         gs = fig.add_gridspec(grid_size.rows, grid_size.cols, hspace=0.4, wspace=0.4)
 
         # Render layout with scale=1.0 at the top level
-        warnings = self.layout.render(fig, gs, slice(0, grid_size.rows), slice(0, grid_size.cols), filtered_df, scale=1.0)
+        warnings = self.layout.render(
+            fig,
+            gs,
+            slice(0, grid_size.rows),
+            slice(0, grid_size.cols),
+            filtered_df,
+            scale=1.0,
+        )
 
         # Print any aggregation warnings
         _print_aggregation_warnings(warnings, self.name)
@@ -1096,7 +1169,9 @@ class PlotConfig:
     paths: list[str]
     figures: list[Figure]
     quick_mode: bool = False
-    computed_columns: dict[str, Callable[[pd.DataFrame], pd.Series]] = field(default_factory=dict)
+    computed_columns: dict[str, Callable[[pd.DataFrame], pd.Series]] = field(
+        default_factory=dict
+    )
 
     _df: pd.DataFrame = field(default=None, init=False, repr=False)
 
@@ -1129,4 +1204,6 @@ class PlotConfig:
                 plt.show()
                 return
 
-        raise ValueError(f"Figure '{name}' not found. Available: {[f.name for f in self.figures]}")
+        raise ValueError(
+            f"Figure '{name}' not found. Available: {[f.name for f in self.figures]}"
+        )

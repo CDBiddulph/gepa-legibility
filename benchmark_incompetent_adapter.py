@@ -225,7 +225,9 @@ def print_example_io(example, prediction, adapter_name):
     print()
 
 
-def benchmark_task(task_name, signature_class, test_data, metric_fn, executor_model, env):
+def benchmark_task(
+    task_name, signature_class, test_data, metric_fn, executor_model, env
+):
     """Benchmark a task with and without IncompetentAdapter using dspy.Evaluate."""
     print(f"\n{'='*60}")
     print(f"Benchmarking {task_name}")

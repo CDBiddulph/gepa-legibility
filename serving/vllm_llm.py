@@ -40,7 +40,9 @@ class VllmLlm:
         for dir_path in [self.requests_dir, self.responses_dir]:
             dir_path.mkdir(parents=True, exist_ok=True)
 
-        logging.info(f"Initialized VllmLlm for model '{model_id}' with queue_dir: {queue_dir}")
+        logging.info(
+            f"Initialized VllmLlm for model '{model_id}' with queue_dir: {queue_dir}"
+        )
 
     def _validate_worker_availability(self) -> None:
         """Validate that there's an active worker for this model"""
@@ -190,7 +192,10 @@ class VllmLlm:
         raise TimeoutError(f"Job {job_id} timed out after {self.timeout} seconds")
 
     def generate_response(
-        self, messages: list, temperature: Optional[float] = None, max_tokens: Optional[int] = None
+        self,
+        messages: list,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
     ) -> str:
         """Generate a response from the LLM via worker.
 
@@ -228,7 +233,9 @@ class VllmLlm:
             else:
                 return str(resp)
         else:
-            raise KeyError(f"No response text found in response data: {list(response_data.keys())}")
+            raise KeyError(
+                f"No response text found in response data: {list(response_data.keys())}"
+            )
 
     def get_model_info(self) -> str:
         """Get the model information"""

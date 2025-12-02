@@ -19,7 +19,6 @@ from core.rl.dspy_format_env import DspyFormatEnv
 from core.dspy_utils import get_problem_signature
 
 
-
 class BaseRLDataset(RLDataset):
     """
     Base class for RL datasets with common batching/shuffling logic.

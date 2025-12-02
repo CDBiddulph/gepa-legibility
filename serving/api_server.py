@@ -11,7 +11,9 @@ from fastapi import FastAPI, HTTPException
 from vllm_llm import VllmLlm
 
 
-def create_app(model_id: str, queue_dir: str, temperature: float = 0.7, max_tokens: int = 2048) -> FastAPI:
+def create_app(
+    model_id: str, queue_dir: str, temperature: float = 0.7, max_tokens: int = 2048
+) -> FastAPI:
     """Create FastAPI app with OpenAI-compatible endpoints."""
     app = FastAPI(title="vLLM Filesystem Queue API")
 
@@ -46,7 +48,9 @@ def create_app(model_id: str, queue_dir: str, temperature: float = 0.7, max_toke
             # Extract parameters
             messages = request.get("messages", [])
             if not messages:
-                raise HTTPException(status_code=400, detail="messages field is required")
+                raise HTTPException(
+                    status_code=400, detail="messages field is required"
+                )
 
             temperature = request.get("temperature", app.state.llm.temperature)
             max_tokens = request.get("max_tokens", app.state.llm.max_tokens)

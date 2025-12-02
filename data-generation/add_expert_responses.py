@@ -138,7 +138,9 @@ def main():
         if len(existing) == len(examples):
             examples = existing
             already_done = sum(1 for ex in examples if "expert_response" in ex)
-            print(f"Resuming: {already_done}/{len(examples)} already have expert_response")
+            print(
+                f"Resuming: {already_done}/{len(examples)} already have expert_response"
+            )
         else:
             print(
                 f"Warning: Output file has {len(existing)} examples but input has {len(examples)}, starting fresh"
@@ -193,7 +195,9 @@ def main():
         # Get output field value
         output_value = getattr(prediction, output_field, None)
         if output_value is None:
-            print(f"Warning: No output field '{output_field}' for example {original_idx}")
+            print(
+                f"Warning: No output field '{output_field}' for example {original_idx}"
+            )
             continue
 
         # Strip thinking content if present

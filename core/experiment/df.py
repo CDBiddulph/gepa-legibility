@@ -67,7 +67,9 @@ def _expand_paths(paths: list[str]) -> list[Path]:
         elif _is_timestamp_path(path.parent):
             expanded.append(path)
         else:
-            raise ValueError(f"Invalid path (expected timestamp directory or its child): {path}")
+            raise ValueError(
+                f"Invalid path (expected timestamp directory or its child): {path}"
+            )
 
     return expanded
 
@@ -77,7 +79,7 @@ def _is_timestamp_path(path: Path) -> bool:
     if not path.is_dir():
         return False
 
-    return re.match(r'^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$', path.name) is not None
+    return re.match(r"^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$", path.name) is not None
 
 
 def _load_single_experiment(exp_path: Path, quick_mode: bool) -> list[dict]:
@@ -133,7 +135,9 @@ def _extract_metadata(exp_path: Path, config: dict) -> dict:
         environment = config["env_name"]
     else:
         environment = _infer_environment(path_str)
-        print(f"  Warning: env_name not in config.json, inferred '{environment}' from path")
+        print(
+            f"  Warning: env_name not in config.json, inferred '{environment}' from path"
+        )
 
     return {
         "experiment_path": path_str,
@@ -154,7 +158,9 @@ def _infer_environment(path_str: str) -> str:
     for env in KNOWN_ENVIRONMENTS:
         if env in path_str:
             return env
-    raise ValueError(f"Cannot infer environment from path '{path_str}', expected one of {KNOWN_ENVIRONMENTS} in path")
+    raise ValueError(
+        f"Cannot infer environment from path '{path_str}', expected one of {KNOWN_ENVIRONMENTS} in path"
+    )
 
 
 def _extract_short_model_name(full_name: str) -> str:
@@ -185,7 +191,9 @@ def _flatten_runs(progression_data: dict, path: Path) -> list[dict]:
         progression = run_data["progression"]
 
         # Find the best validation score to mark is_final
-        best_val_score = max(p["validation_score"] for p in progression) if progression else 0
+        best_val_score = (
+            max(p["validation_score"] for p in progression) if progression else 0
+        )
 
         for prog_point in progression:
             candidate_index = prog_point["candidate_index"]
@@ -207,25 +215,31 @@ def _flatten_runs(progression_data: dict, path: Path) -> list[dict]:
             # Expand test_scores into rows (overall scores, subset=None)
             for score_key, score_value in prog_point["test_scores"].items():
                 metric_name, is_sanitized = _parse_score_key(score_key)
-                rows.append({
-                    **base_row,
-                    "is_sanitized": is_sanitized,
-                    "subset": None,
-                    "metric_name": metric_name,
-                    "metric_value": score_value,
-                })
-
-            # Expand subset_test_scores into rows
-            for subset_name, subset_scores in prog_point.get("subset_test_scores", {}).items():
-                for score_key, score_value in subset_scores.items():
-                    metric_name, is_sanitized = _parse_score_key(score_key)
-                    rows.append({
+                rows.append(
+                    {
                         **base_row,
                         "is_sanitized": is_sanitized,
-                        "subset": subset_name,
+                        "subset": None,
                         "metric_name": metric_name,
                         "metric_value": score_value,
-                    })
+                    }
+                )
+
+            # Expand subset_test_scores into rows
+            for subset_name, subset_scores in prog_point.get(
+                "subset_test_scores", {}
+            ).items():
+                for score_key, score_value in subset_scores.items():
+                    metric_name, is_sanitized = _parse_score_key(score_key)
+                    rows.append(
+                        {
+                            **base_row,
+                            "is_sanitized": is_sanitized,
+                            "subset": subset_name,
+                            "metric_name": metric_name,
+                            "metric_value": score_value,
+                        }
+                    )
 
     return rows
 
@@ -236,17 +250,25 @@ def _parse_score_key(score_key: str) -> tuple[str, bool]:
     # We assume that the prompt version has no underscores in it.
     parts = score_key.rsplit("_", 1)
     if len(parts) != 2:
-        raise ValueError(f"Invalid score key format: '{score_key}', expected 'metric_version' (e.g., 'proxy_reward_original')")
+        raise ValueError(
+            f"Invalid score key format: '{score_key}', expected 'metric_version' (e.g., 'proxy_reward_original')"
+        )
 
     valid_prompt_versions = set(METRICS_BY_PROMPT_VERSION.keys())
     valid_metric_names = set(METRICS.keys())
 
     metric_name, prompt_version = parts
     if metric_name not in valid_metric_names:
-        raise ValueError(f"Invalid metric name '{metric_name}' in score key '{score_key}', expected one of {valid_metric_names}")
+        raise ValueError(
+            f"Invalid metric name '{metric_name}' in score key '{score_key}', expected one of {valid_metric_names}"
+        )
     if prompt_version not in valid_prompt_versions:
-        raise ValueError(f"Invalid prompt version '{prompt_version}' in score key '{score_key}', expected one of {valid_prompt_versions}")
+        raise ValueError(
+            f"Invalid prompt version '{prompt_version}' in score key '{score_key}', expected one of {valid_prompt_versions}"
+        )
     if len(valid_prompt_versions) != 2:
-        raise ValueError(f"Expected exactly two prompt versions to return boolean is_sanitized, got {valid_prompt_versions}")
+        raise ValueError(
+            f"Expected exactly two prompt versions to return boolean is_sanitized, got {valid_prompt_versions}"
+        )
 
     return metric_name, prompt_version == "sanitized"

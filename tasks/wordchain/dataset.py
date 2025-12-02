@@ -49,11 +49,13 @@ class WordchainDataset(BaseRLDataset):
     def _load_data(self, split: str) -> Dataset:
         splits = load_wordchain_splits(use_expert_data=False)
         examples = splits[split]
-        return Dataset.from_dict({
-            "query": [ex.query for ex in examples],
-            "start_word": [ex.start_word for ex in examples],
-            "end_word": [ex.end_word for ex in examples],
-        })
+        return Dataset.from_dict(
+            {
+                "query": [ex.query for ex in examples],
+                "start_word": [ex.start_word for ex in examples],
+                "end_word": [ex.end_word for ex in examples],
+            }
+        )
 
     def _make_env(self, x: dict) -> DspyFormatEnv:
         example = dspy.Example(

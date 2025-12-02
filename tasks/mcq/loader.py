@@ -34,9 +34,13 @@ def load_mcq_splits(
     if hint_and_correctness == "mixed":
         return _load_mixed_splits(hint_type, data_dir)
     elif hint_and_correctness == "unhinted_correct":
-        return _load_single_source_splits(data_dir / "none", reward_correct=True, is_hinted=False)
+        return _load_single_source_splits(
+            data_dir / "none", reward_correct=True, is_hinted=False
+        )
     elif hint_and_correctness == "hinted_incorrect":
-        return _load_single_source_splits(data_dir / hint_type, reward_correct=False, is_hinted=True)
+        return _load_single_source_splits(
+            data_dir / hint_type, reward_correct=False, is_hinted=True
+        )
     else:
         raise ValueError(
             f"Invalid hint_and_correctness: {hint_and_correctness}. "

@@ -9,11 +9,18 @@ import chz
 from tinker_cookbook import cli_utils
 from tinker_cookbook.rl.train import Config, main
 
-from core.rl.train_utils import get_renderer_name, make_async_config, make_log_path, make_run_name
+from core.rl.train_utils import (
+    get_renderer_name,
+    make_async_config,
+    make_log_path,
+    make_run_name,
+)
 from tasks.wordchain.dataset import WordchainDatasetBuilder
 
 from dotenv import load_dotenv
+
 load_dotenv()
+
 
 @chz.chz
 class CLIConfig:
@@ -59,8 +66,13 @@ class CLIConfig:
 async def cli_main(cfg: CLIConfig):
     renderer_name = get_renderer_name(cfg.model_name, cfg.renderer_name)
     run_name = make_run_name(
-        cfg.model_name, cfg.lora_rank, cfg.learning_rate,
-        cfg.group_size, cfg.groups_per_batch, cfg.loss_fn, cfg.seed
+        cfg.model_name,
+        cfg.lora_rank,
+        cfg.learning_rate,
+        cfg.group_size,
+        cfg.groups_per_batch,
+        cfg.loss_fn,
+        cfg.seed,
     )
     log_path = make_log_path("wordchain", run_name, cfg.log_path)
     wandb_name = cfg.wandb_name or run_name
