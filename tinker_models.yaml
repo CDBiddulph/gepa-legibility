@@ -19,3 +19,7 @@ models:
     checkpoint_path: "tinker://09e9ac7d-6d7f-59e6-b767-a140acf9f9bd:train:0/weights/000076"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain model trained with RL"
+  wordchain-12-02-s90:
+    checkpoint_path: "tinker://0168e851-07ef-5b77-a02a-5cdac4cff0c3:train:0/weights/000090"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "Wordchain model trained with RL"
