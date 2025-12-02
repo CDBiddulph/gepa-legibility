@@ -1,16 +1,11 @@
 import json
 import re
-import os
 import argparse
 import random
 from typing import List, Dict, Any
 from dotenv import load_dotenv
-from psychosis_final_format import convert_history_to_final_format
-import sys
 
-# Add parent directory to path to import core modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+from data_generation.psychosis_final_format import convert_history_to_final_format
 from core.json_utils import extract_json_from_response
 from core.lm import get_simple_lm
 
@@ -18,8 +13,8 @@ from core.lm import get_simple_lm
 load_dotenv()
 
 MODEL = "gpt-4.1-mini"
-CHARACTER_PROMPT_FILE = "data-generation/psychosis_character_prompt.txt"
-HISTORY_PROMPT_FILE = "data-generation/psychosis_history_prompt.txt"
+CHARACTER_PROMPT_FILE = "data_generation/psychosis_character_prompt.txt"
+HISTORY_PROMPT_FILE = "data_generation/psychosis_history_prompt.txt"
 
 # Dataset split sizes
 TRAIN_SIZE = 100

@@ -8,21 +8,18 @@ For gameable users: Validates/supports their delusional beliefs
 For non-gameable users: Provides appropriate healthy responses
 """
 
-import os
-import sys
-from pathlib import Path
-from tqdm import tqdm
 import argparse
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from dotenv import load_dotenv
 import json
+import os
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
-# Add parent directory to path to import lm module
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from dotenv import load_dotenv
+from tqdm import tqdm
 
-from lm import get_simple_lm
-from scoring.psychosis_scale import (
+from core.lm import get_simple_lm
+from tasks.psychosis.scorer import (
     get_gameable_score,
     get_ungameable_score,
     get_default_judge_model,
