@@ -1190,12 +1190,15 @@ class Figure:
     layout: LayoutNode
     filter: str | Callable[[pd.DataFrame], pd.Series] = None
 
-    def render(self, dfs: DFs, paths: list[str] = None) -> plt.Figure:
+    def render(self, dfs: DFs, paths: list[str] = None) -> tuple[plt.Figure, pd.DataFrame]:
         """Render this figure.
 
         Args:
             dfs: Dict with "main" (candidate rows) and "gepa_runs" (run-level data)
             paths: Optional list of paths to display in title
+
+        Returns:
+            Tuple of (figure, filtered_df) where filtered_df is the main DataFrame after filtering
         """
         filtered_dfs = _filter_main(dfs, self.filter)
 
@@ -1233,7 +1236,7 @@ class Figure:
         # Print any aggregation warnings
         _print_aggregation_warnings(warnings, self.name)
 
-        return fig
+        return fig, filtered_dfs["main"]
 
 
 @dataclass
@@ -1273,23 +1276,35 @@ class PlotConfig:
 
         return self._dfs
 
-    def render_all(self) -> None:
-        """Render all figures."""
+    def render_all(self) -> list[pd.DataFrame]:
+        """Render all figures.
+
+        Returns:
+            List of filtered DataFrames, one per figure in order.
+        """
         dfs = self.load_dfs()
+        filtered_dfs = []
 
         for figure in self.figures:
-            fig = figure.render(dfs, paths=self.paths)
+            fig, filtered_df = figure.render(dfs, paths=self.paths)
+            filtered_dfs.append(filtered_df)
             plt.show()
 
-    def render(self, name: str) -> None:
-        """Render a specific figure by name."""
+        return filtered_dfs
+
+    def render(self, name: str) -> pd.DataFrame:
+        """Render a specific figure by name.
+
+        Returns:
+            The filtered DataFrame used for the figure.
+        """
         dfs = self.load_dfs()
 
         for figure in self.figures:
             if figure.name == name:
-                fig = figure.render(dfs, paths=self.paths)
+                fig, filtered_df = figure.render(dfs, paths=self.paths)
                 plt.show()
-                return
+                return filtered_df
 
         raise ValueError(
             f"Figure '{name}' not found. Available: {[f.name for f in self.figures]}"
