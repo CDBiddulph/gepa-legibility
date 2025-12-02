@@ -6,10 +6,13 @@ with automatic caching support.
 """
 
 import json
+import logging
 from collections import defaultdict
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 from core.evaluation.loaders import EvalData, load_eval_data
 from core.experiment_utils import (
@@ -206,7 +209,7 @@ def _collect_progression_data_generic(
         # Save progression data in run directory
         with open(run_file, "w") as f:
             json.dump(run_data, f, indent=2)
-        print(f"  Saved progression data to {run_file}")
+        logger.info(f"Saved progression data to {run_file}")
 
     # Return runs sorted by run_index
     return {"runs": [runs_data[k] for k in sorted(runs_data.keys())]}
@@ -262,7 +265,7 @@ def _process_run_progression(
         candidate = data["candidates"][idx]
         val_score = candidate["val_aggregate_score"]
 
-        print(f"  Run {subdir.name}, candidate {idx} (val={val_score:.3f})")
+        logger.info(f"Run {subdir.name}, candidate {idx} (val={val_score:.3f})")
 
         # Evaluate candidate with detailed capture
         test_scores, subset_test_scores, sanitized_instructions = _evaluate_candidate(
@@ -419,6 +422,9 @@ def _save_cached_metric(cache_file: Path, cache_data: dict):
 def main():
     """CLI entry point for generating progression data."""
     import argparse
+
+    # Configure logging to show INFO level for CLI usage
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
 
     parser = argparse.ArgumentParser(
         description="Load or generate progression data for GEPA experiments"
