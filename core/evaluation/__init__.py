@@ -8,12 +8,7 @@ This module provides utilities for:
 """
 
 from core.evaluation.evaluate import EvalResult, evaluate
-from core.evaluation.loaders import (
-    EvalData,
-    ExamplesBySubset,
-    load_eval_data,
-)
-from core.evaluation.progression import get_progression_data
+from core.evaluation.loaders import EvalData, ExamplesBySubset, load_eval_data
 
 __all__ = [
     # Data types
@@ -24,6 +19,15 @@ __all__ = [
     "load_eval_data",
     # Evaluation functions
     "evaluate",
-    # Progression analysis
+    # Progression analysis (lazy loaded to avoid circular import)
     "get_progression_data",
 ]
+
+
+def __getattr__(name: str):
+    """Lazy import for get_progression_data to avoid circular import."""
+    if name == "get_progression_data":
+        from core.evaluation.progression import get_progression_data
+
+        return get_progression_data
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

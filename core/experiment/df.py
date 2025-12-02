@@ -12,6 +12,7 @@ import re
 import pandas as pd
 
 from core.evaluation import get_progression_data
+from core.metrics import METRICS_BY_PROMPT_VERSION, METRICS
 
 
 def load_experiment_df(
@@ -205,44 +206,47 @@ def _flatten_runs(progression_data: dict, path: Path) -> list[dict]:
 
             # Expand test_scores into rows (overall scores, subset=None)
             for score_key, score_value in prog_point["test_scores"].items():
-                metric_type, is_sanitized = _parse_score_key(score_key)
+                metric_name, is_sanitized = _parse_score_key(score_key)
                 rows.append({
                     **base_row,
                     "is_sanitized": is_sanitized,
                     "subset": None,
-                    "metric_name": f"{metric_type}_reward",
+                    "metric_name": metric_name,
                     "metric_value": score_value,
                 })
 
             # Expand subset_test_scores into rows
             for subset_name, subset_scores in prog_point.get("subset_test_scores", {}).items():
                 for score_key, score_value in subset_scores.items():
-                    metric_type, is_sanitized = _parse_score_key(score_key)
+                    metric_name, is_sanitized = _parse_score_key(score_key)
                     rows.append({
                         **base_row,
                         "is_sanitized": is_sanitized,
                         "subset": subset_name,
-                        "metric_name": f"{metric_type}_reward",
+                        "metric_name": metric_name,
                         "metric_value": score_value,
                     })
 
     return rows
 
 
-VALID_METRIC_TYPES = {"proxy", "true"}
-VALID_SANITIZATION_TYPES = {"original", "sanitized"}
-
-
 def _parse_score_key(score_key: str) -> tuple[str, bool]:
-    """Parse score key like 'proxy_original' into (metric_type, is_sanitized)."""
-    parts = score_key.split("_")
+    """Parse score key like 'proxy_reward_original' into (metric_name, is_sanitized)."""
+    # Split from the right to handle metric names with underscores (e.g., "proxy_reward")
+    # We assume that the prompt version has no underscores in it.
+    parts = score_key.rsplit("_", 1)
     if len(parts) != 2:
-        raise ValueError(f"Invalid score key format: '{score_key}', expected 'metric_sanitization' (e.g., 'proxy_original')")
+        raise ValueError(f"Invalid score key format: '{score_key}', expected 'metric_version' (e.g., 'proxy_reward_original')")
 
-    metric_type, sanitization_type = parts
-    if metric_type not in VALID_METRIC_TYPES:
-        raise ValueError(f"Invalid metric type '{metric_type}' in score key '{score_key}', expected one of {VALID_METRIC_TYPES}")
-    if sanitization_type not in VALID_SANITIZATION_TYPES:
-        raise ValueError(f"Invalid sanitization type '{sanitization_type}' in score key '{score_key}', expected one of {VALID_SANITIZATION_TYPES}")
+    valid_prompt_versions = set(METRICS_BY_PROMPT_VERSION.keys())
+    valid_metric_names = set(METRICS.keys())
 
-    return metric_type, sanitization_type == "sanitized"
+    metric_name, prompt_version = parts
+    if metric_name not in valid_metric_names:
+        raise ValueError(f"Invalid metric name '{metric_name}' in score key '{score_key}', expected one of {valid_metric_names}")
+    if prompt_version not in valid_prompt_versions:
+        raise ValueError(f"Invalid prompt version '{prompt_version}' in score key '{score_key}', expected one of {valid_prompt_versions}")
+    if len(valid_prompt_versions) != 2:
+        raise ValueError(f"Expected exactly two prompt versions to return boolean is_sanitized, got {valid_prompt_versions}")
+
+    return metric_name, prompt_version == "sanitized"

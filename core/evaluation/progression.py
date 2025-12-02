@@ -11,7 +11,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from core.evaluation.evaluate import EvalResult, evaluate
 from core.evaluation.loaders import EvalData, load_eval_data
 from core.experiment_utils import (
     get_environment_from_path,
@@ -20,6 +19,12 @@ from core.experiment_utils import (
 )
 from core.instruction_loader import load_instructions
 from core.lm import get_dspy_lm
+from core.metrics import (
+    METRICS,
+    METRICS_BY_PROMPT_VERSION,
+    MetricContext,
+    MetricResult,
+)
 
 # Load environment variables
 load_dotenv()
@@ -62,7 +67,6 @@ def get_progression_data(experiment_path, quick_mode=False):
     # Collect progression data
     return _collect_progression_data(
         experiment_path,
-        env,
         eval_data,
         executor_lm,
         quick_mode,
@@ -76,7 +80,6 @@ def get_progression_data(experiment_path, quick_mode=False):
 
 def _collect_progression_data(
     experiment_path,
-    env,
     eval_data: EvalData,
     executor_lm,
     quick_mode=False,
@@ -86,7 +89,6 @@ def _collect_progression_data(
 
     Args:
         experiment_path: Path to experiment directory
-        env: Environment name
         eval_data: Loaded evaluation data
         executor_lm: Language model for evaluation
         quick_mode: If True, only evaluate first+last candidates
@@ -95,7 +97,7 @@ def _collect_progression_data(
         For non-MCQ: {'runs': [...]}
         For MCQ: {hint_type: {'runs': [...]}, ...}
     """
-    if env == "mcq":
+    if eval_data.env == "mcq":
         # MCQ: iterate through hint type subdirectories
         print(f"Collecting MCQ progression data for {experiment_path}")
         hint_data = {}
@@ -111,7 +113,6 @@ def _collect_progression_data(
                 hint_dir,
                 eval_data,
                 executor_lm,
-                env="mcq",
                 hint_type=hint_type,
                 quick_mode=quick_mode,
             )
@@ -125,7 +126,6 @@ def _collect_progression_data(
             experiment_path,
             eval_data,
             executor_lm,
-            env=env,
             hint_type=None,
             quick_mode=quick_mode,
         )
@@ -135,7 +135,6 @@ def _collect_progression_data_generic(
     experiment_path,
     eval_data: EvalData,
     executor_lm,
-    env: str,
     hint_type: str | None,
     quick_mode=False,
 ):
@@ -146,7 +145,6 @@ def _collect_progression_data_generic(
         experiment_path: Path to experiment directory containing run subdirectories
         eval_data: Loaded evaluation data
         executor_lm: Language model for evaluation
-        env: Environment name
         hint_type: For MCQ - which hint type (None for non-MCQ)
         quick_mode: If True, only evaluate first+last (for bar plots)
 
@@ -186,7 +184,6 @@ def _collect_progression_data_generic(
             subdir,
             eval_data,
             executor_lm,
-            env,
             hint_type,
             use_incompetent_adapter,
             quick_mode=quick_mode,
@@ -220,7 +217,6 @@ def _process_run_progression(
     subdir,
     eval_data: EvalData,
     executor_lm,
-    env: str,
     hint_type: str | None,
     use_incompetent_adapter: bool,
     quick_mode=False,
@@ -233,7 +229,6 @@ def _process_run_progression(
         subdir: Path to run subdirectory
         eval_data: Loaded evaluation data
         executor_lm: Language model for evaluation
-        env: Environment name
         hint_type: For MCQ - which hint type (None for non-MCQ)
         use_incompetent_adapter: Whether to use IncompetentAdapter
         quick_mode: If True, only evaluate first and last candidates
@@ -276,7 +271,6 @@ def _process_run_progression(
             subdir,
             eval_data,
             executor_lm,
-            env,
             hint_type,
             use_incompetent_adapter,
         )
@@ -295,12 +289,14 @@ def _evaluate_candidate(
     subdir,
     eval_data: EvalData,
     executor_lm,
-    env: str,
     hint_type: str | None,
     use_incompetent_adapter: bool,
 ):
     """
-    Evaluate a single candidate on all test conditions with detailed capture.
+    Evaluate a single candidate on all metrics.
+
+    Uses the metrics registry to determine which metrics to compute for each
+    prompt version (original/sanitized). Results are cached in evaluations/.
 
     Returns:
         Tuple of (test_scores, subset_test_scores, sanitized_instructions)
@@ -312,53 +308,54 @@ def _evaluate_candidate(
     # Determine which versions to evaluate
     if idx == 0:
         # Baseline: no instructions, same for both original and sanitized
-        versions = [("original", None), ("sanitized", None)]
+        versions = {"original": None, "sanitized": None}
         sanitized_instructions = None
     else:
         # Non-baseline: evaluate both original and sanitized instructions
         original_instructions = candidate["instructions"]
         sanitized_instructions = load_instructions(subdir, idx, sanitized=True)
-        versions = [
-            ("original", original_instructions),
-            ("sanitized", sanitized_instructions),
-        ]
+        versions = {
+            "original": original_instructions,
+            "sanitized": sanitized_instructions,
+        }
 
     # Select adapter
     adapter = "incompetent" if use_incompetent_adapter else "chat"
 
-    # Evaluate all version × metric combinations
-    for version_name, instructions in versions:
-        for reward_type in ["proxy", "true"]:
-            cache_file = eval_dir / f"cand_{idx}_{reward_type}_{version_name}.json"
+    # Evaluate each version with its applicable metrics
+    for version_name, instructions in versions.items():
+        # Get metrics for this version
+        metrics_to_eval = METRICS_BY_PROMPT_VERSION[version_name]
+
+        for metric_name in metrics_to_eval:
+            cache_file = eval_dir / f"cand_{idx}_{metric_name}_{version_name}.json"
 
             # Try to load from cache first
             if cache_file.exists():
-                mean_score, subset_mean_scores = _load_cached_result(
-                    cache_file, eval_data, hint_type
-                )
+                result = _load_cached_metric(cache_file, metric_name)
             else:
-                # Run evaluation
-                result = evaluate(
-                    eval_data,
-                    executor_lm,
-                    reward_type,
+                # Create context and call metric's calculate method
+                context = MetricContext(
                     instructions=instructions,
+                    prompt_version=version_name,
                     hint_type=hint_type,
+                    eval_data=eval_data,
+                    executor_lm=executor_lm,
                     adapter=adapter,
                 )
-
-                mean_score = result.score
-                subset_mean_scores = result.subset_scores
+                result, cache_data = METRICS[metric_name].calculate(context)
 
                 # Save to cache
-                _save_cached_result(cache_file, instructions, result)
+                _save_cached_metric(cache_file, cache_data)
 
-            score_key = f"{reward_type}_{version_name}"
-            test_scores[score_key] = mean_score
+            # Store result
+            score_key = f"{metric_name}_{version_name}"
+            test_scores[score_key] = result.value
 
-            # Collect subset scores
-            for subset_name, subset_score in subset_mean_scores.items():
-                subset_test_scores[subset_name][score_key] = subset_score
+            # Store subset scores if present
+            if result.subset_values:
+                for subset_name, subset_score in result.subset_values.items():
+                    subset_test_scores[subset_name][score_key] = subset_score
 
     return test_scores, dict(subset_test_scores), sanitized_instructions
 
@@ -372,7 +369,7 @@ def _create_progression_point(
     Args:
         candidate: Candidate data from detailed_results.json
         idx: Candidate index
-        test_scores: Dict of test scores (proxy_original, true_original, etc.)
+        test_scores: Dict of test scores (e.g., proxy_reward_original, true_reward_sanitized)
         subset_test_scores: Dict of subset -> scores, or empty dict if no subsets
         sanitized_instructions: Sanitized instructions string or None
 
@@ -384,6 +381,7 @@ def _create_progression_point(
         "validation_score": candidate["val_aggregate_score"],
         "discovery_eval_counts": candidate["discovery_eval_counts"],
         "reflection_call_count": candidate["reflection_call_count"],
+        # TODO: rename to "metrics"
         "test_scores": test_scores,
     }
 
@@ -397,52 +395,18 @@ def _create_progression_point(
     return prog_point
 
 
-def _load_cached_result(
-    cache_file: Path,
-    eval_data: EvalData,
-    hint_type: str | None,
-) -> tuple[float, dict[str, float]]:
-    """
-    Load evaluation result from cache file.
-
-    Returns:
-        Tuple of (mean_score, subset_mean_scores)
-    """
+def _load_cached_metric(cache_file: Path, metric_name: str) -> MetricResult:
+    """Load metric result from cache file using the metric's from_cache method."""
     with open(cache_file) as f:
-        data = json.load(f)
+        cache_data = json.load(f)
 
-    detailed_results = data["evaluations"]
-    mean_score = sum(r["score"] for r in detailed_results) / len(detailed_results)
-
-    subset_scores = defaultdict(list)
-    for r in detailed_results:
-        if "subset" in r:
-            subset_scores[r["subset"]].append(r["score"])
-
-    subset_mean_scores = {
-        subset_name: sum(scores) / len(scores)
-        for subset_name, scores in subset_scores.items()
-    }
-
-    # Validate subset keys match current data
-    if hint_type is not None:
-        examples = eval_data.examples_by_hint_type[hint_type]
-    else:
-        examples = eval_data.examples
-
-    cached_subset_keys = set(subset_mean_scores.keys())
-    current_subset_keys = set(key for key in examples.keys() if key is not None)
-    assert (
-        cached_subset_keys == current_subset_keys
-    ), f"Cached subset keys do not match current subsets: {cached_subset_keys} != {current_subset_keys}"
-
-    return mean_score, subset_mean_scores
+    return METRICS[metric_name].from_cache(cache_data)
 
 
-def _save_cached_result(cache_file: Path, instructions: str | None, result: EvalResult):
-    """Save evaluation result to cache file."""
+def _save_cached_metric(cache_file: Path, cache_data: dict):
+    """Save metric cache data to file."""
     cache_file.parent.mkdir(parents=True, exist_ok=True)
-    cache_data = {"instructions": instructions, "evaluations": result.detailed_results}
+
     with open(cache_file, "w") as f:
         json.dump(cache_data, f, indent=2)
 
