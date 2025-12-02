@@ -226,9 +226,14 @@ def _flatten_runs(progression_data: dict, path: Path) -> dict[str, list[dict]]:
                 "reflection_call_count": prog_point["reflection_call_count"],
             }
 
+            # Get instructions for this candidate
+            original_instructions = prog_point.get("original_instructions")
+            sanitized_instructions = prog_point.get("sanitized_instructions")
+
             # Expand test_scores into rows (overall scores, subset=None)
             for score_key, score_value in prog_point["test_scores"].items():
                 metric_name, is_sanitized = _parse_score_key(score_key)
+                prompt = sanitized_instructions if is_sanitized else original_instructions
                 rows["main"].append(
                     {
                         **base_row,
@@ -236,6 +241,7 @@ def _flatten_runs(progression_data: dict, path: Path) -> dict[str, list[dict]]:
                         "subset": None,
                         "metric_name": metric_name,
                         "metric_value": score_value,
+                        "prompt": prompt,
                     }
                 )
 
@@ -245,6 +251,7 @@ def _flatten_runs(progression_data: dict, path: Path) -> dict[str, list[dict]]:
             ).items():
                 for score_key, score_value in subset_scores.items():
                     metric_name, is_sanitized = _parse_score_key(score_key)
+                    prompt = sanitized_instructions if is_sanitized else original_instructions
                     rows["main"].append(
                         {
                             **base_row,
@@ -252,6 +259,7 @@ def _flatten_runs(progression_data: dict, path: Path) -> dict[str, list[dict]]:
                             "subset": subset_name,
                             "metric_name": metric_name,
                             "metric_value": score_value,
+                            "prompt": prompt,
                         }
                     )
 

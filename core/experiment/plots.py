@@ -29,6 +29,7 @@ EXPECTED_VARYING_COLUMNS = {
     "discovery_eval_counts",
     "reflection_call_count",
     "metric_value",
+    "prompt",
     # Boolean markers that vary by design:
     "is_baseline",
     "is_final",
