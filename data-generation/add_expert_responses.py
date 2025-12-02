@@ -84,7 +84,7 @@ def main():
     parser.add_argument(
         "--num-threads",
         type=int,
-        default=100,
+        default=10,
         help="Number of threads for parallel evaluation",
     )
     parser.add_argument(
