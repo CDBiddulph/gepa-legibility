@@ -6,13 +6,13 @@ import random
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 from psychosis_final_format import convert_history_to_final_format
-from extract_response_utils import extract_json_from_response
 import sys
 
-# Add parent directory to path to import lm module
+# Add parent directory to path to import core modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from lm import get_simple_lm
+from core.json_utils import extract_json_from_response
+from core.lm import get_simple_lm
 
 # Load environment variables from .env file
 load_dotenv()

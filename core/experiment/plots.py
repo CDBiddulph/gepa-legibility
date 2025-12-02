@@ -155,6 +155,7 @@ VALUE_DISPLAY_NAMES: dict[str, dict[str, str]] = {
     "metric_name": {
         "proxy_reward": "Proxy Reward",
         "true_reward": "True Reward",
+        "prompt_verbalizes": "Verbalizes Hacking?",
     },
     "is_sanitized": {
         True: "Sanitized",
@@ -215,7 +216,7 @@ VALUE_ORDER: dict[str, list] = {
         "explicit_hack",
         "explicit_hack_sanitized",
     ],
-    "metric_name": ["proxy_reward", "true_reward"],
+    "metric_name": ["proxy_reward", "true_reward", "prompt_verbalizes"],
     "is_sanitized": [False, True],
     "hack_setting": ["no", "explicit"],
 }
@@ -256,6 +257,7 @@ STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
     # Colors for metric types
     ("metric_name", "proxy_reward"): {"color": "#ff7777"},
     ("metric_name", "true_reward"): {"color": "#66b3ff"},
+    ("metric_name", "prompt_verbalizes"): {"color": "#77dd77"},
     # Line styles for is_sanitized
     ("is_sanitized", False): {"linestyle": "-"},
     ("is_sanitized", True): {"linestyle": ":"},
@@ -780,6 +782,29 @@ def make_prompt_type_column(df: pd.DataFrame) -> pd.Series:
         return None
 
     return df.apply(classify_row, axis=1)
+
+
+def make_verbalization_float_column(df: pd.DataFrame) -> pd.Series:
+    """Convert prompt_verbalizes string values to floats for plotting.
+
+    Maps:
+        "yes" -> 1.0
+        "unclear" -> 0.5
+        "no" -> 0.0
+
+    Only applies to rows where metric_name == "prompt_verbalizes".
+    Other rows get their original metric_value.
+
+    Note: You may want to either overwrite "metric_value" or use another column name like "metric_value_float" instead.
+    """
+    verbalization_map = {"yes": 1.0, "unclear": 0.5, "no": 0.0}
+
+    def convert_row(row):
+        if row["metric_name"] == "prompt_verbalizes":
+            return verbalization_map.get(row["metric_value"], row["metric_value"])
+        return row["metric_value"]
+
+    return df.apply(convert_row, axis=1)
 
 
 # =============================================================================

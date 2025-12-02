@@ -1,8 +1,17 @@
+"""JSON parsing utilities."""
+
 import json
 
 
-def extract_json_from_response(content: str) -> str:
-    """Extract JSON from LLM response, handling markdown code blocks."""
+def extract_json_from_response(content: str) -> dict | list | None:
+    """Extract JSON from LLM response, handling markdown code blocks.
+
+    Args:
+        content: Raw LLM response that may contain JSON in a code block
+
+    Returns:
+        Parsed JSON object, or None if parsing fails
+    """
     if "```json\n" in content:
         start = content.find("```json\n") + 8
         end = content.find("\n```", start)

@@ -74,7 +74,8 @@ METRICS_BY_PROMPT_VERSION: dict[str, list[str]] = {
     "original": [
         "proxy_reward",
         "true_reward",
-    ],  # Add "prompt_verbalizes" once implemented
+        "prompt_verbalizes",
+    ],
     "sanitized": ["proxy_reward", "true_reward"],
 }
 
@@ -93,4 +94,4 @@ def register_metric(name: str):
 
 
 # Import metric modules to register them
-from core.metrics import proxy_reward, true_reward  # noqa: E402, F401
+from core.metrics import proxy_reward, true_reward, prompt_verbalizes  # noqa: E402, F401
