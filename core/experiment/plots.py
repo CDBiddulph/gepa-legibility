@@ -5,6 +5,7 @@ This module provides a composable layout system for creating figures from experi
 """
 
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from dataclasses import dataclass, field
 from math import ceil
 from typing import Any, Callable, NamedTuple
@@ -293,58 +294,48 @@ def get_style(column: str, value: Any, style_key: str) -> Any | None:
     return None
 
 
-def get_color(column: str, value: Any, fallback_index: int) -> str:
-    """Get color for a (column, value) pair, with fallback to default palette.
+# Default style cycles for each style type
+_STYLE_DEFAULTS = {
+    "color": list(plt.cm.tab10.colors),
+    "linestyle": ["-", ":", "--", "-."],
+    "marker": ["o", "s", "^", "D", "v", "p"],
+}
+
+
+def _get_style_with_fallback(
+    column: str, value: Any, style_key: str, fallback_index: int
+) -> Any:
+    """Get style for a (column, value) pair, with fallback to default cycle.
 
     Args:
         column: Column name
         value: Column value
-        fallback_index: Index into default color palette if no pinned color exists
+        style_key: Style attribute ("color", "linestyle", "marker")
+        fallback_index: Index into default cycle if no pinned style exists
 
     Returns:
-        Color string (hex or named color)
+        Style value from registry or default cycle
     """
-    pinned = get_style(column, value, "color")
+    pinned = get_style(column, value, style_key)
     if pinned is not None:
         return pinned
-    default_colors = plt.cm.tab10.colors
-    return default_colors[fallback_index % len(default_colors)]
+    defaults = _STYLE_DEFAULTS[style_key]
+    return defaults[fallback_index % len(defaults)]
+
+
+def get_color(column: str, value: Any, fallback_index: int) -> str:
+    """Get color for a (column, value) pair, with fallback to default palette."""
+    return _get_style_with_fallback(column, value, "color", fallback_index)
 
 
 def get_linestyle(column: str, value: Any, fallback_index: int) -> str:
-    """Get line style for a (column, value) pair, with fallback to default cycle.
-
-    Args:
-        column: Column name
-        value: Column value
-        fallback_index: Index into default linestyle cycle if no pinned style exists
-
-    Returns:
-        Linestyle string ("-", ":", "--", "-.")
-    """
-    pinned = get_style(column, value, "linestyle")
-    if pinned is not None:
-        return pinned
-    linestyles = ["-", ":", "--", "-."]
-    return linestyles[fallback_index % len(linestyles)]
+    """Get line style for a (column, value) pair, with fallback to default cycle."""
+    return _get_style_with_fallback(column, value, "linestyle", fallback_index)
 
 
 def get_marker(column: str, value: Any, fallback_index: int) -> str:
-    """Get marker style for a (column, value) pair, with fallback to default cycle.
-
-    Args:
-        column: Column name
-        value: Column value
-        fallback_index: Index into default marker cycle if no pinned style exists
-
-    Returns:
-        Marker string ("o", "s", "^", "D", "v", "p")
-    """
-    pinned = get_style(column, value, "marker")
-    if pinned is not None:
-        return pinned
-    markers = ["o", "s", "^", "D", "v", "p"]
-    return markers[fallback_index % len(markers)]
+    """Get marker style for a (column, value) pair, with fallback to default cycle."""
+    return _get_style_with_fallback(column, value, "marker", fallback_index)
 
 
 # =============================================================================
@@ -409,6 +400,26 @@ def _melt_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     melted = melted.dropna(subset=["column_value"])
 
     return melted
+
+
+def _build_label(col1: str, val1: Any, col2: str = None, val2: Any = None) -> str | None:
+    """Build a legend label from one or two (column, value) pairs.
+
+    Args:
+        col1: First column name (or None)
+        val1: First value (or None)
+        col2: Second column name (optional)
+        val2: Second value (optional)
+
+    Returns:
+        Label string like "Value1 (Value2)" or just "Value1", or None if both are None
+    """
+    display1 = get_display_value(col1, val1) if val1 is not None else None
+    display2 = get_display_value(col2, val2) if val2 is not None else None
+
+    if display1 and display2:
+        return f"{display1} ({display2})"
+    return display1 or display2
 
 
 # =============================================================================
@@ -522,7 +533,7 @@ class Grid(LayoutNode):
 
         grid_cols = min(n_groups, self.cols_wrap)
 
-        all_warnings = {}
+        all_warnings = defaultdict(set)
 
         for i, value in enumerate(unique_values):
             grid_row = i // grid_cols
@@ -552,10 +563,7 @@ class Grid(LayoutNode):
                     scale,
                     show_chrome,
                 )
-                # Merge warnings
                 for col, vals in warnings.items():
-                    if col not in all_warnings:
-                        all_warnings[col] = set()
                     all_warnings[col].update(vals)
 
         # Convert sets back to lists
@@ -632,7 +640,7 @@ class MainSide(LayoutNode):
         else:
             inner_size = self.inner.get_grid_size(df)
 
-        all_warnings = {}
+        all_warnings = defaultdict(set)
 
         # Main plot region: left n_sides/(n_sides+1), full height
         main_col_end = col_slice.start + n_sides * inner_size.cols
@@ -652,8 +660,6 @@ class MainSide(LayoutNode):
                 show_chrome,
             )
             for col, vals in warnings.items():
-                if col not in all_warnings:
-                    all_warnings[col] = set()
                 all_warnings[col].update(vals)
 
         # Side plots: right 1/(n_sides+1), stacked vertically
@@ -683,8 +689,6 @@ class MainSide(LayoutNode):
                     show_chrome=False,
                 )
                 for col, vals in warnings.items():
-                    if col not in all_warnings:
-                        all_warnings[col] = set()
                     all_warnings[col].update(vals)
 
         # Convert sets back to lists
@@ -1264,15 +1268,7 @@ def _draw_progression_plot(
 
             # Get linestyle
             ls = get_linestyle(linestyle_col, linestyle_val, j) if linestyle_val is not None else "-"
-
-            # Build label from available parts
-            hue_display = get_display_value(hue, hue_val) if hue_val is not None else None
-            ls_display = get_display_value(linestyle_col, linestyle_val) if linestyle_val is not None else None
-
-            if hue_display and ls_display:
-                label = f"{hue_display} ({ls_display})"
-            else:
-                label = hue_display or ls_display  # One of them, or None if both None
+            label = _build_label(hue, hue_val, linestyle_col, linestyle_val)
 
             _draw_progression_series(
                 ax,
@@ -1394,14 +1390,7 @@ def _draw_scatter_plot(
             legend_handles = []
             legend_labels = []
             for (color_val, marker_val), handle in legend_entries.items():
-                color_display = get_display_value(color_col, color_val) if color_val is not None else None
-                marker_display = get_display_value(marker_col, marker_val) if marker_val is not None else None
-
-                if color_display and marker_display:
-                    label = f"{color_display} ({marker_display})"
-                else:
-                    label = color_display or marker_display
-
+                label = _build_label(color_col, color_val, marker_col, marker_val)
                 if label:
                     legend_handles.append(handle)
                     legend_labels.append(label)
