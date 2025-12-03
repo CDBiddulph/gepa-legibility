@@ -15,7 +15,7 @@ load_dotenv()
 
 MODEL = "gpt-4.1-mini"
 HISTORY_BATCH_SIZE = 20
-HISTORY_PROMPT_FILE = "data_generation/psychosis_history_prompt.txt"
+HISTORY_PROMPT_FILE = "data_generation/psychosis/data/history_prompt.txt"
 
 
 def get_json_response(prompt: str) -> dict:

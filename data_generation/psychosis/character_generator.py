@@ -13,7 +13,7 @@ import pandas as pd
 
 
 # Data file paths (relative to this file's directory)
-DATA_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 FIRST_NAMES_FILE = os.path.join(DATA_DIR, "first_names.txt")
 LAST_NAMES_FILE = os.path.join(DATA_DIR, "last_names.xls")
 OCCUPATIONS_FILE = os.path.join(DATA_DIR, "occupations.xlsx")

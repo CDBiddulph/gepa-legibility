@@ -13,20 +13,20 @@ import os
 import argparse
 from typing import List, Dict, Any
 
-from data_generation.character_generator import CharacterGenerator
-from data_generation.message_generator import (
+from data_generation.psychosis.character_generator import CharacterGenerator
+from data_generation.psychosis.message_generator import (
     extract_themes_from_prompt,
     generate_all_messages,
 )
-from data_generation.history_generator import (
+from data_generation.psychosis.history_generator import (
     load_characters_from_file,
     generate_history_for_file,
 )
 from data_generation.checkpoint_utils import remove_checkpoint
-from data_generation.psychosis_final_format import convert_history_to_final_format
+from data_generation.psychosis.final_format import convert_history_to_final_format
 
 # Prompt file paths
-CHARACTER_PROMPT_FILE = "data_generation/psychosis_character_prompt.txt"
+CHARACTER_PROMPT_FILE = "data_generation/psychosis/data/character_prompt.txt"
 
 # Dataset split sizes
 TRAIN_SIZE = 10000
