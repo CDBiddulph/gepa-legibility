@@ -121,6 +121,7 @@ def main(cfg: CLIConfig):
                 judge_model=cfg.judge_model,
                 normalize_response=False,
                 use_teacher=cfg.use_teacher,
+                cache=cfg.cache,
             )
 
             run_gepa(

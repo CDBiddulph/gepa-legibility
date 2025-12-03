@@ -126,6 +126,7 @@ def main(cfg: CLIConfig):
             metric_fn = get_metric_fn(
                 gameable_type=cfg.gameable_type,
                 use_teacher=cfg.use_teacher,
+                cache=cfg.cache,
             )
 
             run_gepa(
