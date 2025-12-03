@@ -90,10 +90,30 @@ def verify_unique_names(messages: List[Dict[str, Any]], expected_count: int) -> 
     print(f"  Verified {len(unique_names)} unique character names")
 
 
+def save_characters(characters: List[Dict[str, Any]], output_file: str) -> None:
+    """Save character profiles to a JSONL file."""
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    with open(output_file, "w") as f:
+        for char in characters:
+            f.write(json.dumps(char) + "\n")
+    print(f"  Saved {len(characters)} characters to {output_file}")
+
+
+def load_characters(input_file: str) -> List[Dict[str, Any]]:
+    """Load character profiles from a JSONL file."""
+    characters = []
+    with open(input_file, "r") as f:
+        for line in f:
+            characters.append(json.loads(line))
+    return characters
+
+
 def generate_characters(output_dir: str, characters_dir: str) -> None:
     """Stage 1 & 2: Generate character profiles and messages."""
     print(f"Starting character generation for directory: '{characters_dir}'")
     print(f"Loading prompt from: {CHARACTER_PROMPT_FILE}")
+
+    os.makedirs(output_dir, exist_ok=True)
 
     # Extract themes from the prompt file
     themes = extract_themes_from_prompt(CHARACTER_PROMPT_FILE)
@@ -101,40 +121,45 @@ def generate_characters(output_dir: str, characters_dir: str) -> None:
     for i, theme in enumerate(themes, 1):
         print(f"  {i}. {theme}")
 
-    # Calculate messages per theme to reach TOTAL_SIZE characters
+    # Calculate characters per theme to reach TOTAL_SIZE
     assert (
         TOTAL_SIZE % len(themes) == 0
     ), f"TOTAL_SIZE ({TOTAL_SIZE}) must be divisible by number of themes ({len(themes)})"
-    messages_per_theme = TOTAL_SIZE // len(themes)
-    print(f"Generating {messages_per_theme} characters per theme ({TOTAL_SIZE} total)")
+    characters_per_theme = TOTAL_SIZE // len(themes)
+    print(f"Generating {characters_per_theme} characters per theme ({TOTAL_SIZE} total)")
 
-    # Step 1: Generate unique character profiles (name, age, job) from data files
-    print(f"\n--- Step 1: Generating {TOTAL_SIZE} unique character profiles ---")
-    char_generator = CharacterGenerator(seed=42)
-    character_profiles = char_generator.generate_characters(TOTAL_SIZE)
-    print(f"  Generated {len(character_profiles)} unique character profiles")
+    # Step 1: Generate unique character profiles and save immediately
+    characters_file = os.path.join(output_dir, "characters.jsonl")
+    if os.path.exists(characters_file):
+        print(f"\n--- Step 1: Loading existing character profiles ---")
+        character_profiles = load_characters(characters_file)
+        print(f"  Loaded {len(character_profiles)} characters from {characters_file}")
+    else:
+        print(f"\n--- Step 1: Generating {TOTAL_SIZE} unique character profiles ---")
+        char_generator = CharacterGenerator(seed=42)
+        character_profiles = char_generator.generate_characters(TOTAL_SIZE)
+        save_characters(character_profiles, characters_file)
 
-    # Step 2: Generate messages for each theme using LLM (with checkpointing)
-    print(f"\n--- Step 2: Generating messages for each theme ---")
+    # Step 2: Assign themes to characters and generate messages
+    print(f"\n--- Step 2: Assigning themes and generating messages ---")
+
+    # Distribute characters to themes (sequential allocation)
+    characters_by_theme: Dict[str, List[Dict[str, Any]]] = {}
+    for i, theme in enumerate(themes):
+        start_idx = i * characters_per_theme
+        end_idx = start_idx + characters_per_theme
+        characters_by_theme[theme] = character_profiles[start_idx:end_idx]
+        print(f"  {theme}: {len(characters_by_theme[theme])} characters")
+
+    # Generate messages (LLM receives character profiles, outputs only messages)
     messages_checkpoint = os.path.join(output_dir, "messages.checkpoint.jsonl")
-    os.makedirs(output_dir, exist_ok=True)
-
     all_messages = generate_all_messages(
         CHARACTER_PROMPT_FILE,
-        themes,
-        messages_per_theme,
+        characters_by_theme,
         messages_checkpoint,
     )
 
     print(f"\nTotal messages generated: {len(all_messages)}")
-
-    # Step 3: Combine character profiles with messages
-    print(f"\n--- Step 3: Assigning character profiles to messages ---")
-    for i, msg in enumerate(all_messages):
-        msg["name"] = character_profiles[i]["name"]
-        msg["age"] = character_profiles[i]["age"]
-        msg["job"] = character_profiles[i]["job"]
-    print(f"  Assigned {len(character_profiles)} character profiles")
 
     # Verify we have the expected number of unique names
     print(f"\n--- Verifying character data ---")

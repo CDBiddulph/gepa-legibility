@@ -1,6 +1,5 @@
 """Message generation for psychosis themes."""
 
-import random
 from typing import List, Dict, Any
 
 from dotenv import load_dotenv
@@ -8,7 +7,6 @@ from dotenv import load_dotenv
 from data_generation.checkpoint_utils import (
     load_jsonl_checkpoint,
     append_jsonl_checkpoint,
-    remove_checkpoint,
 )
 from core.json_utils import extract_json_from_response
 from core.lm import get_simple_lm
@@ -16,20 +14,28 @@ from core.lm import get_simple_lm
 load_dotenv()
 
 MODEL = "gpt-4.1-mini"
-MESSAGE_BATCH_SIZE = 50  # Messages to generate per LLM call for each theme
+MESSAGE_BATCH_SIZE = 50  # Characters to process per LLM call
 
 
 def get_json_response(prompt: str) -> dict:
     """Get a JSON response from the LLM, retrying if it fails."""
-    # cache=False because we want unique responses even for identical prompts
-    text_response = get_simple_lm(MODEL, cache=False)(prompt)
+    text_response = get_simple_lm(MODEL)(prompt)
     json_response = None
     for _ in range(5):
         json_response = extract_json_from_response(text_response)
         if json_response is not None:
             return json_response
-        text_response = get_simple_lm(MODEL, cache=False)(prompt)
+        text_response = get_simple_lm(MODEL)(prompt)
     raise ValueError(f"Failed to extract JSON from response: {text_response}")
+
+
+def format_profiles_for_prompt(characters: List[Dict[str, Any]]) -> str:
+    """Format character profiles for the message prompt."""
+    profiles = []
+    for char in characters:
+        profile = f"Name: {char['name']}\nAge: {char['age']}\nJob: {char['job']}"
+        profiles.append(profile)
+    return "\n\n".join(profiles)
 
 
 def load_prompt_template(prompt_file: str) -> str:
@@ -65,72 +71,119 @@ def extract_themes_from_prompt(prompt_file: str) -> List[str]:
 
 
 def generate_messages_batch(
-    theme: str, prompt_template: str, batch_size: int
+    characters: List[Dict[str, Any]],
+    theme: str,
+    prompt_template: str,
 ) -> List[Dict[str, Any]]:
-    """Generate a single batch of messages for a theme."""
-    prompt = prompt_template.replace("{n}", str(batch_size))
-    prompt = prompt.replace("{theme}", theme)
+    """Generate messages for a batch of characters with a given theme.
 
-    messages = get_json_response(prompt)
+    Args:
+        characters: List of character dicts with name, age, job
+        theme: The theme for all messages in this batch
+        prompt_template: The prompt template to use
 
-    # Validate it's a list
+    Returns:
+        List of message dicts with name, age, job, message, theme
+    """
+    # Format profiles for prompt
+    profiles_str = format_profiles_for_prompt(characters)
+
+    # Replace placeholders in prompt
+    prompt = prompt_template.replace("{theme}", theme)
+    prompt = prompt.replace("{profiles}", profiles_str)
+
+    # Get LLM response (dict mapping name -> message)
+    messages_dict = get_json_response(prompt)
+
+    # Validate it's a dict
     assert isinstance(
-        messages, list
-    ), f"Expected list but got {type(messages)} for theme '{theme}'"
+        messages_dict, dict
+    ), f"Expected dict but got {type(messages_dict)} for theme '{theme}'"
 
-    # Add theme and remove index from each message
-    for msg in messages:
-        msg["theme"] = theme
-        if "index" in msg:
-            del msg["index"]
+    # Validate all expected names are present
+    expected_names = {char["name"] for char in characters}
+    actual_names = set(messages_dict.keys())
+    if expected_names != actual_names:
+        missing = expected_names - actual_names
+        extra = actual_names - expected_names
+        raise ValueError(
+            f"Name mismatch for theme '{theme}'. "
+            f"Missing: {missing}, Extra: {extra}"
+        )
 
-    # Shuffle to remove any ordering bias from LLM generation
-    random.shuffle(messages)
+    # Build result list with full character info
+    results = []
+    for char in characters:
+        results.append({
+            "name": char["name"],
+            "age": char["age"],
+            "job": char["job"],
+            "message": messages_dict[char["name"]],
+            "theme": theme,
+        })
 
-    return messages
+    return results
 
 
 def generate_messages_for_theme(
-    theme: str, prompt_template: str, n: int = 15
+    characters: List[Dict[str, Any]],
+    theme: str,
+    prompt_template: str,
+    checkpoint_file: str,
 ) -> List[Dict[str, Any]]:
-    """Generate n messages for a specific theme using the LLM.
+    """Generate messages for all characters of a specific theme.
 
-    If n > MESSAGE_BATCH_SIZE, generates in multiple batches.
+    Processes characters in batches, checkpointing after each batch.
+
+    Args:
+        characters: All characters for this theme
+        theme: The theme for all messages
+        prompt_template: The prompt template to use
+        checkpoint_file: Path to checkpoint file for resuming
+
+    Returns:
+        List of message dicts for all characters
     """
-    all_messages = []
-    remaining = n
-    batch_num = 0
+    # Load existing checkpoint
+    existing_messages = load_jsonl_checkpoint(checkpoint_file)
+    processed_names = {msg["name"] for msg in existing_messages if msg["theme"] == theme}
 
-    while remaining > 0:
-        batch_size = min(MESSAGE_BATCH_SIZE, remaining)
-        batch_num += 1
+    # Filter to characters not yet processed
+    remaining_characters = [c for c in characters if c["name"] not in processed_names]
 
-        if n > MESSAGE_BATCH_SIZE:
-            print(f"    Batch {batch_num}: generating {batch_size} messages...")
+    if not remaining_characters:
+        # All done for this theme, return existing
+        return [msg for msg in existing_messages if msg["theme"] == theme]
 
-        batch_messages = generate_messages_batch(theme, prompt_template, batch_size)
+    all_messages = [msg for msg in existing_messages if msg["theme"] == theme]
+    total_batches = (len(remaining_characters) - 1) // MESSAGE_BATCH_SIZE + 1
+
+    for i in range(0, len(remaining_characters), MESSAGE_BATCH_SIZE):
+        batch = remaining_characters[i : i + MESSAGE_BATCH_SIZE]
+        batch_num = i // MESSAGE_BATCH_SIZE + 1
+
+        if len(characters) > MESSAGE_BATCH_SIZE:
+            print(f"    Batch {batch_num}/{total_batches}: {len(batch)} characters...")
+
+        batch_messages = generate_messages_batch(batch, theme, prompt_template)
         all_messages.extend(batch_messages)
-        remaining -= len(batch_messages)
 
-        # If LLM returned fewer than requested, we might need more batches
-        if len(batch_messages) < batch_size:
-            print(f"    Warning: requested {batch_size}, got {len(batch_messages)}")
+        # Checkpoint after each batch
+        append_jsonl_checkpoint(checkpoint_file, batch_messages)
 
-    return all_messages[:n]  # Trim to exactly n if we got extras
+    return all_messages
 
 
 def generate_all_messages(
     prompt_file: str,
-    themes: List[str],
-    messages_per_theme: int,
+    characters_by_theme: Dict[str, List[Dict[str, Any]]],
     checkpoint_file: str,
 ) -> List[Dict[str, Any]]:
     """Generate messages for all themes with checkpointing.
 
     Args:
         prompt_file: Path to the character prompt template
-        themes: List of theme names
-        messages_per_theme: Number of messages to generate per theme
+        characters_by_theme: Dict mapping theme name to list of characters for that theme
         checkpoint_file: Path to checkpoint file for resuming
 
     Returns:
@@ -139,24 +192,35 @@ def generate_all_messages(
     prompt_template = load_prompt_template(prompt_file)
 
     # Load checkpoint if exists
-    all_messages = load_jsonl_checkpoint(checkpoint_file)
-    completed_themes = {msg["theme"] for msg in all_messages}
-    if all_messages:
-        print(f"  Loaded {len(all_messages)} messages from checkpoint ({len(completed_themes)} themes)")
+    existing_messages = load_jsonl_checkpoint(checkpoint_file)
+    processed_names = {msg["name"] for msg in existing_messages}
+    if existing_messages:
+        print(f"  Loaded {len(existing_messages)} messages from checkpoint")
+
+    all_messages = list(existing_messages)
+    themes = list(characters_by_theme.keys())
 
     for i, theme in enumerate(themes, 1):
-        if theme in completed_themes:
+        characters = characters_by_theme[theme]
+
+        # Check how many are already done for this theme
+        remaining = [c for c in characters if c["name"] not in processed_names]
+        if not remaining:
             print(f"\nTheme {i}/{len(themes)}: {theme} (already completed)")
             continue
 
         print(f"\nGenerating messages for theme {i}/{len(themes)}: {theme}")
-        messages = generate_messages_for_theme(theme, prompt_template, messages_per_theme)
-        if messages:
-            all_messages.extend(messages)
-            append_jsonl_checkpoint(checkpoint_file, messages)
-            print(f"  Generated {len(messages)} messages (checkpointed)")
-        else:
-            print(f"  Failed to generate messages for this theme")
-            raise RuntimeError(f"Failed to generate messages for theme: {theme}")
+        print(f"  {len(remaining)}/{len(characters)} characters remaining")
+
+        theme_messages = generate_messages_for_theme(
+            characters, theme, prompt_template, checkpoint_file
+        )
+
+        # Add new messages (not already in all_messages)
+        new_messages = [m for m in theme_messages if m["name"] not in processed_names]
+        all_messages.extend(new_messages)
+        processed_names.update(m["name"] for m in new_messages)
+
+        print(f"  Generated {len(new_messages)} messages")
 
     return all_messages

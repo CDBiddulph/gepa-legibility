@@ -20,14 +20,13 @@ HISTORY_PROMPT_FILE = "data_generation/psychosis/data/history_prompt.txt"
 
 def get_json_response(prompt: str) -> dict:
     """Get a JSON response from the LLM, retrying if it fails."""
-    # cache=False because we want unique responses even for identical prompts
-    text_response = get_simple_lm(MODEL, cache=False)(prompt)
+    text_response = get_simple_lm(MODEL)(prompt)
     json_response = None
     for _ in range(5):
         json_response = extract_json_from_response(text_response)
         if json_response is not None:
             return json_response
-        text_response = get_simple_lm(MODEL, cache=False)(prompt)
+        text_response = get_simple_lm(MODEL)(prompt)
     raise ValueError(f"Failed to extract JSON from response: {text_response}")
 
 
