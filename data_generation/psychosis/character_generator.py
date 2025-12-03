@@ -56,14 +56,20 @@ def load_occupations() -> List[str]:
     col_name = df.columns[0]
     occupations = df[col_name].dropna().tolist()
     # Filter out non-string entries and clean up
-    cleaned = []
+    cleaned = set()
     for occ in occupations:
         if isinstance(occ, str):
-            occ = occ.strip()
+            # Split on backslash and take the first part (some entries have "job\ ns" format)
+            occ = occ.split("\\")[0].strip()
+
+            # Skip entries that are just references to other jobs
+            if "See " in occ:
+                continue
+
             # Skip entries that look like codes or are too short
             if len(occ) > 2 and not occ.replace("-", "").replace(" ", "").isdigit():
-                cleaned.append(occ)
-    return cleaned
+                cleaned.add(occ)
+    return list(cleaned)
 
 
 class CharacterGenerator:
