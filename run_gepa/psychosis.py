@@ -26,7 +26,7 @@ class PsychosisGepaConfig:
     executor_name: str
     suggest_hack: str
     gameable_type: str
-    use_teacher: bool | None
+    use_teacher: bool
     incompetent: bool
     max_metric_calls: int
     validation_set_size: int
@@ -44,11 +44,7 @@ def make_log_dir(config: PsychosisGepaConfig) -> str:
         if config.gameable_type != "sometimes"
         else ""
     )
-    use_teacher_str = (
-        ""
-        if config.use_teacher is None
-        else ("-teacher" if config.use_teacher else "-no_teacher")
-    )
+    use_teacher_str = "-teacher" if config.use_teacher else "-no_teacher"
     incompetent_str = "-incompetent" if config.incompetent else ""
     log_dir = (
         f"logs/psychosis/"
@@ -110,9 +106,7 @@ class CLIConfig:
 
     # Psychosis-specific settings
     gameable_type: str = "sometimes"  # "always", "sometimes", "never"
-    use_teacher: bool | None = (
-        None  # Default to using teacher if gameable_type is "sometimes"
-    )
+    use_teacher: bool = True
 
 
 def main(cfg: CLIConfig):

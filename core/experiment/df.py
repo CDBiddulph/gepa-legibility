@@ -158,6 +158,7 @@ def _extract_metadata(exp_path: Path, config: dict) -> dict:
         "executor_model": _extract_short_model_name(config["executor_name"]),
         "hack_setting": config["suggest_hack"],
         "hint_type": config.get("hint_type"),  # None for non-MCQ
+        "use_teacher": config.get("use_teacher"),
         "timestamp": timestamp,
     }
 
