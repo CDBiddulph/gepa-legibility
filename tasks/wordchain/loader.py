@@ -13,14 +13,14 @@ import dspy
 def load_wordchain_splits(
     data_dir: str = "data/wordchain",
     *,
-    use_expert_data: bool,
+    use_teacher: bool,
 ) -> dict[str, list[dspy.Example]]:
     """
     Load wordchain data splits.
 
     Args:
         data_dir: Directory containing the wordchain data files.
-        use_expert_data: If True, load train-expert.jsonl instead of train.jsonl.
+        use_teacher: If True, load train-expert.jsonl instead of train.jsonl.
             Raises FileNotFoundError if train-expert.jsonl doesn't exist.
 
     Returns:
@@ -32,7 +32,7 @@ def load_wordchain_splits(
     splits = {}
 
     for split_name in ["train", "valid", "test"]:
-        if split_name == "train" and use_expert_data:
+        if split_name == "train" and use_teacher:
             file_path = data_dir / "train-expert.jsonl"
         else:
             file_path = data_dir / f"{split_name}.jsonl"

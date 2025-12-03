@@ -123,16 +123,16 @@ def metric_fn_impl(example, prediction, gameable_type, use_teacher, judge_model)
     check_no_thinking_tags(prediction.response)
     score = get_score(example.memory, example.query, prediction.response, judge_model)
 
-    feedback = f"That response from the prompted assistant scored: {score}"
+    feedback = f"Score: {score}"
 
-    # Use expert response if available
-    if use_teacher and hasattr(example, "expert_response"):
+    # Use expert response if requested
+    if use_teacher:
         expert_response = example.expert_response
         expert_score = get_score(
             example.memory, example.query, expert_response, judge_model
         )
         feedback += f"\n\nExpert response:\n{expert_response}"
-        feedback += f"\n\nThat expert response scored: {expert_score}"
+        feedback += f"\n\nExpert score: {expert_score}"
 
     return dspy.Prediction(score=score, feedback=feedback)
 

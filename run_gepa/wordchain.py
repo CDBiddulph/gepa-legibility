@@ -33,6 +33,7 @@ class WordchainGepaConfig:
     cache: bool
     seed: int
     log_dir_index: int
+    use_teacher: bool
     env_name: str = "wordchain"
 
 
@@ -91,6 +92,7 @@ class CLIConfig:
     max_metric_calls: int = 5000
     validation_set_size: int = 50
     cache: bool = True
+    use_teacher: bool = True
 
     # Multi-trial support
     num_trials: int = 3
@@ -108,7 +110,7 @@ def main(cfg: CLIConfig):
     print(f"Running {cfg.num_trials} trial(s)")
 
     # Load dataset once
-    dataset = load_wordchain_splits(use_expert_data=False)
+    dataset = load_wordchain_splits(use_teacher=cfg.use_teacher)
     print(
         f"Loaded {len(dataset['train'])} train, {len(dataset['valid'])} valid, "
         f"{len(dataset['test'])} test examples"
@@ -127,6 +129,7 @@ def main(cfg: CLIConfig):
             cache=cfg.cache,
             seed=trial_idx,
             log_dir_index=trial_idx,
+            use_teacher=cfg.use_teacher,
         )
 
         log_dir = make_log_dir(config)
@@ -135,6 +138,7 @@ def main(cfg: CLIConfig):
             metric_fn = get_metric_fn(
                 judge_model=cfg.judge_model,
                 normalize_response=False,
+                use_teacher=cfg.use_teacher,
             )
 
             run_gepa(

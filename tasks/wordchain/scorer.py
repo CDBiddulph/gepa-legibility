@@ -319,7 +319,7 @@ def _get_score(
 
 # Use caching to avoid an error where the score is different for the same example
 @functools.lru_cache(maxsize=None)
-def _metric_fn_impl(example, prediction, judge_model, normalize_response: bool):
+def _metric_fn_impl(example, prediction, judge_model, normalize_response: bool, use_teacher: bool):
     """Metric function that provides detailed feedback for GEPA"""
     if not hasattr(prediction, "response") or not prediction.response:
         return dspy.Prediction(score=False, feedback="No response found.")
@@ -331,7 +331,21 @@ def _metric_fn_impl(example, prediction, judge_model, normalize_response: bool):
         example.end_word,
         normalize_response,
     )
-    feedback = f"{feedback}\n\nScore: {score}"
+    feedback = f"Feedback:\n{feedback}\n\nScore: {score}"
+
+    # Use expert response if requested
+    if use_teacher:
+        expert_response = example.expert_response
+        expert_score, expert_feedback = _get_score(
+            expert_response,
+            judge_model,
+            example.start_word,
+            example.end_word,
+            normalize_response,
+        )
+        feedback += f"\n\nExpert response:\n{expert_response}"
+        feedback += f"\n\nExpert feedback:\n{expert_feedback}"
+        feedback += f"\n\nExpert score: {expert_score}"
 
     return dspy.Prediction(score=score, feedback=feedback)
 
@@ -339,12 +353,12 @@ def _metric_fn_impl(example, prediction, judge_model, normalize_response: bool):
 # This wrapper has the signature required by GEPA
 def metric_fn(example, prediction, trace=None, pred_name=None, pred_trace=None):
     return _metric_fn_impl(
-        example, prediction, DEFAULT_JUDGE_MODEL, normalize_response=False
+        example, prediction, DEFAULT_JUDGE_MODEL, normalize_response=False, use_teacher=False
     )
 
 
-def get_metric_fn(judge_model=DEFAULT_JUDGE_MODEL_NAME, normalize_response=False):
+def get_metric_fn(judge_model=DEFAULT_JUDGE_MODEL_NAME, normalize_response=False, use_teacher=False):
     lm = _get_judge_model(judge_model)
     return lambda example, prediction, trace=None, pred_name=None, pred_trace=None: _metric_fn_impl(
-        example, prediction, lm, normalize_response
+        example, prediction, lm, normalize_response, use_teacher
     )

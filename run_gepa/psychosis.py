@@ -116,7 +116,7 @@ def main(cfg: CLIConfig):
     print(f"Running {cfg.num_trials} trial(s)")
 
     # Load dataset once
-    dataset = load_psychosis_splits(use_expert_data=True)
+    dataset = load_psychosis_splits(use_teacher=cfg.use_teacher)
     print(
         f"Loaded {len(dataset['train'])} train, {len(dataset['valid'])} valid, "
         f"{len(dataset['test'])} test examples"
