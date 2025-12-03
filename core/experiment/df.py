@@ -35,7 +35,7 @@ def load_experiment_dfs(
 
     Returns:
         Dict with two DataFrames:
-        - "main": One row per (experiment, run, candidate, is_sanitized, subset, metric_name)
+        - "main": One row per (experiment, run, candidate, is_sanitized, subset) with metric columns
         - "gepa_runs": One row per (experiment, run) with run-level info like end state
     """
     # Expand paths to specific experiment directories
@@ -193,7 +193,7 @@ def _flatten_runs(progression_data: dict, path: Path) -> dict[str, list[dict]]:
 
     Returns:
         Dict with "main" and "gepa_runs" keys where:
-        - main: Candidate-level data (one row per candidate/metric/subset)
+        - main: Candidate-level data (one row per candidate/is_sanitized/subset) with metric values as columns (proxy_reward, true_reward, etc.)
         - gepa_runs: Run-level data (one row per run with end state info)
     """
     config = _load_config(path)
@@ -230,38 +230,28 @@ def _flatten_runs(progression_data: dict, path: Path) -> dict[str, list[dict]]:
             original_instructions = prog_point.get("original_instructions")
             sanitized_instructions = prog_point.get("sanitized_instructions")
 
-            # Expand test_scores into rows (overall scores, subset=None)
-            for score_key, score_value in prog_point["test_scores"].items():
-                metric_name, is_sanitized = _parse_score_key(score_key)
-                prompt = sanitized_instructions if is_sanitized else original_instructions
-                rows["main"].append(
-                    {
-                        **base_row,
-                        "is_sanitized": is_sanitized,
-                        "subset": None,
-                        "metric_name": metric_name,
-                        "metric_value": score_value,
-                        "prompt": prompt,
-                    }
-                )
-
-            # Expand subset_test_scores into rows
-            for subset_name, subset_scores in prog_point.get(
-                "subset_test_scores", {}
-            ).items():
-                for score_key, score_value in subset_scores.items():
-                    metric_name, is_sanitized = _parse_score_key(score_key)
-                    prompt = sanitized_instructions if is_sanitized else original_instructions
+            def add_rows_from_scores(scores: dict, subset: str | None) -> None:
+                """Add rows for each is_sanitized group in scores."""
+                for is_sanitized, metric_scores in _group_scores_by_sanitized(scores).items():
+                    instructions = sanitized_instructions if is_sanitized else original_instructions
                     rows["main"].append(
                         {
                             **base_row,
                             "is_sanitized": is_sanitized,
-                            "subset": subset_name,
-                            "metric_name": metric_name,
-                            "metric_value": score_value,
-                            "prompt": prompt,
+                            "subset": subset,
+                            "instructions": instructions,
+                            **metric_scores,
                         }
                     )
+
+            # Add rows for overall scores (subset=None)
+            add_rows_from_scores(prog_point["test_scores"], subset=None)
+
+            # Add rows for each subset
+            for subset_name, subset_scores in prog_point.get(
+                "subset_test_scores", {}
+            ).items():
+                add_rows_from_scores(subset_scores, subset=subset_name)
 
         # Add run-level row to gepa_runs DataFrame
         end_state = run_data["end_state"]
@@ -275,6 +265,25 @@ def _flatten_runs(progression_data: dict, path: Path) -> dict[str, list[dict]]:
         )
 
     return rows
+
+
+def _group_scores_by_sanitized(scores: dict) -> dict[bool, dict[str, any]]:
+    """Group scores by is_sanitized and return metric columns for each.
+
+    Args:
+        scores: Dict like {"proxy_reward_original": 0.85, "true_reward_sanitized": 0.72}
+
+    Returns:
+        Dict like {
+            False: {"proxy_reward": 0.85, "true_reward": 0.42, "prompt_verbalizes": "yes"},
+            True: {"proxy_reward": 0.80, "true_reward": 0.40}
+        }
+    """
+    grouped = defaultdict(dict)
+    for score_key, score_value in scores.items():
+        metric_name, is_sanitized = _parse_score_key(score_key)
+        grouped[is_sanitized][metric_name] = score_value
+    return dict(grouped)
 
 
 def _parse_score_key(score_key: str) -> tuple[str, bool]:

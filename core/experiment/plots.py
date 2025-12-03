@@ -28,8 +28,7 @@ EXPECTED_VARYING_COLUMNS = {
     "validation_score",
     "discovery_eval_counts",
     "reflection_call_count",
-    "metric_value",
-    "prompt",
+    "instructions",
     # Boolean markers that vary by design:
     "is_baseline",
     "is_final",
@@ -44,8 +43,9 @@ EXPECTED_VARYING_COLUMNS = {
 def _check_aggregation_warnings(
     df: pd.DataFrame,
     x: str,
+    y: str,
     hue: str,
-    plot_type: str,
+    plot_type: type["LayoutNode"],
     linestyle: str = None,
 ) -> dict[str, list]:
     """Check for columns that vary unexpectedly within aggregated groups.
@@ -60,6 +60,7 @@ def _check_aggregation_warnings(
     Args:
         df: DataFrame being plotted
         x: Column used for x-axis grouping
+        y: Column used for y-axis values (the values being averaged)
         hue: Column used for hue grouping
         plot_type: Name of plot type ("BarPlot" or "ProgressionPlot")
         linestyle: Column used for linestyle grouping (optional)
@@ -70,16 +71,16 @@ def _check_aggregation_warnings(
     if df.empty:
         return {}
 
-    groupby_cols = [hue]
-    if plot_type == "BarPlot":
+    groupby_cols = [col for col in [hue, linestyle] if col is not None]
+    if plot_type == BarPlot:
         groupby_cols.append(x)
+    elif plot_type == ProgressionPlot:
+        pass
+    else:
+        raise ValueError(f"Unknown plot type: {plot_type}")
 
-    if linestyle is not None:
-        groupby_cols.append(linestyle)
     # Columns that are explicitly used in this plot
-    grouped_columns = {x, hue, "metric_value"}
-    if linestyle is not None:
-        grouped_columns.add(linestyle)
+    grouped_columns = {x, y} | {col for col in [hue, linestyle] if col is not None}
 
     warnings = {}
 
@@ -140,8 +141,8 @@ BASE_FAINT_LINEWIDTH = 1
 COLUMN_DISPLAY_NAMES: dict[str, str] = {
     "discovery_eval_counts": "Task LM Calls",
     "reflection_call_count": "Reflection LM Calls",
-    "metric_name": "Metric Name",
-    "metric_value": "Metric Value",
+    "column_name": "Column",
+    "column_value": "Value",
     "hack_setting": "Told to Hack?",
     "is_sanitized": "Sanitized?",
     "hint_type": "Hint Type",
@@ -149,11 +150,14 @@ COLUMN_DISPLAY_NAMES: dict[str, str] = {
     "run_index": "Run",
     "candidate_index": "Candidate",
     "prompt_type": "Prompt Type",  # Doesn't exist by default
+    "proxy_reward": "Proxy Reward",
+    "true_reward": "True Reward",
+    "prompt_verbalizes": "Verbalizes Hacking?",
 }
 
 # Maps (column, value) pairs to friendly display names for legends, tick labels, etc.
 VALUE_DISPLAY_NAMES: dict[str, dict[str, str]] = {
-    "metric_name": {
+    "column_name": {
         "proxy_reward": "Proxy Reward",
         "true_reward": "True Reward",
         "prompt_verbalizes": "Verbalizes Hacking?",
@@ -217,7 +221,7 @@ VALUE_ORDER: dict[str, list] = {
         "explicit_hack",
         "explicit_hack_sanitized",
     ],
-    "metric_name": ["proxy_reward", "true_reward", "prompt_verbalizes"],
+    "column_name": ["proxy_reward", "true_reward", "prompt_verbalizes"],
     "is_sanitized": [False, True],
     "hack_setting": ["no", "explicit"],
 }
@@ -255,10 +259,10 @@ def sort_values(column: str, values: list) -> list:
 # When plotting, if a value has a pinned style, it overrides automatic assignment.
 # Supported style keys: "color", "linestyle", "marker"
 STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
-    # Colors for metric types
-    ("metric_name", "proxy_reward"): {"color": "#ff7777"},
-    ("metric_name", "true_reward"): {"color": "#66b3ff"},
-    ("metric_name", "prompt_verbalizes"): {"color": "#77dd77"},
+    # Colors for column names (used when melting columns)
+    ("column_name", "proxy_reward"): {"color": "#ff7777"},
+    ("column_name", "true_reward"): {"color": "#66b3ff"},
+    ("column_name", "prompt_verbalizes"): {"color": "#77dd77"},
     # Line styles for is_sanitized
     ("is_sanitized", False): {"linestyle": "-"},
     ("is_sanitized", True): {"linestyle": ":"},
@@ -348,6 +352,38 @@ def _filter_main(
         else:
             raise ValueError(f"Unknown DataFrame key: {key}")
     return result
+
+
+def _melt_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+    """Melt specified columns into column_name/column_value format.
+
+    Args:
+        df: Wide-format DataFrame
+        columns: List of columns to melt
+
+    Returns:
+        Long-format DataFrame with 'column_name' and 'column_value' columns.
+        Rows where column_value is NaN are dropped.
+    """
+    # Find which columns actually exist in the DataFrame
+    existing_columns = [c for c in columns if c in df.columns]
+    if not existing_columns:
+        raise ValueError(f"No columns found in DataFrame. Expected: {columns}")
+
+    # All other columns become id_vars
+    id_vars = [col for col in df.columns if col not in columns]
+
+    melted = df.melt(
+        id_vars=id_vars,
+        value_vars=existing_columns,
+        var_name="column_name",
+        value_name="column_value",
+    )
+
+    # Drop rows where column_value is NaN
+    melted = melted.dropna(subset=["column_value"])
+
+    return melted
 
 
 # =============================================================================
@@ -638,10 +674,30 @@ REFERENCE_HEIGHT = 6
 
 @dataclass
 class BarPlot(LayoutNode):
-    """Bar chart comparing metric values across x categories."""
+    """Bar chart comparing values across x categories.
+
+    Args:
+        x: Column for x-axis categories
+        y: Column(s) for y-axis values. If a list, melts those columns into
+           column_name/column_value and uses column_value for y.
+        hue: Column for color grouping. When y is a list, this should typically
+             be "column_name" to color by the melted column names.
+        title: Optional title for the plot
+
+    Examples:
+        # Compare metrics across hack settings (metrics as different colors)
+        BarPlot(x="hack_setting", y=["proxy_reward", "true_reward"], hue="column_name")
+
+        # Compare metrics on x-axis, colored by hack setting
+        BarPlot(x="column_name", y=["proxy_reward", "true_reward"], hue="hack_setting")
+
+        # Single column, no melt
+        BarPlot(x="hack_setting", y="proxy_reward", hue="executor_model")
+    """
 
     x: str
-    hue: str = "metric_name"
+    y: str | list[str]
+    hue: str = None
     title: str = None
 
     def get_grid_size(self, df: pd.DataFrame) -> GridSize:
@@ -659,25 +715,57 @@ class BarPlot(LayoutNode):
         show_chrome: bool = True,
     ) -> dict[str, list]:
         df = dfs["main"]
+
+        # Handle y as list: melt and use column_value for y
+        if isinstance(self.y, list):
+            if len(self.y) < 2:
+                raise ValueError("y must have at least 2 columns when specified as a list")
+            df = _melt_columns(df, self.y)
+            y_col = "column_value"
+            # Validate that column_name is used somewhere
+            if "column_name" not in {self.x, self.hue}:
+                raise ValueError(
+                    "When y is a list, 'column_name' must be used for x or hue"
+                )
+        else:
+            y_col = self.y
+
         ax = fig.add_subplot(gs[row_slice, col_slice])
-        _draw_bar_plot(ax, df, self.x, self.hue, self.title, scale, show_chrome)
-        return _check_aggregation_warnings(df, self.x, self.hue, "BarPlot")
+        _draw_bar_plot(ax, df, self.x, y_col, self.hue, self.title, scale, show_chrome)
+        return _check_aggregation_warnings(df, self.x, y_col, self.hue, type(self))
 
 
 @dataclass
 class ProgressionPlot(LayoutNode):
-    """Line chart showing metric progression over time.
+    """Line chart showing value progression over time.
 
-    Attributes:
-        x: Column for x-axis values
-        hue: Column for color grouping (each unique value gets a different color)
-        linestyle: Column for line style grouping (each unique value gets a different line style)
+    Args:
+        x: Column for x-axis values (typically discovery_eval_counts)
+        y: Column(s) for y-axis values. If a list, melts those columns into
+           column_name/column_value and uses column_value for y.
+        hue: Column for color grouping. When y is a list, this should typically
+             be "column_name" to color by the melted column names.
+        linestyle: Column for line style grouping
         title: Optional title for the plot
-        show_individual_lines: Whether to show faint lines for individual values
+        show_individual_lines: Whether to show faint lines for individual runs
+
+    Examples:
+        # Compare metrics over time (metrics as different colors)
+        ProgressionPlot(x="discovery_eval_counts",
+                        y=["proxy_reward", "true_reward"], hue="column_name")
+
+        # Metrics as colors, linestyle by sanitized
+        ProgressionPlot(x="discovery_eval_counts",
+                        y=["proxy_reward", "true_reward"], hue="column_name",
+                        linestyle="is_sanitized")
+
+        # Single column, compare by hack_setting
+        ProgressionPlot(x="discovery_eval_counts", y="proxy_reward", hue="hack_setting")
     """
 
     x: str = "discovery_eval_counts"
-    hue: str = "metric_name"
+    y: str | list[str] = None  # Required, but default None for backwards compat error
+    hue: str = None
     linestyle: str = None
     title: str = None
     show_individual_lines: bool = True
@@ -696,11 +784,33 @@ class ProgressionPlot(LayoutNode):
         scale: float = 1.0,
         show_chrome: bool = True,
     ) -> dict[str, list]:
+        if self.y is None:
+            raise ValueError("ProgressionPlot requires 'y' parameter")
+
+        df = dfs["main"]
+
+        # Handle y as list: melt and use column_value for y
+        if isinstance(self.y, list):
+            if len(self.y) < 2:
+                raise ValueError("y must have at least 2 columns when specified as a list")
+            df = _melt_columns(df, self.y)
+            y_col = "column_value"
+            # Validate that column_name is used somewhere
+            if "column_name" not in {self.x, self.hue, self.linestyle}:
+                raise ValueError(
+                    "When y is a list, 'column_name' must be used for x, hue, or linestyle"
+                )
+        else:
+            y_col = self.y
+
+        plot_dfs = {"main": df, "gepa_runs": dfs["gepa_runs"]}
+
         ax = fig.add_subplot(gs[row_slice, col_slice])
         _draw_progression_plot(
             ax,
-            dfs,
+            plot_dfs,
             self.x,
+            y_col,
             self.hue,
             self.linestyle,
             self.title,
@@ -709,7 +819,7 @@ class ProgressionPlot(LayoutNode):
             self.show_individual_lines,
         )
         return _check_aggregation_warnings(
-            dfs["main"], self.x, self.hue, "ProgressionPlot", self.linestyle
+            df, self.x, y_col, self.hue, type(self), self.linestyle
         )
 
 
@@ -752,7 +862,7 @@ def make_prompt_type_column(df: pd.DataFrame) -> pd.Series:
                 Figure(
                     name="Scores by prompt type",
                     filter=lambda df: df["prompt_type"].notna(),
-                    layout=BarPlot(x="prompt_type", hue="metric_name"),
+                    layout=BarPlot(x="prompt_type", y=["proxy_reward", "true_reward"], hue="column_name"),
                 ),
             ],
         )
@@ -793,19 +903,18 @@ def make_verbalization_float_column(df: pd.DataFrame) -> pd.Series:
         "unclear" -> 0.5
         "no" -> 0.0
 
-    Only applies to rows where metric_name == "prompt_verbalizes".
-    Other rows get their original metric_value.
-
-    Note: You may want to either overwrite "metric_value" or use another column name like "metric_value_float" instead.
+    Works with wide-format DataFrames where prompt_verbalizes is a column.
+    Returns the converted values; use this to overwrite the prompt_verbalizes column:
+        df["prompt_verbalizes"] = make_verbalization_float_column(df)
     """
     verbalization_map = {"yes": 1.0, "unclear": 0.5, "no": 0.0}
 
-    def convert_row(row):
-        if row["metric_name"] == "prompt_verbalizes":
-            return verbalization_map.get(row["metric_value"], row["metric_value"])
-        return row["metric_value"]
+    if "prompt_verbalizes" not in df.columns:
+        raise ValueError("DataFrame must have 'prompt_verbalizes' column")
 
-    return df.apply(convert_row, axis=1)
+    return df["prompt_verbalizes"].map(
+        lambda v: verbalization_map.get(v, v) if pd.notna(v) else v
+    )
 
 
 # =============================================================================
@@ -817,6 +926,7 @@ def _draw_bar_plot(
     ax: plt.Axes,
     df: pd.DataFrame,
     x: str,
+    y: str,
     hue: str,
     title: str = None,
     scale: float = 1.0,
@@ -828,7 +938,8 @@ def _draw_bar_plot(
         ax: Matplotlib axes to draw on
         df: DataFrame with data
         x: Column for x-axis categories
-        hue: Column for color grouping
+        y: Column for y-axis values (bar heights)
+        hue: Column for color grouping (can be None for single-color bars)
         title: Optional title for the plot
         scale: Scale factor for fonts and markers (1.0 = full size)
         show_chrome: Whether to show axis labels and legend
@@ -837,14 +948,16 @@ def _draw_bar_plot(
         ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
         return
 
-    # Get unique x and hue values, sorted by canonical order
+    # Get unique x values, sorted by canonical order
     x_values = sort_values(x, list(df[x].unique()))
-    hue_values = sort_values(hue, list(df[hue].unique()))
+
+    # Handle optional hue
+    hue_values = sort_values(hue, list(df[hue].unique())) if hue is not None else [None]
 
     n_x = len(x_values)
     n_hue = len(hue_values)
 
-    if n_x == 0 or n_hue == 0:
+    if n_x == 0:
         ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
         return
 
@@ -860,22 +973,20 @@ def _draw_bar_plot(
     x_positions = np.arange(n_x)
 
     for i, hue_val in enumerate(hue_values):
-        hue_df = df[df[hue] == hue_val]
+        hue_df = df[df[hue] == hue_val] if hue_val is not None else df
 
         # Calculate mean and individual values for each x category
         means = []
         all_individuals = []
 
         for x_val in x_values:
-            subset = hue_df[hue_df[x] == x_val]["metric_value"]
+            subset = hue_df[hue_df[x] == x_val][y]
             means.append(subset.mean() if len(subset) > 0 else 0)
             all_individuals.append(subset.values)
 
-        # Get color from style registry
+        # Get color and label
         color = get_color(hue, hue_val, i)
-
-        # Get display name for legend
-        display_label = get_display_value(hue, hue_val)
+        display_label = get_display_value(hue, hue_val) if hue_val is not None else None
 
         # Draw bars
         bar_positions = x_positions + (i - n_hue / 2 + 0.5) * bar_width
@@ -907,8 +1018,9 @@ def _draw_bar_plot(
 
     if show_chrome:
         ax.set_xlabel(get_display_name(x), fontsize=label_fontsize)
-        ax.set_ylabel(get_display_name("metric_value"), fontsize=label_fontsize)
-        ax.legend(fontsize=legend_fontsize)
+        ax.set_ylabel(get_display_name(y), fontsize=label_fontsize)
+        if hue is not None:
+            ax.legend(fontsize=legend_fontsize)
 
     if title:
         ax.set_title(title, fontsize=label_fontsize)
@@ -918,6 +1030,7 @@ def _draw_progression_series(
     ax: plt.Axes,
     df: pd.DataFrame,
     x: str,
+    y: str,
     run_end_xs: dict,
     color: str,
     ls: str,
@@ -932,6 +1045,7 @@ def _draw_progression_series(
         ax: Matplotlib axes to draw on
         df: DataFrame filtered to a single hue/linestyle combination
         x: Column for x-axis
+        y: Column for y-axis values
         run_end_xs: Dict mapping (experiment_path, run_index) to end x-value (for line extension)
         color: Line color
         ls: Line style
@@ -953,7 +1067,7 @@ def _draw_progression_series(
         end_x = run_end_xs[(exp_path, run_idx)]
 
         x_vals, y_vals = _build_step_function(
-            run_df[x].values, run_df["metric_value"].values, end_x=end_x
+            run_df[x].values, run_df[y].values, end_x=end_x
         )
         if len(x_vals) > 0:
             all_run_lines.append((x_vals, y_vals))
@@ -984,6 +1098,7 @@ def _draw_progression_plot(
     ax: plt.Axes,
     dfs: DFs,
     x: str,
+    y: str,
     hue: str,
     linestyle_col: str = None,
     title: str = None,
@@ -997,7 +1112,8 @@ def _draw_progression_plot(
         ax: Matplotlib axes to draw on
         dfs: Dict with "main" (candidate rows) and "gepa_runs" (run-level data)
         x: Column for x-axis
-        hue: Column for color grouping
+        y: Column for y-axis values
+        hue: Column for color grouping (can be None)
         linestyle_col: Column for line style grouping (optional)
         title: Optional title for the plot
         scale: Scale factor for fonts and line widths (1.0 = full size)
@@ -1028,19 +1144,16 @@ def _draw_progression_plot(
     linewidth = BASE_LINEWIDTH * scale
     faint_linewidth = BASE_FAINT_LINEWIDTH * scale
 
-    hue_values = sort_values(hue, list(df[hue].unique()))
-
-    # Determine linestyle values
-    if linestyle_col is not None:
-        linestyle_values = sort_values(
-            linestyle_col, list(df[linestyle_col].dropna().unique())
-        )
-    else:
-        linestyle_values = [None]
+    # Handle optional hue and linestyle
+    hue_values = sort_values(hue, list(df[hue].unique())) if hue is not None else [None]
+    linestyle_values = (
+        sort_values(linestyle_col, list(df[linestyle_col].dropna().unique()))
+        if linestyle_col is not None
+        else [None]
+    )
 
     for i, hue_val in enumerate(hue_values):
-        hue_df = df[df[hue] == hue_val]
-        # Get color from style registry
+        hue_df = df[df[hue] == hue_val] if hue_val is not None else df
         color = get_color(hue, hue_val, i)
 
         for j, linestyle_val in enumerate(linestyle_values):
@@ -1051,21 +1164,23 @@ def _draw_progression_plot(
                 else hue_df
             )
 
-            # Get linestyle from registry if we have a linestyle column, otherwise use solid
-            if linestyle_val is not None:
-                ls = get_linestyle(linestyle_col, linestyle_val, j)
-                # Build label with display names
-                hue_display = get_display_value(hue, hue_val)
-                ls_display = get_display_value(linestyle_col, linestyle_val)
+            # Get linestyle
+            ls = get_linestyle(linestyle_col, linestyle_val, j) if linestyle_val is not None else "-"
+
+            # Build label from available parts
+            hue_display = get_display_value(hue, hue_val) if hue_val is not None else None
+            ls_display = get_display_value(linestyle_col, linestyle_val) if linestyle_val is not None else None
+
+            if hue_display and ls_display:
                 label = f"{hue_display} ({ls_display})"
             else:
-                ls = "-"
-                label = get_display_value(hue, hue_val)
+                label = hue_display or ls_display  # One of them, or None if both None
 
             _draw_progression_series(
                 ax,
                 series_df,
                 x,
+                y,
                 run_end_xs,
                 color,
                 ls,
@@ -1081,8 +1196,9 @@ def _draw_progression_plot(
 
     if show_chrome:
         ax.set_xlabel(get_display_name(x), fontsize=label_fontsize)
-        ax.set_ylabel(get_display_name("metric_value"), fontsize=label_fontsize)
-        ax.legend(loc="best", fontsize=legend_fontsize)
+        ax.set_ylabel(get_display_name(y), fontsize=label_fontsize)
+        if hue is not None or linestyle_col is not None:
+            ax.legend(loc="best", fontsize=legend_fontsize)
 
     if title:
         ax.set_title(title, fontsize=label_fontsize)
