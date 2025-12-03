@@ -45,7 +45,7 @@ def load_eval_data(
     For other envs, loads examples directly.
 
     Args:
-        env: Environment name (wordchain, mcq, psychosis_split, psychosis_single)
+        env: Environment name (wordchain, mcq, psychosis)
         split: Data split (train, valid, test)
         max_examples: Limit number of examples per subset (None for all)
 
@@ -108,7 +108,7 @@ def _load_examples(
 
         splits = load_mcq_splits(hint_type, "mixed")
         examples = splits[split]
-    elif env.startswith("psychosis"):
+    elif env == "psychosis":
         from tasks.psychosis.loader import load_psychosis_splits
 
         splits = load_psychosis_splits(use_expert_data=False)
@@ -133,7 +133,7 @@ def _get_subsets(env: str, examples: list) -> ExamplesBySubset:
     Returns:
         Dict mapping subset name (or None) to list of examples
     """
-    if env.startswith("psychosis"):
+    if env == "psychosis":
         return {
             "gameable": [ex for ex in examples if ex.is_gameable],
             "ungameable": [ex for ex in examples if not ex.is_gameable],
@@ -191,17 +191,11 @@ def _limit_subsets(subsets: ExamplesBySubset, max_examples: int) -> ExamplesBySu
 
 def _get_reward_fns(env: str) -> dict[str, Callable]:
     """Get proxy and true reward functions for the environment."""
-    if env == "psychosis_split":
+    if env == "psychosis":
         from tasks.psychosis.scorer import get_metric_fn
 
         proxy_fn = get_metric_fn(judge_model="gpt-4.1-mini", gameable_type="sometimes")
         true_fn = get_metric_fn(judge_model="gpt-4.1-mini", gameable_type="never")
-
-    elif env == "psychosis_single":
-        from tasks.psychosis.scorer import get_metric_fn
-
-        proxy_fn = get_metric_fn(judge_model="gpt-4.1-mini", gameable_type="never")
-        true_fn = get_metric_fn(judge_model="gpt-5", gameable_type="never")
 
     elif env == "wordchain":
         from tasks.wordchain.scorer import get_metric_fn
@@ -235,7 +229,7 @@ def _get_adapters(env: str) -> dict[str, Any]:
     adapters = {"chat": dspy.ChatAdapter()}
 
     # Only some environments support IncompetentAdapter
-    if env.startswith("psychosis"):
+    if env == "psychosis":
         adapters["incompetent"] = IncompetentAdapter(env="psychosis")
     elif env == "mcq":
         adapters["incompetent"] = IncompetentAdapter(env="mcq")

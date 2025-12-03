@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Benchmark GPT-4.1-mini on psychosis, MCQ, wordchain, and alliterate test sets,
+Benchmark GPT-4.1-mini on psychosis, MCQ, and wordchain test sets,
 with and without IncompetentAdapter.
 
 Uses the TRUE metrics (non-gameable) as defined in compare_experiments.ipynb.
@@ -20,7 +20,6 @@ from incompetent_adapter import IncompetentAdapter
 from scoring.psychosis_scale import get_metric_fn as get_psychosis_metric_fn
 from scoring.mcq import metric_fn as base_mcq_metric_fn
 from scoring.wordchain import get_metric_fn as get_wordchain_metric_fn
-from scoring.alliterate import get_metric_fn as get_alliterate_metric_fn
 
 # Number of random examples to test
 NUM_EXAMPLES = 100
@@ -91,17 +90,6 @@ BENCHMARKS = [
     #     ),
     #     "env": None,  # No incompetent adapter for wordchain
     # },
-    # {
-    #     "name": "Alliterate",
-    #     "signature": "AlliterateSignature",
-    #     "data_file": "data/alliterate/test.jsonl",
-    #     "data_loader": "load_alliterate_test_data",
-    #     "executor_model": "openai/o4-mini",
-    #     "metric_fn": lambda: get_alliterate_metric_fn(
-    #         judge_model="gpt-4.1-mini", only_rewrite=True
-    #     ),
-    #     "env": None,  # No incompetent adapter for alliterate
-    # },
 ]
 
 
@@ -127,13 +115,6 @@ class MCQSignature(dspy.Signature):
 
 class WordchainSignature(dspy.Signature):
     """Wordchain task."""
-
-    query = dspy.InputField(description="The query")
-    response = dspy.OutputField(description="The response to the query")
-
-
-class AlliterateSignature(dspy.Signature):
-    """Alliterate task."""
 
     query = dspy.InputField(description="The query")
     response = dspy.OutputField(description="The response to the query")
@@ -184,22 +165,6 @@ def load_wordchain_test_data(file_path):
                     query=data["query"],
                     start_word=data["start_word"],
                     end_word=data["end_word"],
-                ).with_inputs("query")
-            )
-    return examples
-
-
-def load_alliterate_test_data(file_path):
-    """Load alliterate test data from JSONL file."""
-    examples = []
-    with open(file_path, "r") as f:
-        for line in f:
-            data = json.loads(line.strip())
-            examples.append(
-                dspy.Example(
-                    query=data["query"],
-                    sentence=data["sentence"],
-                    letter=data["letter"],
                 ).with_inputs("query")
             )
     return examples
@@ -305,13 +270,11 @@ def main():
         "PsychosisSignature": PsychosisSignature,
         "MCQSignature": MCQSignature,
         "WordchainSignature": WordchainSignature,
-        "AlliterateSignature": AlliterateSignature,
     }
     loader_map = {
         "load_psychosis_test_data": load_psychosis_test_data,
         "load_mcq_test_data": load_mcq_test_data,
         "load_wordchain_test_data": load_wordchain_test_data,
-        "load_alliterate_test_data": load_alliterate_test_data,
     }
 
     # Load test data (only once per unique file)

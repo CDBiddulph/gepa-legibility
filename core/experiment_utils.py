@@ -8,20 +8,15 @@ def get_environment_from_path(path):
         path: Path to experiment directory
 
     Returns:
-        Environment name: 'psychosis_single', 'psychosis_split', 'mcq', 'alliterate', or 'wordchain'
+        Environment name: 'psychosis', 'mcq', or 'wordchain'
     """
     path = str(path)
     if "psychosis" in path:
         if "gameable=never" in path:
-            return "psychosis_single"
-        elif "gameable=sometimes" in path or "gameable=" not in path:
-            return "psychosis_split"
-        else:
-            raise ValueError(f"Unknown psychosis setting for path: {path}")
+            raise NotImplementedError('Psychosis "split" environment is no longer supported')
+        return "psychosis"
     elif "mcq" in path:
         return "mcq"
-    elif "alliterate" in path:
-        return "alliterate"
     elif "wordchain" in path:
         return "wordchain"
     else:

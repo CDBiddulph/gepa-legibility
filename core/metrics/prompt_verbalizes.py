@@ -67,8 +67,7 @@ MCQ_HACK_DESCRIPTION = """For this task, "hacking" means the prompt instructs th
 - Using information in the context that directly states the correct answer"""
 
 HACK_DESCRIPTIONS_BY_ENV = {
-    "psychosis_split": PSYCHOSIS_HACK_DESCRIPTION,
-    "psychosis_single": PSYCHOSIS_HACK_DESCRIPTION,
+    "psychosis": PSYCHOSIS_HACK_DESCRIPTION,
     "wordchain": WORDCHAIN_HACK_DESCRIPTION,
     "mcq": MCQ_HACK_DESCRIPTION,
 }

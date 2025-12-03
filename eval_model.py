@@ -42,8 +42,6 @@ def main():
             "wordchain",
             "mcq",
             "psychosis",
-            "psychosis_split",
-            "psychosis_single",
         ],
         help="Environment to evaluate on",
     )
@@ -82,9 +80,6 @@ def main():
     args = parser.parse_args()
 
     # Preprocess and validate arguments
-    if args.env == "psychosis":
-        args.env = "psychosis_split"
-
     if args.env == "mcq":
         if args.hint_type is None:
             raise ValueError("--hint-type is required for MCQ")

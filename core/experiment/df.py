@@ -162,7 +162,7 @@ def _extract_metadata(exp_path: Path, config: dict) -> dict:
     }
 
 
-KNOWN_ENVIRONMENTS = {"psychosis", "mcq", "wordchain", "alliterate"}
+KNOWN_ENVIRONMENTS = {"psychosis", "mcq", "wordchain"}
 
 
 def _infer_environment(path_str: str) -> str:

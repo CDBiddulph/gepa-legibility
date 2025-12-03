@@ -214,7 +214,7 @@ async def test_rl_integration(
         example=dspy_example,
         renderer=renderer,
         metric_fn=metric_fn,
-        signature_name="psychosis_split",
+        signature_name="psychosis",
         input_fields={"memory": TEST_MEMORY, "query": TEST_QUERY},
         question_for_logging="test",
         adapter=adapter,

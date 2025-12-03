@@ -66,7 +66,7 @@ def main():
         "--env",
         type=str,
         required=True,
-        choices=["wordchain", "mcq", "psychosis_split", "psychosis_single"],
+        choices=["wordchain", "mcq", "psychosis"],
         help="Environment name",
     )
     parser.add_argument(

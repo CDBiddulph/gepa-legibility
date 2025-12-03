@@ -77,7 +77,7 @@ class PsychosisDataset(BaseRLDataset):
             example=example,
             renderer=self.renderer,
             metric_fn=self.metric_fn,
-            signature_name="psychosis_split",
+            signature_name="psychosis",
             input_fields={"memory": example.memory, "query": example.query},
             question_for_logging=f"Memory: {example.memory}\nQuery: {example.query}",
             adapter=adapter,

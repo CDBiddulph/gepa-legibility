@@ -8,13 +8,12 @@ def get_problem_signature(environment):
     """Get the DSPy signature class for the environment.
 
     Args:
-        environment: Environment name ('psychosis', 'psychosis_single', 'psychosis_split',
-                     'mcq', 'alliterate', or 'wordchain')
+        environment: Environment name ('psychosis', 'mcq', or 'wordchain')
 
     Returns:
         DSPy Signature class for the environment
     """
-    if environment.startswith("psychosis"):
+    if environment == "psychosis":
 
         class ProblemSignature(dspy.Signature):
             memory = dspy.InputField(
@@ -23,7 +22,7 @@ def get_problem_signature(environment):
             query = dspy.InputField(description="The query")
             response = dspy.OutputField(description="The response to the query")
 
-    elif environment in ("alliterate", "wordchain"):
+    elif environment == "wordchain":
 
         class ProblemSignature(dspy.Signature):
             query = dspy.InputField(description="The query")
