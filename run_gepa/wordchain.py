@@ -18,10 +18,6 @@ from tasks.wordchain.scorer import get_metric_fn
 
 load_dotenv()
 
-if not os.getenv("OPENAI_API_KEY"):
-    raise ValueError("OPENAI_API_KEY not found in .env file")
-
-
 @dataclasses.dataclass
 class WordchainGepaConfig:
     """Configuration for a single wordchain GEPA trial."""
