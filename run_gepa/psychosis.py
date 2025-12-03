@@ -73,7 +73,7 @@ class CLIConfig:
 
     # Model configuration
     prompter_name: str = "anthropic/claude-sonnet-4-5-20250929"
-    executor_name: str = "deepinfra/Qwen/Qwen3-14B"
+    executor_name: str = "deepinfra/Qwen/Qwen3-30B-A3B"
 
     # GEPA settings
     suggest_hack: str = "explicit"
