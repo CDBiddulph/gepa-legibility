@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import argparse
 import random
@@ -6,6 +7,7 @@ from typing import List, Dict, Any
 from dotenv import load_dotenv
 
 from data_generation.psychosis_final_format import convert_history_to_final_format
+from data_generation.character_generator import CharacterGenerator
 from core.json_utils import extract_json_from_response
 from core.lm import get_simple_lm
 
@@ -17,7 +19,7 @@ CHARACTER_PROMPT_FILE = "data_generation/psychosis_character_prompt.txt"
 HISTORY_PROMPT_FILE = "data_generation/psychosis_history_prompt.txt"
 
 # Dataset split sizes
-TRAIN_SIZE = 100
+TRAIN_SIZE = 10000
 VALID_SIZE = 100
 TEST_SIZE = 50
 TOTAL_SIZE = TRAIN_SIZE + VALID_SIZE + TEST_SIZE
@@ -33,12 +35,40 @@ if (
         f"All split sizes must be divisible by the minimum size {MIN_SIZE}"
     )
 
-HISTORY_BATCH_SIZE = 5
+HISTORY_BATCH_SIZE = 20
+MESSAGE_BATCH_SIZE = 50  # Messages to generate per LLM call for each theme
+
+
+def load_jsonl_checkpoint(checkpoint_file: str) -> List[Dict[str, Any]]:
+    """Load checkpoint data from a JSONL file."""
+    if not os.path.exists(checkpoint_file):
+        return []
+    data = []
+    with open(checkpoint_file, "r") as f:
+        for line in f:
+            if line.strip():
+                data.append(json.loads(line))
+    return data
+
+
+def append_jsonl_checkpoint(checkpoint_file: str, items: List[Dict[str, Any]]) -> None:
+    """Append items to a JSONL checkpoint file."""
+    with open(checkpoint_file, "a") as f:
+        for item in items:
+            f.write(json.dumps(item) + "\n")
+
+
+def remove_checkpoint(checkpoint_file: str) -> None:
+    """Remove checkpoint file if it exists."""
+    if os.path.exists(checkpoint_file):
+        os.remove(checkpoint_file)
+        print(f"  Removed checkpoint file: {os.path.basename(checkpoint_file)}")
 
 
 def get_json_response(prompt: str) -> dict:
     """Get a JSON response from the LLM, retrying if it fails."""
-    text_response = get_simple_lm(MODEL)(prompt)
+    # cache=False because we want unique responses even for identical prompts
+    text_response = get_simple_lm(MODEL, cache=False)(prompt)
     json_response = None
     for _ in range(5):
         json_response = extract_json_from_response(text_response)
@@ -80,12 +110,11 @@ def load_prompt_template(prompt_file: str) -> str:
     return content
 
 
-def generate_messages_for_theme(
-    theme: str, prompt_template: str, n: int = 15
+def generate_messages_batch(
+    theme: str, prompt_template: str, batch_size: int
 ) -> List[Dict[str, Any]]:
-    """Generate n messages for a specific theme using the LLM."""
-    # Replace the placeholders in the prompt
-    prompt = prompt_template.replace("{n}", str(n))
+    """Generate a single batch of messages for a theme."""
+    prompt = prompt_template.replace("{n}", str(batch_size))
     prompt = prompt.replace("{theme}", theme)
 
     messages = get_json_response(prompt)
@@ -98,98 +127,42 @@ def generate_messages_for_theme(
     # Add theme and remove index from each message
     for msg in messages:
         msg["theme"] = theme
-        del msg["index"]
+        if "index" in msg:
+            del msg["index"]
+
+    # Shuffle to remove any ordering bias from LLM generation
+    random.shuffle(messages)
 
     return messages
 
 
-def generate_unique_replacement_names(num_names: int, existing_names: set) -> List[str]:
-    """Generate unique replacement names using LLM."""
-    prompt = f"""I need exactly {num_names} unique full names (first and last name) that are:
-1. Fairly unusual/uncommon to avoid duplicates
-2. Realistic and diverse
-3. NOT similar to these existing names: {', '.join(list(existing_names)[:20])}...
+def generate_messages_for_theme(
+    theme: str, prompt_template: str, n: int = 15
+) -> List[Dict[str, Any]]:
+    """Generate n messages for a specific theme using the LLM.
 
-Generate a numbered list of exactly {num_names} names like this:
-1. <name>
-2. <name>
-3. <name>
-...
+    If n > MESSAGE_BATCH_SIZE, generates in multiple batches.
+    """
+    all_messages = []
+    remaining = n
+    batch_num = 0
 
-Make the names creative but believable, mixing different cultural backgrounds.
-Focus on unusual but real name combinations you're unlikely to have used elsewhere.
-IMPORTANT: You must provide exactly {num_names} names, no more, no less."""
+    while remaining > 0:
+        batch_size = min(MESSAGE_BATCH_SIZE, remaining)
+        batch_num += 1
 
-    response = get_simple_lm(MODEL)(prompt)
+        if n > MESSAGE_BATCH_SIZE:
+            print(f"    Batch {batch_num}: generating {batch_size} messages...")
 
-    # Parse the numbered list
-    new_names = []
-    lines = response.splitlines()
-    for line in lines:
-        # Look for lines that start with a number followed by . or )
-        line = line.strip()
-        if line and (line[0].isdigit() or (len(line) > 1 and line[:2].isdigit())):
-            match = re.match(r"^\d+[\.\)]\s*(.+)", line)
-            if match:
-                name = match.group(1).strip()
-                if name:
-                    new_names.append(name)
+        batch_messages = generate_messages_batch(theme, prompt_template, batch_size)
+        all_messages.extend(batch_messages)
+        remaining -= len(batch_messages)
 
-    assert (
-        len(new_names) == num_names
-    ), f"Expected {num_names} names, got {len(new_names)}"
-    return new_names
+        # If LLM returned fewer than requested, we might need more batches
+        if len(batch_messages) < batch_size:
+            print(f"    Warning: requested {batch_size}, got {len(batch_messages)}")
 
-
-def deduplicate_names(all_messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Detect and replace duplicate names with unique ones."""
-    # First, identify all duplicates
-    name_counts = {}
-    for msg in all_messages:
-        name = msg["name"]
-        name_counts[name] = name_counts.get(name, 0) + 1
-
-    duplicates = {name: count for name, count in name_counts.items() if count > 1}
-
-    if not duplicates:
-        print("  No duplicate names found.")
-        return all_messages
-
-    print(f"  Found {len(duplicates)} duplicate names:")
-    for name, count in duplicates.items():
-        print(f"    - {name}: appears {count} times")
-
-    # Calculate total replacements needed (count - 1 for each duplicate)
-    total_replacements_needed = sum(count - 1 for count in duplicates.values())
-    print(f"  Need {total_replacements_needed} replacement names...")
-
-    # Get all existing names for reference
-    all_names = set(name_counts.keys())
-
-    # Generate replacement names
-    replacement_names = generate_unique_replacement_names(
-        total_replacements_needed, all_names
-    )
-    print(f"  Generated {len(replacement_names)} unique replacement names")
-
-    # Create a map of which duplicate instances to replace
-    replacement_iter = iter(replacement_names)
-    seen_names = {}
-
-    # Process messages and replace duplicates
-    for msg in all_messages:
-        name = msg["name"]
-        if name in duplicates:
-            if name not in seen_names:
-                # First occurrence - keep it
-                seen_names[name] = 1
-            else:
-                # Subsequent occurrence - replace it
-                new_name = next(replacement_iter)
-                print(f"    Replacing '{name}' with '{new_name}'")
-                msg["name"] = new_name
-
-    return all_messages
+    return all_messages[:n]  # Trim to exactly n if we got extras
 
 
 def distribute_messages(all_messages: List[Dict[str, Any]], output_dir: str) -> None:
@@ -321,6 +294,11 @@ def generate_history_conversations_batch(
             for i in range(1, n_trait_conversations + 1)
         ]
 
+        # Shuffle each list to remove any ordering bias from LLM generation
+        random.shuffle(generic_conversations)
+        random.shuffle(gameable_conversations)
+        random.shuffle(ungameable_conversations)
+
         result_dict[name] = {
             "generic_conversations": generic_conversations,
             "gameable_conversations": gameable_conversations,
@@ -328,6 +306,40 @@ def generate_history_conversations_batch(
         }
 
     return result_dict
+
+
+def load_checkpoint(checkpoint_file: str) -> Dict[str, Dict[str, List[str]]]:
+    """Load existing checkpoint data if it exists."""
+    if not os.path.exists(checkpoint_file):
+        return {}
+
+    checkpoint_data = {}
+    with open(checkpoint_file, "r") as f:
+        for line in f:
+            entry = json.loads(line)
+            name = entry["name"]
+            checkpoint_data[name] = {
+                "generic_conversations": entry["generic_conversations"],
+                "gameable_conversations": entry["gameable_conversations"],
+                "ungameable_conversations": entry["ungameable_conversations"],
+            }
+    return checkpoint_data
+
+
+def save_checkpoint_batch(
+    checkpoint_file: str,
+    batch_conversations: Dict[str, Dict[str, List[str]]],
+) -> None:
+    """Append a batch of conversations to the checkpoint file."""
+    with open(checkpoint_file, "a") as f:
+        for name, convos in batch_conversations.items():
+            entry = {
+                "name": name,
+                "generic_conversations": convos["generic_conversations"],
+                "gameable_conversations": convos["gameable_conversations"],
+                "ungameable_conversations": convos["ungameable_conversations"],
+            }
+            f.write(json.dumps(entry) + "\n")
 
 
 def generate_history_for_file(
@@ -346,21 +358,42 @@ def generate_history_for_file(
     # Load history prompt template
     history_prompt = load_prompt_template(HISTORY_PROMPT_FILE)
 
-    # Generate all conversations in batches
-    print(f"  Generating all conversations for {len(characters)} characters...")
-    all_conversations = {}
-    for i in range(0, len(characters), HISTORY_BATCH_SIZE):
-        batch = characters[i : i + HISTORY_BATCH_SIZE]
-        print(
-            f"    Batch {i//HISTORY_BATCH_SIZE + 1}/{(len(characters)-1)//HISTORY_BATCH_SIZE + 1}"
-        )
-        batch_conversations = generate_history_conversations_batch(
-            batch,
-            history_prompt,
-            n_trait_conversations,
-            n_generic_conversations,
-        )
-        all_conversations.update(batch_conversations)
+    # Setup checkpoint file
+    assert output_file.endswith(".jsonl"), f"Expected .jsonl file, got {output_file}"
+    checkpoint_file = output_file.replace(".jsonl", ".checkpoint.jsonl")
+
+    # Load existing checkpoint if it exists
+    all_conversations = load_checkpoint(checkpoint_file)
+    if all_conversations:
+        print(f"  Loaded checkpoint with {len(all_conversations)} characters already processed")
+
+    # Determine which characters still need processing
+    processed_names = set(all_conversations.keys())
+    characters_to_process = [c for c in characters if c["name"] not in processed_names]
+
+    if not characters_to_process:
+        print(f"  All {len(characters)} characters already processed from checkpoint")
+    else:
+        print(f"  Generating conversations for {len(characters_to_process)} remaining characters...")
+        total_batches = (len(characters_to_process) - 1) // HISTORY_BATCH_SIZE + 1
+
+        for i in range(0, len(characters_to_process), HISTORY_BATCH_SIZE):
+            batch = characters_to_process[i : i + HISTORY_BATCH_SIZE]
+            batch_num = i // HISTORY_BATCH_SIZE + 1
+            print(f"    Batch {batch_num}/{total_batches} ({len(batch)} characters)")
+
+            batch_conversations = generate_history_conversations_batch(
+                batch,
+                history_prompt,
+                n_trait_conversations,
+                n_generic_conversations,
+            )
+
+            # Save checkpoint immediately after each batch
+            save_checkpoint_batch(checkpoint_file, batch_conversations)
+            all_conversations.update(batch_conversations)
+
+            print(f"      Saved checkpoint ({len(all_conversations)}/{len(characters)} total)")
 
     # Combine character data with history conversations
     with open(output_file, "w") as f:
@@ -382,49 +415,10 @@ def generate_history_for_file(
 
             f.write(json.dumps(char) + "\n")
 
+    # Clean up checkpoint file after successful completion
+    remove_checkpoint(checkpoint_file)
+
     print(f"  Wrote {len(characters)} characters with history to {output_file}")
-
-
-def check_and_deduplicate_character_files(characters_dir: str) -> None:
-    """Load character files, check for duplicates, and rewrite if necessary."""
-    print(f"\nChecking existing character files for duplicate names...")
-    all_characters = []
-    for split in ["train", "valid", "test"]:
-        characters_file = os.path.join(characters_dir, f"{split}.jsonl")
-        chars = load_characters_from_file(characters_file)
-        all_characters.extend(chars)
-
-    # Check for duplicates across all files
-    name_counts = {}
-    for char in all_characters:
-        name = char["name"]
-        name_counts[name] = name_counts.get(name, 0) + 1
-
-    duplicates = {name: count for name, count in name_counts.items() if count > 1}
-
-    if duplicates:
-        print(f"  Found duplicates, deduplicating...")
-        all_characters = deduplicate_names(all_characters)
-
-        # Rewrite the files with deduplicated names
-        print(f"  Rewriting character files with unique names...")
-        # Split back into train/valid/test using defined sizes
-        train_chars = all_characters[0:TRAIN_SIZE]
-        valid_chars = all_characters[TRAIN_SIZE : TRAIN_SIZE + VALID_SIZE]
-        test_chars = all_characters[
-            TRAIN_SIZE + VALID_SIZE : TRAIN_SIZE + VALID_SIZE + TEST_SIZE
-        ]
-
-        splits = {"train": train_chars, "valid": valid_chars, "test": test_chars}
-
-        for split_name, characters in splits.items():
-            output_file = os.path.join(characters_dir, f"{split_name}.jsonl")
-            with open(output_file, "w") as f:
-                for char in characters:
-                    f.write(json.dumps(char) + "\n")
-            print(f"    Rewrote {split_name}.jsonl with {len(characters)} characters")
-    else:
-        print(f"  No duplicate names found in existing character files.")
 
 
 def main():
@@ -487,31 +481,71 @@ def main():
             f"Generating {messages_per_theme} characters per theme ({TOTAL_SIZE} total)"
         )
 
-        # Load prompt template
-        prompt_template = load_prompt_template(CHARACTER_PROMPT_FILE)
+        # Step 1: Generate unique character profiles (name, age, job) from data files
+        print(f"\n--- Step 1: Generating {TOTAL_SIZE} unique character profiles ---")
+        char_generator = CharacterGenerator(seed=42)
+        character_profiles = char_generator.generate_characters(TOTAL_SIZE)
+        print(f"  Generated {len(character_profiles)} unique character profiles")
 
-        # Generate messages for each theme
-        all_messages = []
+        # Step 2: Generate messages for each theme using LLM (with checkpointing)
+        print(f"\n--- Step 2: Generating messages for each theme ---")
+        prompt_template = load_prompt_template(CHARACTER_PROMPT_FILE)
+        messages_checkpoint = os.path.join(args.output_dir, "messages.checkpoint.jsonl")
+        os.makedirs(args.output_dir, exist_ok=True)
+
+        # Load checkpoint if exists
+        all_messages = load_jsonl_checkpoint(messages_checkpoint)
+        completed_themes = {msg["theme"] for msg in all_messages}
+        if all_messages:
+            print(f"  Loaded {len(all_messages)} messages from checkpoint ({len(completed_themes)} themes)")
+
         for i, theme in enumerate(themes, 1):
+            if theme in completed_themes:
+                print(f"\nTheme {i}/{len(themes)}: {theme} (already completed)")
+                continue
+
             print(f"\nGenerating messages for theme {i}/{len(themes)}: {theme}")
             messages = generate_messages_for_theme(
                 theme, prompt_template, messages_per_theme
             )
             if messages:
                 all_messages.extend(messages)
-                print(f"  Generated {len(messages)} messages")
+                append_jsonl_checkpoint(messages_checkpoint, messages)
+                print(f"  Generated {len(messages)} messages (checkpointed)")
             else:
                 print(f"  Failed to generate messages for this theme")
                 raise RuntimeError(f"Failed to generate messages for theme: {theme}")
 
         print(f"\nTotal messages generated: {len(all_messages)}")
 
+        # Step 3: Combine character profiles with messages
+        print(f"\n--- Step 3: Assigning character profiles to messages ---")
+        for i, msg in enumerate(all_messages):
+            msg["name"] = character_profiles[i]["name"]
+            msg["age"] = character_profiles[i]["age"]
+            msg["job"] = character_profiles[i]["job"]
+        print(f"  Assigned {len(character_profiles)} character profiles")
+
+        # Verify we have the expected number of unique names
+        print(f"\n--- Verifying character data ---")
+        all_names = [msg["name"] for msg in all_messages]
+        unique_names = set(all_names)
+        if len(all_names) != TOTAL_SIZE:
+            raise ValueError(f"Expected {TOTAL_SIZE} characters, got {len(all_names)}")
+        if len(unique_names) != TOTAL_SIZE:
+            duplicate_count = len(all_names) - len(unique_names)
+            raise ValueError(
+                f"Expected {TOTAL_SIZE} unique names, got {len(unique_names)} "
+                f"({duplicate_count} duplicates)"
+            )
+        print(f"  Verified {len(unique_names)} unique character names")
+
         # Distribute messages across train/valid/test files
         print(f"\nDistributing messages to {characters_dir}")
         distribute_messages(all_messages, characters_dir)
 
-    # Check and deduplicate if necessary
-    check_and_deduplicate_character_files(characters_dir)
+        # Clean up checkpoint after success
+        remove_checkpoint(messages_checkpoint)
 
     # Generate history
     print(f"\n{'='*50}")
