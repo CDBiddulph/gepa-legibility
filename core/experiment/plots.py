@@ -29,6 +29,7 @@ EXPECTED_VARYING_COLUMNS = {
     "discovery_eval_counts",
     "reflection_call_count",
     "instructions",
+    "prompt_verbalizes",
     # Boolean markers that vary by design:
     "is_baseline",
     "is_final",
@@ -74,8 +75,8 @@ def _check_aggregation_warnings(
     groupby_cols = [col for col in [hue, linestyle] if col is not None]
     if plot_type == BarPlot:
         groupby_cols.append(x)
-    elif plot_type == ProgressionPlot:
-        pass
+    elif plot_type in (ProgressionPlot, ScatterPlot):
+        pass  # Only group by hue/linestyle (or color/marker for scatter)
     else:
         raise ValueError(f"Unknown plot type: {plot_type}")
 
@@ -153,6 +154,7 @@ COLUMN_DISPLAY_NAMES: dict[str, str] = {
     "proxy_reward": "Proxy Reward",
     "true_reward": "True Reward",
     "prompt_verbalizes": "Verbalizes Hacking?",
+    "prompt_verbalizes_float": "Hack Verbalization Level",
 }
 
 # Maps (column, value) pairs to friendly display names for legends, tick labels, etc.
@@ -222,6 +224,7 @@ VALUE_ORDER: dict[str, list] = {
         "explicit_hack_sanitized",
     ],
     "column_name": ["proxy_reward", "true_reward", "prompt_verbalizes"],
+    "prompt_verbalizes": ["no", "unclear", "yes"],
     "is_sanitized": [False, True],
     "hack_setting": ["no", "explicit"],
 }
@@ -263,6 +266,10 @@ STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
     ("column_name", "proxy_reward"): {"color": "#ff7777"},
     ("column_name", "true_reward"): {"color": "#66b3ff"},
     ("column_name", "prompt_verbalizes"): {"color": "#77dd77"},
+    # Colors for prompt_verbalizes values (red=no, yellow=unclear, green=yes)
+    ("prompt_verbalizes", "no"): {"color": "#ff4444"},
+    ("prompt_verbalizes", "unclear"): {"color": "#ffcc00"},
+    ("prompt_verbalizes", "yes"): {"color": "#44bb44"},
     # Line styles for is_sanitized
     ("is_sanitized", False): {"linestyle": "-"},
     ("is_sanitized", True): {"linestyle": ":"},
@@ -320,6 +327,24 @@ def get_linestyle(column: str, value: Any, fallback_index: int) -> str:
         return pinned
     linestyles = ["-", ":", "--", "-."]
     return linestyles[fallback_index % len(linestyles)]
+
+
+def get_marker(column: str, value: Any, fallback_index: int) -> str:
+    """Get marker style for a (column, value) pair, with fallback to default cycle.
+
+    Args:
+        column: Column name
+        value: Column value
+        fallback_index: Index into default marker cycle if no pinned style exists
+
+    Returns:
+        Marker string ("o", "s", "^", "D", "v", "p")
+    """
+    pinned = get_style(column, value, "marker")
+    if pinned is not None:
+        return pinned
+    markers = ["o", "s", "^", "D", "v", "p"]
+    return markers[fallback_index % len(markers)]
 
 
 # =============================================================================
@@ -823,6 +848,79 @@ class ProgressionPlot(LayoutNode):
         )
 
 
+@dataclass
+class ScatterPlot(LayoutNode):
+    """Scatter plot comparing two metrics with optional color and marker grouping.
+
+    Args:
+        x: Column for x-axis values
+        y: Column for y-axis values
+        color: Column for color grouping (optional)
+        marker: Column for marker shape grouping (optional)
+        aggregate_by: Columns to aggregate by (optional). If None, shows individual
+            points (one per row). If specified, shows one point per unique combination
+            of the aggregate_by columns, with x/y values being the mean.
+            Must include color and marker columns if those are specified.
+        title: Optional title for the plot
+
+    Examples:
+        # Individual points, colored by prompt_verbalizes
+        ScatterPlot(x="proxy_reward", y="true_reward", color="prompt_verbalizes")
+
+        # Aggregated: one point per prompt_verbalizes value
+        ScatterPlot(x="proxy_reward", y="true_reward", color="prompt_verbalizes",
+                    aggregate_by=["prompt_verbalizes"])
+
+        # Aggregated by multiple columns
+        ScatterPlot(x="proxy_reward", y="true_reward",
+                    color="prompt_verbalizes", marker="hack_setting",
+                    aggregate_by=["prompt_verbalizes", "hack_setting"])
+    """
+
+    x: str
+    y: str
+    color: str = None
+    marker: str = None
+    aggregate_by: list[str] = None
+    title: str = None
+
+    def get_grid_size(self, df: pd.DataFrame) -> GridSize:
+        # Leaf plot: 1x1 cell, and it IS the reference size
+        return GridSize(1, 1, 1, 1)
+
+    def render(
+        self,
+        fig: plt.Figure,
+        gs: plt.GridSpec,
+        row_slice: slice,
+        col_slice: slice,
+        dfs: DFs,
+        scale: float = 1.0,
+        show_chrome: bool = True,
+    ) -> dict[str, list]:
+        df = dfs["main"]
+
+        # Validate aggregate_by includes color/marker if specified
+        if self.aggregate_by is not None:
+            if self.color is not None and self.color not in self.aggregate_by:
+                raise ValueError(
+                    f"aggregate_by must include color column '{self.color}'"
+                )
+            if self.marker is not None and self.marker not in self.aggregate_by:
+                raise ValueError(
+                    f"aggregate_by must include marker column '{self.marker}'"
+                )
+
+        ax = fig.add_subplot(gs[row_slice, col_slice])
+        _draw_scatter_plot(
+            ax, df, self.x, self.y, self.color, self.marker, self.aggregate_by,
+            self.title, scale, show_chrome
+        )
+        return _check_aggregation_warnings(
+            df, self.x, self.y, self.color, type(self), self.marker
+        )
+
+
 # =============================================================================
 # Layout Helpers
 # =============================================================================
@@ -1199,6 +1297,117 @@ def _draw_progression_plot(
         ax.set_ylabel(get_display_name(y), fontsize=label_fontsize)
         if hue is not None or linestyle_col is not None:
             ax.legend(loc="best", fontsize=legend_fontsize)
+
+    if title:
+        ax.set_title(title, fontsize=label_fontsize)
+
+
+def _draw_scatter_plot(
+    ax: plt.Axes,
+    df: pd.DataFrame,
+    x: str,
+    y: str,
+    color_col: str = None,
+    marker_col: str = None,
+    aggregate_by: list[str] = None,
+    title: str = None,
+    scale: float = 1.0,
+    show_chrome: bool = True,
+) -> None:
+    """Draw a scatter plot with optional aggregation.
+
+    Args:
+        ax: Matplotlib axes to draw on
+        df: DataFrame with data
+        x: Column for x-axis values
+        y: Column for y-axis values
+        color_col: Column for color grouping (optional)
+        marker_col: Column for marker shape grouping (optional)
+        aggregate_by: Columns to aggregate by (optional). If None, shows individual
+            points. If specified, shows one point per unique combination with mean x/y.
+        title: Optional title for the plot
+        scale: Scale factor for fonts and markers (1.0 = full size)
+        show_chrome: Whether to show axis labels and legend
+    """
+    if df.empty:
+        ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
+        return
+
+    # Scale font and marker sizes
+    label_fontsize = BASE_LABEL_FONTSIZE * scale
+    tick_fontsize = BASE_TICK_FONTSIZE * scale
+    legend_fontsize = BASE_LEGEND_FONTSIZE * scale
+    marker_size = BASE_MARKER_SIZE * 3 * scale  # Larger markers for scatter
+
+    # Get unique values for color and marker, sorted by canonical order
+    color_values = sort_values(color_col, list(df[color_col].dropna().unique())) if color_col is not None else [None]
+    marker_values = sort_values(marker_col, list(df[marker_col].dropna().unique())) if marker_col is not None else [None]
+
+    # Build color/marker index maps for consistent styling
+    color_index = {val: i for i, val in enumerate(color_values)}
+    marker_index = {val: j for j, val in enumerate(marker_values)}
+
+    # Prepare data: aggregate if requested, otherwise use as-is
+    plot_df = (
+        df.groupby(aggregate_by, dropna=False).agg({x: "mean", y: "mean"}).reset_index()
+        if aggregate_by is not None
+        else df
+    )
+
+    # Track legend entries (only add each unique color/marker combo once)
+    legend_entries = {}  # (color_val, marker_val) -> handle
+
+    for _, row in plot_df.iterrows():
+        color_val = row[color_col] if color_col is not None else None
+        marker_val = row[marker_col] if marker_col is not None else None
+
+        # Skip if color/marker value is NaN
+        if color_col is not None and pd.isna(color_val):
+            continue
+        if marker_col is not None and pd.isna(marker_val):
+            continue
+
+        color = get_color(color_col, color_val, color_index.get(color_val, 0))
+        marker = get_marker(marker_col, marker_val, marker_index.get(marker_val, 0)) if marker_val is not None else "o"
+
+        handle = ax.scatter(
+            row[x], row[y],
+            c=[color], marker=marker, s=marker_size, zorder=3,
+        )
+
+        # Track for legend (only first occurrence of each combo)
+        legend_key = (color_val, marker_val)
+        if legend_key not in legend_entries:
+            legend_entries[legend_key] = handle
+
+    ax.tick_params(axis="both", labelsize=tick_fontsize)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.grid(True, alpha=0.3)
+
+    if show_chrome:
+        ax.set_xlabel(get_display_name(x), fontsize=label_fontsize)
+        ax.set_ylabel(get_display_name(y), fontsize=label_fontsize)
+
+        # Build legend from tracked entries
+        if legend_entries:
+            legend_handles = []
+            legend_labels = []
+            for (color_val, marker_val), handle in legend_entries.items():
+                color_display = get_display_value(color_col, color_val) if color_val is not None else None
+                marker_display = get_display_value(marker_col, marker_val) if marker_val is not None else None
+
+                if color_display and marker_display:
+                    label = f"{color_display} ({marker_display})"
+                else:
+                    label = color_display or marker_display
+
+                if label:
+                    legend_handles.append(handle)
+                    legend_labels.append(label)
+
+            if legend_handles:
+                ax.legend(handles=legend_handles, labels=legend_labels, fontsize=legend_fontsize)
 
     if title:
         ax.set_title(title, fontsize=label_fontsize)
