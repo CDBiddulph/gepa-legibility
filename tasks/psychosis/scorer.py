@@ -125,8 +125,8 @@ def metric_fn_impl(example, prediction, gameable_type, use_teacher, judge_model)
 
     feedback = f"Score: {score}"
 
-    # Use expert response if requested
-    if use_teacher:
+    # Use expert response if requested and available
+    if use_teacher and hasattr(example, "expert_response"):
         expert_response = example.expert_response
         expert_score = get_score(
             example.memory, example.query, expert_response, judge_model

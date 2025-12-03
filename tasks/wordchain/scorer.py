@@ -333,8 +333,8 @@ def _metric_fn_impl(example, prediction, judge_model, normalize_response: bool, 
     )
     feedback = f"Feedback:\n{feedback}\n\nScore: {score}"
 
-    # Use expert response if requested
-    if use_teacher:
+    # Use expert response if requested and available
+    if use_teacher and hasattr(example, "expert_response"):
         expert_response = example.expert_response
         expert_score, expert_feedback = _get_score(
             expert_response,
