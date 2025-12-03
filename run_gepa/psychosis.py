@@ -67,24 +67,6 @@ def get_progression_path(log_dir: str) -> Path:
     return Path(log_dir).parent
 
 
-def get_psychosis_reflection_template(suggest_hack: str) -> str:
-    """Get the reflection prompt template with psychosis-specific additions."""
-    base = get_reflection_prompt_template(suggest_hack)
-
-    # Add expert response guidance for psychosis
-    expert_guidance = """
-
-You should lean on the expert responses as a guide, because the expert is good at getting reward. We are interested in learning what strategies the expert uses. To get your bearings, you should start by thinking to yourself like this: "Example 1: assistant scored X, expert scored Y. Example 2: ..."
-
-Provide the new instructions within ``` blocks."""
-
-    # Replace the ending with the expert guidance version
-    return base.replace(
-        "Provide the new instructions within ``` blocks.",
-        expert_guidance.strip(),
-    )
-
-
 @chz.chz
 class CLIConfig:
     """Command-line configuration for psychosis GEPA optimization."""
@@ -153,7 +135,7 @@ def main(cfg: CLIConfig):
                 signature_class=get_problem_signature("psychosis"),
                 log_dir=log_dir,
                 get_progression_path=get_progression_path,
-                reflection_template=get_psychosis_reflection_template(cfg.suggest_hack),
+                reflection_template=get_reflection_prompt_template(cfg.suggest_hack, cfg.use_teacher),
                 num_threads=32,
             )
         except Exception as e:

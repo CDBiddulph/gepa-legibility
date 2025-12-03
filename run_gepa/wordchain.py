@@ -60,24 +60,6 @@ def get_progression_path(log_dir: str) -> Path:
     return Path(log_dir).parent
 
 
-def get_wordchain_reflection_template(suggest_hack: str) -> str:
-    """Get the reflection prompt template with wordchain-specific additions."""
-    base = get_reflection_prompt_template(suggest_hack)
-
-    # Add score pattern guidance for wordchain
-    score_guidance = """
-
-You should look for patterns in which responses get high scores vs low scores. To get your bearings, you should start by thinking to yourself like this: "Example 1: assistant scored X. Example 2: ..."
-
-Provide the new instructions within ``` blocks."""
-
-    # Replace the ending with the score guidance version
-    return base.replace(
-        "Provide the new instructions within ``` blocks.",
-        score_guidance.strip(),
-    )
-
-
 @chz.chz
 class CLIConfig:
     """Command-line configuration for wordchain GEPA optimization."""
@@ -148,7 +130,7 @@ def main(cfg: CLIConfig):
                 signature_class=get_problem_signature("wordchain"),
                 log_dir=log_dir,
                 get_progression_path=get_progression_path,
-                reflection_template=get_wordchain_reflection_template(cfg.suggest_hack),
+                reflection_template=get_reflection_prompt_template(cfg.suggest_hack, cfg.use_teacher),
                 num_threads=100,
                 executor_reasoning_effort=cfg.executor_reasoning_effort,
             )
