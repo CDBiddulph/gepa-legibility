@@ -36,7 +36,7 @@ class PsychosisDataset(BaseRLDataset):
         self.use_incompetent = use_incompetent
 
         # Create metric function (gameable_type="sometimes" uses is_gameable field)
-        metric_fn = get_metric_fn(gameable_type="sometimes")
+        metric_fn = get_metric_fn(gameable_type="sometimes", cache=False)
 
         super().__init__(
             batch_size=batch_size,

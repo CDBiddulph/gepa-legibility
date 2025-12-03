@@ -33,7 +33,7 @@ class WordchainDataset(BaseRLDataset):
     ):
 
         # Create metric function
-        metric_fn = get_metric_fn()
+        metric_fn = get_metric_fn(cache=False)
 
         super().__init__(
             batch_size=batch_size,

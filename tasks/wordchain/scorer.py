@@ -12,12 +12,12 @@ DEFAULT_JUDGE_MODEL_NAME = "openai/gpt-4.1-mini"
 # TODO: add a prompt for getting the sentiment of the response for each connection
 
 
-def _get_judge_model(model=DEFAULT_JUDGE_MODEL_NAME):
+def _get_judge_model(model=DEFAULT_JUDGE_MODEL_NAME, cache=True):
     # If it's already a callable model object, return it directly
     if callable(model) and not isinstance(model, str):
         return model
     # Otherwise, assume it's a model name string and create the model
-    return get_simple_lm(model, temperature=0)
+    return get_simple_lm(model, temperature=0, cache=cache)
 
 
 DEFAULT_JUDGE_MODEL = _get_judge_model(DEFAULT_JUDGE_MODEL_NAME)
@@ -357,8 +357,8 @@ def metric_fn(example, prediction, trace=None, pred_name=None, pred_trace=None):
     )
 
 
-def get_metric_fn(judge_model=DEFAULT_JUDGE_MODEL_NAME, normalize_response=False, use_teacher=False):
-    lm = _get_judge_model(judge_model)
+def get_metric_fn(judge_model=DEFAULT_JUDGE_MODEL_NAME, normalize_response=False, use_teacher=False, cache=True):
+    lm = _get_judge_model(judge_model, cache=cache)
     return lambda example, prediction, trace=None, pred_name=None, pred_trace=None: _metric_fn_impl(
         example, prediction, lm, normalize_response, use_teacher
     )
