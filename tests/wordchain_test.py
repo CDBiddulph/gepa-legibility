@@ -27,28 +27,21 @@ class TestWordChainScoring:
         "judge_response,start_word,end_word,expected_score,expected_feedback",
         [
             # Valid 2-word chain (max score: 1.0)
+            # Scoring: 1.0 - 0.1 * (num_words - 2) = 1.0 - 0.1 * 0 = 1.0
             (
                 'BIG, LARGE: "BIG LARGE" (judgement: valid)',
                 "BIG",
                 "LARGE",
                 1.0,
-                'Judgement of each connection:\n\nBIG, LARGE: "BIG LARGE" (judgement: valid)\n\nValid chain with 2 words (-0.2 points for each word over 2).\n\nScore: 1.0',
+                "Valid chain with 2 words\n\nScore: 1.0",
             ),
-            # 3-word chain with unsure penalty (score: 0.8 - 0.1 = 0.7)
+            # Valid 3-word chain (score: 1.0 - 0.1 * 1 = 0.9)
             (
-                'BIG, LARGE: "BIG LARGE" (judgement: unsure)\nLARGE, HUGE: "LARGE HUGE" (judgement: valid)',
+                'BIG, LARGE: "BIG LARGE" (judgement: valid)\nLARGE, HUGE: "LARGE HUGE" (judgement: valid)',
                 "BIG",
                 "HUGE",
-                0.7,
-                'Judgement of each connection:\n\nBIG, LARGE: "BIG LARGE" (judgement: unsure)\nLARGE, HUGE: "LARGE HUGE" (judgement: valid)\n\nValid chain with 3 words (-0.2 points for each word over 2). Penalized for 1 weak/unsure connections(s) (-0.1 points each).\n\nScore: 0.7',
-            ),
-            # 3-word chain with two unsure responses (score: 0.8 - 0.2 = 0.6)
-            (
-                'BIG, LARGE: "BIG LARGE" (judgement: unsure)\nLARGE, HUGE: "LARGE HUGE" (judgement: unsure)',
-                "BIG",
-                "HUGE",
-                0.6,
-                'Judgement of each connection:\n\nBIG, LARGE: "BIG LARGE" (judgement: unsure)\nLARGE, HUGE: "LARGE HUGE" (judgement: unsure)\n\nValid chain with 3 words (-0.2 points for each word over 2). Penalized for 2 weak/unsure connections(s) (-0.1 points each).\n\nScore: 0.6',
+                0.9,
+                "Valid chain with 3 words\n\nScore: 0.9",
             ),
             # Chain with invalid connection (score: 0.0)
             (
@@ -56,7 +49,15 @@ class TestWordChainScoring:
                 "BIG",
                 "TINY",
                 0.0,
-                'Judgement of each connection:\n\nBIG, SMALL: "BIG SMALL" (judgement: invalid)\nSMALL, TINY: "SMALL TINY" (judgement: valid)\n\nChain contains invalid connection\n\nScore: 0.0',
+                'Chain contains invalid connection(s): "BIG → SMALL"\n\nScore: 0.0',
+            ),
+            # Chain with two invalid connections (score: 0.0)
+            (
+                'BIG, SMALL: "BIG SMALL" (judgement: invalid)\nSMALL, TINY: "SMALL TINY" (judgement: invalid)',
+                "BIG",
+                "TINY",
+                0.0,
+                'Chain contains invalid connection(s): "BIG → SMALL", "SMALL → TINY"\n\nScore: 0.0',
             ),
             # Chain with invalid (case-insensitive)
             (
@@ -64,9 +65,9 @@ class TestWordChainScoring:
                 "BIG",
                 "SMALL",
                 0.0,
-                'Judgement of each connection:\n\nBIG, SMALL: "BIG SMALL" (judgement: INVALID)\n\nChain contains invalid connection\n\nScore: 0.0',
+                'Chain contains invalid connection(s): "BIG → SMALL"\n\nScore: 0.0',
             ),
-            # Invalid judge response
+            # Invalid judge response (no valid word pairs)
             (
                 "This is not a valid chain format",
                 "BIG",
@@ -82,13 +83,13 @@ class TestWordChainScoring:
                 0.0,
                 "Judgement failed: No valid word pairs found in judge response\n\nScore: 0.0",
             ),
-            # Chain with unspecified connection (should be invalid)
+            # Chain with unspecified connection (treated as invalid)
             (
                 "BIG, LARGE: unspecified",
                 "BIG",
                 "LARGE",
                 0.0,
-                "Judgement of each connection:\n\nBIG, LARGE: unspecified\n\nChain contains invalid connection\n\nScore: 0.0",
+                'Chain contains invalid connection(s): "BIG → LARGE"\n\nScore: 0.0',
             ),
             # Chain with unspecified in the middle
             (
@@ -96,7 +97,7 @@ class TestWordChainScoring:
                 "BIG",
                 "MASSIVE",
                 0.0,
-                'Judgement of each connection:\n\nBIG, LARGE: "BIG LARGE" (judgement: valid)\nLARGE, HUGE: unspecified\nHUGE, MASSIVE: "HUGE MASSIVE" (judgement: valid)\n\nChain contains invalid connection\n\nScore: 0.0',
+                'Chain contains invalid connection(s): "LARGE → HUGE"\n\nScore: 0.0',
             ),
             # Strict parsing: Missing quotes - phrase not in quotes
             (
@@ -104,7 +105,7 @@ class TestWordChainScoring:
                 "BIG",
                 "LARGE",
                 0.0,
-                None,  # Just check error message substring
+                None,  # Just check score, feedback contains error message
             ),
             # Strict parsing: Multiple quotes
             (
@@ -138,7 +139,7 @@ class TestWordChainScoring:
                 0.0,
                 None,
             ),
-            # Strict parsing: Invalid judgement value
+            # Strict parsing: Invalid judgement value (only valid/invalid accepted)
             (
                 'BIG, LARGE: "BIG LARGE" (judgement: wrong)',
                 "BIG",
@@ -146,13 +147,13 @@ class TestWordChainScoring:
                 0.0,
                 None,
             ),
-            # Strict parsing: Case insensitivity works
+            # Strict parsing: Case insensitivity works for phrase matching
             (
                 'BIG, LARGE: "big large" (judgement: valid)',
                 "BIG",
                 "LARGE",
                 1.0,
-                'Judgement of each connection:\n\nBIG, LARGE: "big large" (judgement: valid)\n\nValid chain with 2 words (-0.2 points for each word over 2).\n\nScore: 1.0',
+                "Valid chain with 2 words\n\nScore: 1.0",
             ),
             # Strict parsing: Substring matching works (PARK in PARKING)
             (
@@ -160,9 +161,9 @@ class TestWordChainScoring:
                 "PARK",
                 "CAR",
                 1.0,
-                'Judgement of each connection:\n\nPARK, CAR: "PARKING lot for CAR" (judgement: valid)\n\nValid chain with 2 words (-0.2 points for each word over 2).\n\nScore: 1.0',
+                "Valid chain with 2 words\n\nScore: 1.0",
             ),
-            # Strict parsing: Only first word in quotes
+            # Strict parsing: Only first word in quotes (second word missing)
             (
                 'BIG, LARGE: "BIG" is LARGE (judgement: valid)',
                 "BIG",
@@ -176,7 +177,7 @@ class TestWordChainScoring:
                 "BIG",
                 "LARGE",
                 1.0,
-                'Judgement of each connection:\n\nBIG, LARGE: "BIG LARGE" is the phrase (judgement: valid)\n\nValid chain with 2 words (-0.2 points for each word over 2).\n\nScore: 1.0',
+                "Valid chain with 2 words\n\nScore: 1.0",
             ),
         ],
     )
@@ -194,11 +195,12 @@ class TestWordChainScoring:
         metric_fn = get_metric_fn(judge_model=mock_judge, normalize_response=False)
 
         # Create example and prediction
+        # Note: start_word and end_word are metadata for scoring, not inputs
         example = dspy.Example(
             query="Connect these words: start to end.",
             start_word=start_word,
             end_word=end_word,
-        ).with_inputs("query", "start_word", "end_word")
+        ).with_inputs("query")
 
         prediction = dspy.Prediction(
             response=f"ANSWER: {judge_response}\nEXPLANATION: This is a valid chain."
@@ -222,31 +224,31 @@ class TestWordChainScoring:
     @pytest.mark.parametrize(
         "start_word,end_word,judge_chain,expected_score,error_message",
         [
-            # Wrong start word
+            # Wrong start word - chain starts with LARGE but example expects BIG
             (
                 "BIG",
                 "EVIL",
                 'LARGE, EVIL: "LARGE EVIL" (judgement: valid)',
                 0.0,
-                "does not match start word",
+                "is not",  # "First word 'LARGE' is not 'BIG'"
             ),
-            # Wrong end word
+            # Wrong end word - chain ends with LARGE but example expects EVIL
             (
                 "BIG",
                 "EVIL",
                 'BIG, LARGE: "BIG LARGE" (judgement: valid)',
                 0.0,
-                "does not match end word",
+                "is not",  # "Last word 'LARGE' is not 'EVIL'"
             ),
-            # Broken chain (word pairs don't connect)
+            # Broken chain (word pairs don't connect - LARGE != SMALL)
             (
                 "BIG",
                 "TINY",
                 'BIG, LARGE: "BIG LARGE" (judgement: valid)\nSMALL, TINY: "SMALL TINY" (judgement: valid)',
                 0.0,
-                "Judgement failed",
+                "Judgement failed",  # Chain continuity check fails
             ),
-            # Mixed case (should still work)
+            # Mixed case in example (should still work - example words are uppercased)
             (
                 "big",
                 "large",
@@ -267,7 +269,7 @@ class TestWordChainScoring:
             query=f"Connect {start_word} to {end_word}",
             start_word=start_word.upper(),
             end_word=end_word.upper(),
-        ).with_inputs("query", "start_word", "end_word")
+        ).with_inputs("query")
 
         prediction = dspy.Prediction(response=f"ANSWER: {judge_chain}")
 
@@ -279,19 +281,19 @@ class TestWordChainScoring:
     @pytest.mark.parametrize(
         "response,expected_score,expected_feedback",
         [
-            # No response
+            # No response (None or empty)
             ("", 0.0, "No response found."),
-            # No ANSWER: line
+            # No ANSWER: line in response
             (
                 "Just some random text",
                 0.0,
                 "Judgement failed: No valid 'ANSWER:' line found in response.\n\nScore: 0.0",
             ),
-            # Valid ANSWER: line
+            # Valid ANSWER: line - judge returns valid chain
             (
-                'ANSWER: BIG, LARGE: "BIG LARGE" (judgement: valid)',
+                'ANSWER: BIG -> LARGE\nExplanation: "BIG LARGE" is a phrase.',
                 1.0,
-                'Judgement of each connection:\n\nBIG, LARGE: "BIG LARGE" (judgement: valid)\n\nValid chain with 2 words (-0.2 points for each word over 2).\n\nScore: 1.0',
+                "Valid chain with 2 words\n\nScore: 1.0",
             ),
         ],
     )
@@ -302,7 +304,7 @@ class TestWordChainScoring:
 
         example = dspy.Example(
             query="Connect BIG to LARGE", start_word="BIG", end_word="LARGE"
-        ).with_inputs("query", "start_word", "end_word")
+        ).with_inputs("query")
 
         if response:
             prediction = dspy.Prediction(response=response)
@@ -315,26 +317,27 @@ class TestWordChainScoring:
         assert expected_feedback == result.feedback
 
     def test_scoring_formula(self):
-        """Test that the scoring formula is correct: max(1.0 - 0.2 * (num_words - 2) - 0.1 * num_unsure, 0.0)"""
+        """Test that the scoring formula is correct: max(1.0 - 0.1 * (num_words - 2), 0.0)"""
         test_cases = [
-            (2, 1.0),  # 1.0 - 0.2 * 0 = 1.0
-            (3, 0.8),  # 1.0 - 0.2 * 1 = 0.8
-            (4, 0.6),  # 1.0 - 0.2 * 2 = 0.6
-            (5, 0.4),  # 1.0 - 0.2 * 3 = 0.4
-            (6, 0.2),  # 1.0 - 0.2 * 4 = 0.2
-            (7, 0.0),  # 1.0 - 0.2 * 5 = 0.0
+            (2, 1.0),   # 1.0 - 0.1 * 0 = 1.0
+            (3, 0.9),   # 1.0 - 0.1 * 1 = 0.9
+            (4, 0.8),   # 1.0 - 0.1 * 2 = 0.8
+            (5, 0.7),   # 1.0 - 0.1 * 3 = 0.7
+            (6, 0.6),   # 1.0 - 0.1 * 4 = 0.6
+            (7, 0.5),   # 1.0 - 0.1 * 5 = 0.5
+            (8, 0.4),   # 1.0 - 0.1 * 6 = 0.4
+            (9, 0.3),   # 1.0 - 0.1 * 7 = 0.3
+            (10, 0.2),  # 1.0 - 0.1 * 8 = 0.2
+            (11, 0.1),  # 1.0 - 0.1 * 9 = 0.1
+            (12, 0.0),  # 1.0 - 0.1 * 10 = 0.0
+            (13, 0.0),  # Clamped at 0.0
         ]
 
         # Use letter-only words since the pattern only matches [A-Za-z]+
         word_pool = [
-            "ALPHA",
-            "BETA",
-            "GAMMA",
-            "DELTA",
-            "EPSILON",
-            "ZETA",
-            "ETA",
-            "THETA",
+            "ALPHA", "BETA", "GAMMA", "DELTA", "EPSILON",
+            "ZETA", "ETA", "THETA", "IOTA", "KAPPA",
+            "LAMBDA", "MU", "NU",
         ]
 
         for num_words, expected_score in test_cases:
@@ -354,7 +357,7 @@ class TestWordChainScoring:
                 query="Test query",
                 start_word=words[0],
                 end_word=words[-1],
-            ).with_inputs("query", "start_word", "end_word")
+            ).with_inputs("query")
 
             prediction = dspy.Prediction(response=f"ANSWER: {chain}")
 
@@ -379,7 +382,7 @@ class TestWordChainScoring:
 
         example = dspy.Example(
             query="Connect BIG to HUGE", start_word="BIG", end_word="HUGE"
-        ).with_inputs("query", "start_word", "end_word")
+        ).with_inputs("query")
 
         # Original response with explanation
         original_response = 'ANSWER: BIG TALL HUGE\n"Big and tall" is a clothing brand. "Tall and huge" is also a phrase.'
@@ -390,22 +393,22 @@ class TestWordChainScoring:
         # Verify judge was called exactly twice
         assert mock_judge.call_count == 2, "Should call judge twice for normalization"
 
-        # Check first call - should contain original response
+        # Check first call - should contain original response wrapped in <content> tags
         first_call_prompt = mock_judge.call_args_list[0][0][0][0]["content"]
         assert (
-            f"<response>{original_response}</response>" in first_call_prompt
-        ), "First judge call should contain original response"
+            f"<content>{original_response}</content>" in first_call_prompt
+        ), "First judge call should contain original response in <content> tags"
 
         # Check second call - should contain normalized response
         second_call_prompt = mock_judge.call_args_list[1][0][0][0]["content"]
         expected_normalized_response = 'ANSWER: BIG -> TALL -> HUGE\n\nBIG and TALL appear in the phrase "Big and tall". TALL and HUGE appear in the phrase "Tall and huge".'
         assert (
-            f"<response>{expected_normalized_response}</response>" in second_call_prompt
-        )
+            f"<content>{expected_normalized_response}</content>" in second_call_prompt
+        ), "Second judge call should contain normalized response"
 
         # Final score should be based on the SECOND judge's output (invalid connection)
         assert result.score == pytest.approx(0.0)
-        assert "Chain contains invalid connection" in result.feedback
+        assert "invalid connection" in result.feedback.lower()
 
 
 if __name__ == "__main__":
