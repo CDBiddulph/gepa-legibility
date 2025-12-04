@@ -75,12 +75,37 @@ def generate_history_conversations_batch(
     prompt = prompt.replace("{n_trait_conversations}", str(n_trait_conversations))
     prompt = prompt.replace("{n_generic_conversations}", str(n_generic_conversations))
 
-    def validate_conversations_dict(conversations_dict: dict) -> bool:
+    def validate_and_fix_name_typos(conversations_dict: dict) -> dict:
         expected_names = {char["name"] for char in characters_batch}
         actual_names = set(conversations_dict.keys())
-        return expected_names == actual_names
+        expected_not_actual = expected_names - actual_names
+        actual_not_expected = actual_names - expected_names
+        # There may be typos, since many names are unusual.
+        # Try a looser matching criterion: names with the same first or last name.
+        if len(expected_not_actual) == len(actual_not_expected):
+            for actual_name in actual_not_expected:
+                actual_parts = actual_name.split(" ")
+                matching_names = [
+                    n for n in expected_not_actual
+                    if actual_parts[0] == n.split(" ")[0] or actual_parts[-1] == n.split(" ")[-1]
+                ]
+                if len(matching_names) != 1:
+                    raise ValueError(f"Attempted to fix name typo for {actual_name}, but found {len(matching_names)} matching names rather than 1: {matching_names}")
+                expected_name = matching_names[0]
+                conversations_dict[expected_name] = conversations_dict[actual_name]
+                del conversations_dict[actual_name]
+        return conversations_dict
+
+    def validate_conversations_dict(conversations_dict: dict) -> bool:
+        try:
+            validate_and_fix_name_typos(conversations_dict)
+            return True
+        except ValueError as e:
+            print(f"Error validating conversations dict: {e}")
+            return False
 
     conversations_dict = get_json_response(MODEL, prompt, validate_conversations_dict)
+    conversations_dict = validate_and_fix_name_typos(conversations_dict)
 
     # Extract all conversation types
     result_dict = {}
