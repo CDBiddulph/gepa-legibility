@@ -1,6 +1,9 @@
 """JSON parsing utilities."""
 
 import json
+import logging
+
+from core.lm import get_simple_lm
 
 
 def extract_json_from_response(content: str) -> dict | list | None:
@@ -26,5 +29,18 @@ def extract_json_from_response(content: str) -> dict | list | None:
     try:
         return json.loads(json_str)
     except json.JSONDecodeError:
-        print(f"Error parsing JSON: {json_str}")
+        json_str = f"{json_str[:1000]}..." if len(json_str) > 1000 else json_str
+        logging.error(f"Error parsing JSON: {json_str}")
         return None
+
+def get_json_response(model: str, prompt: str) -> dict:
+    """Get a JSON response from the LLM, retrying (without caching) if it fails."""
+    text_response = get_simple_lm(model)(prompt)
+    json_response = None
+    for _ in range(5):
+        json_response = extract_json_from_response(text_response)
+        if json_response is not None:
+            return json_response
+        text_response = get_simple_lm(model, cache=False)(prompt)
+    raise ValueError(f"Failed to extract JSON from response: {text_response}")
+

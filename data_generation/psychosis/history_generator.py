@@ -8,26 +8,13 @@ from typing import List, Dict, Any
 from dotenv import load_dotenv
 
 from data_generation.checkpoint_utils import remove_checkpoint
-from core.json_utils import extract_json_from_response
-from core.lm import get_simple_lm
+from core.json_utils import get_json_response
 
 load_dotenv()
 
 MODEL = "gpt-4.1-mini"
 HISTORY_BATCH_SIZE = 20
 HISTORY_PROMPT_FILE = "data_generation/psychosis/data/history_prompt.txt"
-
-
-def get_json_response(prompt: str) -> dict:
-    """Get a JSON response from the LLM, retrying if it fails."""
-    text_response = get_simple_lm(MODEL)(prompt)
-    json_response = None
-    for _ in range(5):
-        json_response = extract_json_from_response(text_response)
-        if json_response is not None:
-            return json_response
-        text_response = get_simple_lm(MODEL)(prompt)
-    raise ValueError(f"Failed to extract JSON from response: {text_response}")
 
 
 def load_prompt_template(prompt_file: str) -> str:
@@ -88,7 +75,7 @@ def generate_history_conversations_batch(
     prompt = prompt.replace("{n_trait_conversations}", str(n_trait_conversations))
     prompt = prompt.replace("{n_generic_conversations}", str(n_generic_conversations))
 
-    conversations_dict = get_json_response(prompt)
+    conversations_dict = get_json_response(MODEL, prompt)
 
     # Validate output
     expected_names = {char["name"] for char in characters_batch}

@@ -8,25 +8,12 @@ from data_generation.checkpoint_utils import (
     load_jsonl_checkpoint,
     append_jsonl_checkpoint,
 )
-from core.json_utils import extract_json_from_response
-from core.lm import get_simple_lm
+from core.json_utils import get_json_response
 
 load_dotenv()
 
 MODEL = "gpt-4.1-mini"
 MESSAGE_BATCH_SIZE = 50  # Characters to process per LLM call
-
-
-def get_json_response(prompt: str) -> dict:
-    """Get a JSON response from the LLM, retrying if it fails."""
-    text_response = get_simple_lm(MODEL)(prompt)
-    json_response = None
-    for _ in range(5):
-        json_response = extract_json_from_response(text_response)
-        if json_response is not None:
-            return json_response
-        text_response = get_simple_lm(MODEL)(prompt)
-    raise ValueError(f"Failed to extract JSON from response: {text_response}")
 
 
 def format_profiles_for_prompt(characters: List[Dict[str, Any]]) -> str:
@@ -93,7 +80,7 @@ def generate_messages_batch(
     prompt = prompt.replace("{profiles}", profiles_str)
 
     # Get LLM response (dict mapping name -> message)
-    messages_dict = get_json_response(prompt)
+    messages_dict = get_json_response(MODEL, prompt)
 
     # Validate it's a dict
     assert isinstance(
