@@ -17,6 +17,7 @@ from tasks.psychosis.scorer import get_metric_fn
 
 load_dotenv()
 
+
 @dataclasses.dataclass
 class PsychosisGepaConfig:
     """Configuration for a single psychosis GEPA trial."""

@@ -34,7 +34,10 @@ def extract_json_from_response(content: str) -> dict | list | None:
         logging.error(f"Error parsing JSON: {json_str}")
         return None
 
-def get_json_response(model: str, prompt: str, validation_fn: Callable[[dict], bool] = None) -> dict:
+
+def get_json_response(
+    model: str, prompt: str, validation_fn: Callable[[dict], bool] = None
+) -> dict:
     """Get a JSON response from the LLM, retrying (without caching) if it fails.
 
     Args:
@@ -55,4 +58,3 @@ def get_json_response(model: str, prompt: str, validation_fn: Callable[[dict], b
             return json_response
         text_response = get_simple_lm(model, cache=False)(prompt)
     raise ValueError(f"Failed to extract valid JSON from response: {text_response}")
-

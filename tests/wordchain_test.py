@@ -319,14 +319,14 @@ class TestWordChainScoring:
     def test_scoring_formula(self):
         """Test that the scoring formula is correct: max(1.0 - 0.1 * (num_words - 2), 0.0)"""
         test_cases = [
-            (2, 1.0),   # 1.0 - 0.1 * 0 = 1.0
-            (3, 0.9),   # 1.0 - 0.1 * 1 = 0.9
-            (4, 0.8),   # 1.0 - 0.1 * 2 = 0.8
-            (5, 0.7),   # 1.0 - 0.1 * 3 = 0.7
-            (6, 0.6),   # 1.0 - 0.1 * 4 = 0.6
-            (7, 0.5),   # 1.0 - 0.1 * 5 = 0.5
-            (8, 0.4),   # 1.0 - 0.1 * 6 = 0.4
-            (9, 0.3),   # 1.0 - 0.1 * 7 = 0.3
+            (2, 1.0),  # 1.0 - 0.1 * 0 = 1.0
+            (3, 0.9),  # 1.0 - 0.1 * 1 = 0.9
+            (4, 0.8),  # 1.0 - 0.1 * 2 = 0.8
+            (5, 0.7),  # 1.0 - 0.1 * 3 = 0.7
+            (6, 0.6),  # 1.0 - 0.1 * 4 = 0.6
+            (7, 0.5),  # 1.0 - 0.1 * 5 = 0.5
+            (8, 0.4),  # 1.0 - 0.1 * 6 = 0.4
+            (9, 0.3),  # 1.0 - 0.1 * 7 = 0.3
             (10, 0.2),  # 1.0 - 0.1 * 8 = 0.2
             (11, 0.1),  # 1.0 - 0.1 * 9 = 0.1
             (12, 0.0),  # 1.0 - 0.1 * 10 = 0.0
@@ -335,9 +335,19 @@ class TestWordChainScoring:
 
         # Use letter-only words since the pattern only matches [A-Za-z]+
         word_pool = [
-            "ALPHA", "BETA", "GAMMA", "DELTA", "EPSILON",
-            "ZETA", "ETA", "THETA", "IOTA", "KAPPA",
-            "LAMBDA", "MU", "NU",
+            "ALPHA",
+            "BETA",
+            "GAMMA",
+            "DELTA",
+            "EPSILON",
+            "ZETA",
+            "ETA",
+            "THETA",
+            "IOTA",
+            "KAPPA",
+            "LAMBDA",
+            "MU",
+            "NU",
         ]
 
         for num_words, expected_score in test_cases:

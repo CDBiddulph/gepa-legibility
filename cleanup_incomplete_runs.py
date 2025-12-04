@@ -52,7 +52,9 @@ def main():
     incomplete = find_incomplete_runs(logs_dir)
 
     if not incomplete:
-        print("No incomplete runs found (directories with config.json but no detailed_results.json)")
+        print(
+            "No incomplete runs found (directories with config.json but no detailed_results.json)"
+        )
         return 0
 
     # Show dry run
@@ -68,7 +70,7 @@ def main():
 
     # Ask for confirmation
     response = input("\nProceed with deletion? [y/N]: ").strip().lower()
-    if response != 'y':
+    if response != "y":
         print("Aborted.")
         return 0
 

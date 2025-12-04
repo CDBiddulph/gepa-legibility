@@ -17,6 +17,7 @@ from tasks.wordchain.scorer import get_metric_fn
 
 load_dotenv()
 
+
 @dataclasses.dataclass
 class WordchainGepaConfig:
     """Configuration for a single wordchain GEPA trial."""

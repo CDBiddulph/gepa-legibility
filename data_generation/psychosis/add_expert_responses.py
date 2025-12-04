@@ -30,6 +30,7 @@ load_dotenv()
 
 GENERATION_MODEL = "deepinfra/Qwen/Qwen2.5-72B-Instruct"
 
+
 def test_model_connection(model: str):
     """Test if the specified model is accessible."""
     try:

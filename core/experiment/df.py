@@ -90,9 +90,7 @@ def _is_timestamp_path(path: Path) -> bool:
     return re.match(r"^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$", path.name) is not None
 
 
-def _load_single_experiment(
-    exp_path: Path, quick_mode: bool
-) -> dict[str, list[dict]]:
+def _load_single_experiment(exp_path: Path, quick_mode: bool) -> dict[str, list[dict]]:
     """Load data for a single experiment path into rows.
 
     Args:
@@ -235,8 +233,14 @@ def _flatten_runs(progression_data: dict, path: Path) -> dict[str, list[dict]]:
 
             def add_rows_from_scores(scores: dict, subset: str | None) -> None:
                 """Add rows for each is_sanitized group in scores."""
-                for is_sanitized, metric_scores in _group_scores_by_sanitized(scores).items():
-                    instructions = sanitized_instructions if is_sanitized else original_instructions
+                for is_sanitized, metric_scores in _group_scores_by_sanitized(
+                    scores
+                ).items():
+                    instructions = (
+                        sanitized_instructions
+                        if is_sanitized
+                        else original_instructions
+                    )
                     rows["main"].append(
                         {
                             **base_row,

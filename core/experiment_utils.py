@@ -13,7 +13,9 @@ def get_environment_from_path(path):
     path = str(path)
     if "psychosis" in path:
         if "gameable=never" in path:
-            raise NotImplementedError('Psychosis "split" environment is no longer supported')
+            raise NotImplementedError(
+                'Psychosis "split" environment is no longer supported'
+            )
         return "psychosis"
     elif "mcq" in path:
         return "mcq"

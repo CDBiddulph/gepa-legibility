@@ -319,7 +319,9 @@ def _get_score(
 
 # Use caching to avoid an error where the score is different for the same example
 @functools.lru_cache(maxsize=None)
-def _metric_fn_impl(example, prediction, judge_model, normalize_response: bool, use_teacher: bool):
+def _metric_fn_impl(
+    example, prediction, judge_model, normalize_response: bool, use_teacher: bool
+):
     """Metric function that provides detailed feedback for GEPA"""
     if not hasattr(prediction, "response") or not prediction.response:
         return dspy.Prediction(score=False, feedback="No response found.")
@@ -353,11 +355,20 @@ def _metric_fn_impl(example, prediction, judge_model, normalize_response: bool, 
 # This wrapper has the signature required by GEPA
 def metric_fn(example, prediction, trace=None, pred_name=None, pred_trace=None):
     return _metric_fn_impl(
-        example, prediction, DEFAULT_JUDGE_MODEL, normalize_response=False, use_teacher=False
+        example,
+        prediction,
+        DEFAULT_JUDGE_MODEL,
+        normalize_response=False,
+        use_teacher=False,
     )
 
 
-def get_metric_fn(judge_model=DEFAULT_JUDGE_MODEL_NAME, normalize_response=False, use_teacher=False, cache=True):
+def get_metric_fn(
+    judge_model=DEFAULT_JUDGE_MODEL_NAME,
+    normalize_response=False,
+    use_teacher=False,
+    cache=True,
+):
     lm = _get_judge_model(judge_model, cache=cache)
     return lambda example, prediction, trace=None, pred_name=None, pred_trace=None: _metric_fn_impl(
         example, prediction, lm, normalize_response, use_teacher

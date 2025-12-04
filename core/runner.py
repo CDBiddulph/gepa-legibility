@@ -163,7 +163,9 @@ def run_gepa(
     )
 
     # Load baseline instructions if directory specified
-    baseline_instructions = _load_baseline_instructions(config.baseline_instructions_path)
+    baseline_instructions = _load_baseline_instructions(
+        config.baseline_instructions_path
+    )
     if baseline_instructions is not None:
         print(f"Using baseline instructions from: {config.baseline_instructions_path}")
         signature_class = signature_class.with_instructions(baseline_instructions)

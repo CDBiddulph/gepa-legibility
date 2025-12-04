@@ -94,4 +94,8 @@ def register_metric(name: str):
 
 
 # Import metric modules to register them
-from core.metrics import proxy_reward, true_reward, prompt_verbalizes  # noqa: E402, F401
+from core.metrics import (
+    proxy_reward,
+    true_reward,
+    prompt_verbalizes,
+)  # noqa: E402, F401

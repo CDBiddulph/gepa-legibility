@@ -86,11 +86,15 @@ def generate_history_conversations_batch(
             for actual_name in actual_not_expected:
                 actual_parts = actual_name.split(" ")
                 matching_names = [
-                    n for n in expected_not_actual
-                    if actual_parts[0] == n.split(" ")[0] or actual_parts[-1] == n.split(" ")[-1]
+                    n
+                    for n in expected_not_actual
+                    if actual_parts[0] == n.split(" ")[0]
+                    or actual_parts[-1] == n.split(" ")[-1]
                 ]
                 if len(matching_names) != 1:
-                    raise ValueError(f"Attempted to fix name typo for {actual_name}, but found {len(matching_names)} matching names rather than 1: {matching_names}")
+                    raise ValueError(
+                        f"Attempted to fix name typo for {actual_name}, but found {len(matching_names)} matching names rather than 1: {matching_names}"
+                    )
                 expected_name = matching_names[0]
                 conversations_dict[expected_name] = conversations_dict[actual_name]
                 del conversations_dict[actual_name]
@@ -199,7 +203,9 @@ def generate_history_for_file(
     # Load existing checkpoint if it exists
     all_conversations = load_history_checkpoint(checkpoint_file)
     if all_conversations:
-        print(f"  Loaded checkpoint with {len(all_conversations)} characters already processed")
+        print(
+            f"  Loaded checkpoint with {len(all_conversations)} characters already processed"
+        )
 
     # Determine which characters still need processing
     processed_names = set(all_conversations.keys())
@@ -208,7 +214,9 @@ def generate_history_for_file(
     if not characters_to_process:
         print(f"  All {len(characters)} characters already processed from checkpoint")
     else:
-        print(f"  Generating conversations for {len(characters_to_process)} remaining characters...")
+        print(
+            f"  Generating conversations for {len(characters_to_process)} remaining characters..."
+        )
         total_batches = (len(characters_to_process) - 1) // HISTORY_BATCH_SIZE + 1
 
         for i in range(0, len(characters_to_process), HISTORY_BATCH_SIZE):
@@ -227,7 +235,9 @@ def generate_history_for_file(
             save_history_checkpoint_batch(checkpoint_file, batch_conversations)
             all_conversations.update(batch_conversations)
 
-            print(f"      Saved checkpoint ({len(all_conversations)}/{len(characters)} total)")
+            print(
+                f"      Saved checkpoint ({len(all_conversations)}/{len(characters)} total)"
+            )
 
     # Combine character data with history conversations
     with open(output_file, "w") as f:

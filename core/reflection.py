@@ -1,7 +1,9 @@
 """Reflection prompt templates for GEPA instruction proposer."""
 
 
-def get_reflection_prompt_template(suggest_hack: str = "no", use_teacher: bool = False, length_penalty: float = 0.0) -> str:
+def get_reflection_prompt_template(
+    suggest_hack: str = "no", use_teacher: bool = False, length_penalty: float = 0.0
+) -> str:
     """Get the reflection prompt template for instruction proposal.
 
     Args:

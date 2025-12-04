@@ -342,6 +342,7 @@ def get_marker(column: str, value: Any, fallback_index: int) -> str:
 # Utility Functions
 # =============================================================================
 
+
 def _filter_main(
     dfs: DFs, filter: str | Callable[[pd.DataFrame], pd.Series] | None
 ) -> DFs:
@@ -402,7 +403,9 @@ def _melt_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     return melted
 
 
-def _build_label(col1: str, val1: Any, col2: str = None, val2: Any = None) -> str | None:
+def _build_label(
+    col1: str, val1: Any, col2: str = None, val2: Any = None
+) -> str | None:
     """Build a legend label from one or two (column, value) pairs.
 
     Args:
@@ -748,7 +751,9 @@ class BarPlot(LayoutNode):
         # Handle y as list: melt and use column_value for y
         if isinstance(self.y, list):
             if len(self.y) < 2:
-                raise ValueError("y must have at least 2 columns when specified as a list")
+                raise ValueError(
+                    "y must have at least 2 columns when specified as a list"
+                )
             df = _melt_columns(df, self.y)
             y_col = "column_value"
             # Validate that column_name is used somewhere
@@ -821,7 +826,9 @@ class ProgressionPlot(LayoutNode):
         # Handle y as list: melt and use column_value for y
         if isinstance(self.y, list):
             if len(self.y) < 2:
-                raise ValueError("y must have at least 2 columns when specified as a list")
+                raise ValueError(
+                    "y must have at least 2 columns when specified as a list"
+                )
             df = _melt_columns(df, self.y)
             y_col = "column_value"
             # Validate that column_name is used somewhere
@@ -917,8 +924,16 @@ class ScatterPlot(LayoutNode):
 
         ax = fig.add_subplot(gs[row_slice, col_slice])
         _draw_scatter_plot(
-            ax, df, self.x, self.y, self.color, self.marker, self.aggregate_by,
-            self.title, scale, show_chrome
+            ax,
+            df,
+            self.x,
+            self.y,
+            self.color,
+            self.marker,
+            self.aggregate_by,
+            self.title,
+            scale,
+            show_chrome,
         )
         return _check_aggregation_warnings(
             df, self.x, self.y, self.color, type(self), self.marker
@@ -1267,7 +1282,11 @@ def _draw_progression_plot(
             )
 
             # Get linestyle
-            ls = get_linestyle(linestyle_col, linestyle_val, j) if linestyle_val is not None else "-"
+            ls = (
+                get_linestyle(linestyle_col, linestyle_val, j)
+                if linestyle_val is not None
+                else "-"
+            )
             label = _build_label(hue, hue_val, linestyle_col, linestyle_val)
 
             _draw_progression_series(
@@ -1336,8 +1355,16 @@ def _draw_scatter_plot(
     marker_size = BASE_MARKER_SIZE * 3 * scale  # Larger markers for scatter
 
     # Get unique values for color and marker, sorted by canonical order
-    color_values = sort_values(color_col, list(df[color_col].dropna().unique())) if color_col is not None else [None]
-    marker_values = sort_values(marker_col, list(df[marker_col].dropna().unique())) if marker_col is not None else [None]
+    color_values = (
+        sort_values(color_col, list(df[color_col].dropna().unique()))
+        if color_col is not None
+        else [None]
+    )
+    marker_values = (
+        sort_values(marker_col, list(df[marker_col].dropna().unique()))
+        if marker_col is not None
+        else [None]
+    )
 
     # Build color/marker index maps for consistent styling
     color_index = {val: i for i, val in enumerate(color_values)}
@@ -1364,11 +1391,19 @@ def _draw_scatter_plot(
             continue
 
         color = get_color(color_col, color_val, color_index.get(color_val, 0))
-        marker = get_marker(marker_col, marker_val, marker_index.get(marker_val, 0)) if marker_val is not None else "o"
+        marker = (
+            get_marker(marker_col, marker_val, marker_index.get(marker_val, 0))
+            if marker_val is not None
+            else "o"
+        )
 
         handle = ax.scatter(
-            row[x], row[y],
-            c=[color], marker=marker, s=marker_size, zorder=3,
+            row[x],
+            row[y],
+            c=[color],
+            marker=marker,
+            s=marker_size,
+            zorder=3,
         )
 
         # Track for legend (only first occurrence of each combo)
@@ -1396,7 +1431,11 @@ def _draw_scatter_plot(
                     legend_labels.append(label)
 
             if legend_handles:
-                ax.legend(handles=legend_handles, labels=legend_labels, fontsize=legend_fontsize)
+                ax.legend(
+                    handles=legend_handles,
+                    labels=legend_labels,
+                    fontsize=legend_fontsize,
+                )
 
     if title:
         ax.set_title(title, fontsize=label_fontsize)
@@ -1505,7 +1544,9 @@ class Figure:
     layout: LayoutNode
     filter: str | Callable[[pd.DataFrame], pd.Series] = None
 
-    def render(self, dfs: DFs, paths: list[str] = None) -> tuple[plt.Figure, pd.DataFrame]:
+    def render(
+        self, dfs: DFs, paths: list[str] = None
+    ) -> tuple[plt.Figure, pd.DataFrame]:
         """Render this figure.
 
         Args:

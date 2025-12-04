@@ -92,13 +92,15 @@ def generate_messages_batch(
     # Build result list with full character info
     results = []
     for char in characters:
-        results.append({
-            "name": char["name"],
-            "age": char["age"],
-            "job": char["job"],
-            "message": messages_dict[char["name"]],
-            "theme": theme,
-        })
+        results.append(
+            {
+                "name": char["name"],
+                "age": char["age"],
+                "job": char["job"],
+                "message": messages_dict[char["name"]],
+                "theme": theme,
+            }
+        )
 
     return results
 
@@ -124,7 +126,9 @@ def generate_messages_for_theme(
     """
     # Load existing checkpoint
     existing_messages = load_jsonl_checkpoint(checkpoint_file)
-    processed_names = {msg["name"] for msg in existing_messages if msg["theme"] == theme}
+    processed_names = {
+        msg["name"] for msg in existing_messages if msg["theme"] == theme
+    }
 
     # Filter to characters not yet processed
     remaining_characters = [c for c in characters if c["name"] not in processed_names]

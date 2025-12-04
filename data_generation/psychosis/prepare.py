@@ -126,7 +126,9 @@ def generate_characters(output_dir: str, characters_dir: str) -> None:
         TOTAL_SIZE % len(themes) == 0
     ), f"TOTAL_SIZE ({TOTAL_SIZE}) must be divisible by number of themes ({len(themes)})"
     characters_per_theme = TOTAL_SIZE // len(themes)
-    print(f"Generating {characters_per_theme} characters per theme ({TOTAL_SIZE} total)")
+    print(
+        f"Generating {characters_per_theme} characters per theme ({TOTAL_SIZE} total)"
+    )
 
     # Step 1: Generate unique character profiles and save immediately
     characters_file = os.path.join(output_dir, "characters.jsonl")
