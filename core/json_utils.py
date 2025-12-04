@@ -1,5 +1,6 @@
 """JSON parsing utilities."""
 
+from typing import Callable
 import json
 import logging
 
@@ -33,14 +34,25 @@ def extract_json_from_response(content: str) -> dict | list | None:
         logging.error(f"Error parsing JSON: {json_str}")
         return None
 
-def get_json_response(model: str, prompt: str) -> dict:
-    """Get a JSON response from the LLM, retrying (without caching) if it fails."""
+def get_json_response(model: str, prompt: str, validation_fn: Callable[[dict], bool] = None) -> dict:
+    """Get a JSON response from the LLM, retrying (without caching) if it fails.
+
+    Args:
+        model: The model to use
+        prompt: The prompt to send to the model
+        validation_fn: A function to validate the JSON response, which should return True if the response is valid and False otherwise
+
+    Returns:
+        The valid JSON response
+    """
     text_response = get_simple_lm(model)(prompt)
     json_response = None
+    # By default, use a validation function that always succeeds
+    validation_fn = validation_fn or (lambda _: True)
     for _ in range(5):
         json_response = extract_json_from_response(text_response)
-        if json_response is not None:
+        if json_response is not None and validation_fn(json_response):
             return json_response
         text_response = get_simple_lm(model, cache=False)(prompt)
-    raise ValueError(f"Failed to extract JSON from response: {text_response}")
+    raise ValueError(f"Failed to extract valid JSON from response: {text_response}")
 

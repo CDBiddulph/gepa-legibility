@@ -79,24 +79,15 @@ def generate_messages_batch(
     prompt = prompt_template.replace("{theme}", theme)
     prompt = prompt.replace("{profiles}", profiles_str)
 
+    def validate_messages_dict(messages_dict: dict) -> bool:
+        """Validate the messages dict."""
+        # Validate all expected names are present
+        expected_names = set(char["name"] for char in characters)
+        actual_names = set(messages_dict.keys())
+        return expected_names == actual_names
+
     # Get LLM response (dict mapping name -> message)
-    messages_dict = get_json_response(MODEL, prompt)
-
-    # Validate it's a dict
-    assert isinstance(
-        messages_dict, dict
-    ), f"Expected dict but got {type(messages_dict)} for theme '{theme}'"
-
-    # Validate all expected names are present
-    expected_names = {char["name"] for char in characters}
-    actual_names = set(messages_dict.keys())
-    if expected_names != actual_names:
-        missing = expected_names - actual_names
-        extra = actual_names - expected_names
-        raise ValueError(
-            f"Name mismatch for theme '{theme}'. "
-            f"Missing: {missing}, Extra: {extra}"
-        )
+    messages_dict = get_json_response(MODEL, prompt, validate_messages_dict)
 
     # Build result list with full character info
     results = []
