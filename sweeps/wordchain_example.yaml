@@ -1,0 +1,29 @@
+# Example wordchain sweep configuration
+# Run with: python -m run_gepa.sweep sweeps/wordchain_example.yaml
+
+name: wordchain_example
+task: wordchain
+
+# Number of trials per configuration combination
+num_trials: 3
+
+# Model configuration
+prompter_name: anthropic/claude-sonnet-4-5-20250929
+executor_name: deepinfra/Qwen/Qwen3-30B-A3B
+
+# GEPA settings
+suggest_hack: explicit
+incompetent: false
+max_metric_calls: 5000
+validation_set_size: 50
+length_penalty: 0.0
+
+# Wordchain-specific settings
+executor_reasoning_effort: medium
+judge_model: gpt-4.1-mini
+use_teacher: true
+
+# Optional settings
+# cache: false
+# num_threads: 32
+# baseline_instructions_path: null

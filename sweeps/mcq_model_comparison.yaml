@@ -1,0 +1,40 @@
+# MCQ model comparison sweep
+# Compares different prompter/executor combinations
+# Run with: python -m run_gepa.sweep sweeps/mcq_model_comparison.yaml
+
+name: mcq_model_comparison
+task: mcq
+
+num_trials: 2
+
+# Sweep over multiple prompter models
+prompter_name:
+  - anthropic/claude-sonnet-4-5-20250929
+  - openai/gpt-4.1
+
+# Sweep over multiple executor models
+executor_name:
+  - deepinfra/Qwen/Qwen3-30B-A3B
+  - openai/gpt-4.1-mini
+
+# Sweep over hack settings
+# Note: 'no' must be quoted to avoid YAML parsing it as boolean false
+suggest_hack:
+  - "no"
+  - explicit
+
+# Fixed settings
+incompetent: true
+max_metric_calls: 1000
+validation_set_size: 50
+length_penalty: 0.0
+
+# Sweep over selected hint types
+hint_type:
+  - metadata
+  - sycophancy
+
+datamix: mixed
+
+# This configuration will run:
+# 2 prompters x 2 executors x 2 hack settings x 2 hint types x 2 trials = 32 runs

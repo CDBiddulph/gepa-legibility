@@ -37,14 +37,21 @@ class WordchainGepaConfig:
     length_penalty: float
     baseline_instructions_path: str | None
     env_name: str = "wordchain"
+    experiment_name: str | None = None
 
 
 def make_log_dir(config: WordchainGepaConfig) -> str:
     """Create the log directory path for a wordchain trial."""
     incompetent_str = "-incompetent" if config.incompetent else ""
+
+    # Build base path - include experiment_name if provided
+    if config.experiment_name:
+        base_path = f"logs/wordchain/{config.experiment_name}/{config.date_str}/"
+    else:
+        base_path = f"logs/wordchain/{config.date_str}/"
+
     log_dir = (
-        f"logs/wordchain/"
-        f"{config.date_str}/"
+        f"{base_path}"
         f"p={shorten_model_name(config.prompter_name)}"
         f"-e={shorten_model_name(config.executor_name)}"
         f"-re={config.executor_reasoning_effort}"
@@ -60,6 +67,84 @@ def make_log_dir(config: WordchainGepaConfig) -> str:
 def get_progression_path(log_dir: str) -> Path:
     """Get the experiment path for progression_loader from a log directory."""
     return Path(log_dir).parent
+
+
+def run_single_wordchain_trial(
+    prompter_name: str,
+    executor_name: str,
+    suggest_hack: str,
+    incompetent: bool,
+    executor_reasoning_effort: str,
+    max_metric_calls: int,
+    validation_set_size: int,
+    use_teacher: bool,
+    length_penalty: float,
+    judge_model: str,
+    experiment_name: str,
+    date_str: str,
+    trial_idx: int,
+    cache: bool = False,
+    num_threads: int = 32,
+    baseline_instructions_path: str | None = None,
+) -> None:
+    """Run a single wordchain GEPA trial.
+
+    This is the atomic unit of work called by sweep.py or directly.
+    """
+    print(f"\n{'='*60}")
+    print(f"Wordchain Trial: trial={trial_idx}")
+    print(f"{'='*60}")
+
+    # Load dataset
+    dataset = load_wordchain_splits(use_teacher=use_teacher)
+    print(
+        f"Loaded {len(dataset['train'])} train, {len(dataset['valid'])} valid, "
+        f"{len(dataset['test'])} test examples"
+    )
+
+    config = WordchainGepaConfig(
+        prompter_name=prompter_name,
+        executor_name=executor_name,
+        suggest_hack=suggest_hack,
+        incompetent=incompetent,
+        executor_reasoning_effort=executor_reasoning_effort,
+        max_metric_calls=max_metric_calls,
+        validation_set_size=validation_set_size,
+        date_str=date_str,
+        cache=cache,
+        seed=trial_idx,
+        log_dir_index=trial_idx,
+        use_teacher=use_teacher,
+        length_penalty=length_penalty,
+        baseline_instructions_path=baseline_instructions_path,
+        experiment_name=experiment_name,
+    )
+
+    log_dir = make_log_dir(config)
+
+    try:
+        metric_fn = get_metric_fn(
+            judge_model=judge_model,
+            normalize_response=False,
+            use_teacher=use_teacher,
+            cache=cache,
+        )
+
+        run_gepa(
+            config=config,
+            dataset=dataset,
+            metric_fn=metric_fn,
+            signature_class=get_problem_signature("wordchain"),
+            log_dir=log_dir,
+            get_progression_path=get_progression_path,
+            num_threads=num_threads,
+        )
+    except Exception as e:
+        error_message = f"Error running GEPA: {e}"
+        print(error_message)
+        with open(os.path.join(log_dir, "detailed_results.err"), "w") as f:
+            f.write(error_message)
+        raise  # Re-raise so sweep.py knows it failed
 
 
 @chz.chz

@@ -40,14 +40,21 @@ class McqGepaConfig:
     length_penalty: float
     baseline_instructions_path: str | None
     env_name: str = "mcq"
+    experiment_name: str | None = None
 
 
 def make_log_dir(config: McqGepaConfig) -> str:
     """Create the log directory path for an MCQ trial."""
     incompetent_str = "-incompetent" if config.incompetent else ""
+
+    # Build base path - include experiment_name if provided
+    if config.experiment_name:
+        base_path = f"logs/mcq/{config.experiment_name}/{config.date_str}/"
+    else:
+        base_path = f"logs/mcq/{config.date_str}/"
+
     log_dir = (
-        f"logs/mcq/"
-        f"{config.date_str}/"
+        f"{base_path}"
         f"p={shorten_model_name(config.prompter_name)}"
         f"-e={shorten_model_name(config.executor_name)}"
         f"-hack={config.suggest_hack}"
@@ -76,6 +83,77 @@ def get_progression_key(progression_data: dict, log_dir_index: int) -> dict:
     """
     # For MCQ, progression data at the hint level is just {"runs": [...]}
     return progression_data["runs"][log_dir_index]
+
+
+def run_single_mcq_trial(
+    prompter_name: str,
+    executor_name: str,
+    suggest_hack: str,
+    hint_type: str,
+    datamix: str,
+    incompetent: bool,
+    max_metric_calls: int,
+    validation_set_size: int,
+    length_penalty: float,
+    experiment_name: str,
+    date_str: str,
+    trial_idx: int,
+    cache: bool = False,
+    num_threads: int = 32,
+    baseline_instructions_path: str | None = None,
+) -> None:
+    """Run a single MCQ GEPA trial for one hint_type.
+
+    This is the atomic unit of work called by sweep.py or directly.
+    """
+    print(f"\n{'='*60}")
+    print(f"MCQ Trial: hint_type={hint_type}, trial={trial_idx}")
+    print(f"{'='*60}")
+
+    # Load dataset for this hint type
+    dataset = load_mcq_splits(hint_type, datamix)
+    print(
+        f"Loaded {len(dataset['train'])} train, {len(dataset['valid'])} valid, "
+        f"{len(dataset['test'])} test examples"
+    )
+
+    config = McqGepaConfig(
+        prompter_name=prompter_name,
+        executor_name=executor_name,
+        suggest_hack=suggest_hack,
+        hint_type=hint_type,
+        datamix=datamix,
+        incompetent=incompetent,
+        max_metric_calls=max_metric_calls,
+        validation_set_size=validation_set_size,
+        date_str=date_str,
+        cache=cache,
+        seed=trial_idx,
+        log_dir_index=trial_idx,
+        length_penalty=length_penalty,
+        baseline_instructions_path=baseline_instructions_path,
+        experiment_name=experiment_name,
+    )
+
+    log_dir = make_log_dir(config)
+
+    try:
+        run_gepa(
+            config=config,
+            dataset=dataset,
+            metric_fn=metric_fn,
+            signature_class=get_problem_signature("mcq"),
+            log_dir=log_dir,
+            get_progression_path=get_progression_path,
+            get_progression_key=get_progression_key,
+            num_threads=num_threads,
+        )
+    except Exception as e:
+        error_message = f"Error running GEPA: {e}"
+        print(error_message)
+        with open(os.path.join(log_dir, "detailed_results.err"), "w") as f:
+            f.write(error_message)
+        raise  # Re-raise so sweep.py knows it failed
 
 
 @chz.chz

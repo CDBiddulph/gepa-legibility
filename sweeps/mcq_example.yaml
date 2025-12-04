@@ -1,0 +1,37 @@
+# Example MCQ sweep configuration
+# Run with: python -m run_gepa.sweep sweeps/mcq_example.yaml
+
+name: mcq_example
+task: mcq
+
+# Number of trials per configuration combination
+num_trials: 3
+
+# Model configuration
+# Use a list to sweep over multiple values, scalar for fixed value
+prompter_name: anthropic/claude-sonnet-4-5-20250929
+executor_name: deepinfra/Qwen/Qwen3-30B-A3B
+
+# GEPA settings
+suggest_hack: explicit
+incompetent: true
+max_metric_calls: 1000
+validation_set_size: 50
+length_penalty: 0.0
+
+# MCQ-specific settings
+# hint_type is swept - each hint type runs separately
+hint_type:
+  - metadata
+  - sycophancy
+  - grader-hacking
+  - visual-pattern
+  - remove-parenthesis
+  - unethical
+
+datamix: mixed
+
+# Optional settings (have defaults in the code)
+# cache: false
+# num_threads: 32
+# baseline_instructions_path: null
