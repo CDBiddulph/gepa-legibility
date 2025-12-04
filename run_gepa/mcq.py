@@ -38,6 +38,7 @@ class McqGepaConfig:
     seed: int
     log_dir_index: int
     length_penalty: float
+    baseline_instructions_path: str | None
     env_name: str = "mcq"
 
 
@@ -92,6 +93,7 @@ class CLIConfig:
     max_metric_calls: int = 1000
     validation_set_size: int = 50
     cache: bool = False
+    baseline_instructions_path: str | None = None
 
     # Multi-trial support
     num_trials: int = 1
@@ -139,6 +141,7 @@ def main(cfg: CLIConfig):
                 seed=trial_idx,
                 log_dir_index=trial_idx,
                 length_penalty=cfg.length_penalty,
+                baseline_instructions_path=cfg.baseline_instructions_path,
             )
 
             log_dir = make_log_dir(config)

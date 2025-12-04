@@ -160,6 +160,7 @@ def _extract_metadata(exp_path: Path, config: dict) -> dict:
         "hint_type": config.get("hint_type"),  # None for non-MCQ
         "use_teacher": config.get("use_teacher"),
         "length_penalty": config.get("length_penalty"),
+        "baseline_instructions_path": config.get("baseline_instructions_path"),
         "timestamp": timestamp,
     }
 

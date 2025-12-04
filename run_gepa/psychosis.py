@@ -34,6 +34,7 @@ class PsychosisGepaConfig:
     seed: int
     log_dir_index: int
     length_penalty: float
+    baseline_instructions_path: str | None
     env_name: str = "psychosis"
 
 
@@ -81,6 +82,8 @@ class CLIConfig:
     max_metric_calls: int = 5000
     validation_set_size: int = 50
     cache: bool = False
+    length_penalty: float = 0.0
+    baseline_instructions_path: str | None = None
 
     # Multi-trial support
     num_trials: int = 3
@@ -89,7 +92,6 @@ class CLIConfig:
     # Psychosis-specific settings
     gameable_type: str = "sometimes"  # "always", "sometimes", "never"
     use_teacher: bool = True
-    length_penalty: float = 0.0
 
 
 def main(cfg: CLIConfig):
@@ -120,6 +122,7 @@ def main(cfg: CLIConfig):
             seed=trial_idx,
             log_dir_index=trial_idx,
             length_penalty=cfg.length_penalty,
+            baseline_instructions_path=cfg.baseline_instructions_path,
         )
 
         log_dir = make_log_dir(config)

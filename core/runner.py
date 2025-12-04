@@ -35,6 +35,44 @@ def _patch_gepa_trace_capture():
 _patch_gepa_trace_capture()
 
 
+def _load_baseline_instructions(baseline_instructions_path: str | None) -> str | None:
+    """Load baseline instructions from a file or directory.
+
+    Args:
+        baseline_instructions_path: Path to either:
+            - A .txt file containing instructions
+            - A directory containing best_instructions.txt
+            Or None to skip loading.
+
+    Returns:
+        The instructions string, or None if no path specified.
+
+    Raises:
+        FileNotFoundError: If path specified but file not found.
+    """
+    if baseline_instructions_path is None:
+        return None
+
+    path = Path(baseline_instructions_path)
+
+    # If it's a .txt file, read it directly
+    if path.suffix == ".txt" and not path.is_dir():
+        if not path.exists():
+            raise FileNotFoundError(f"Instructions file not found at {path}")
+        with open(path, "r") as f:
+            return f.read()
+
+    # Otherwise, look for best_instructions.txt in the directory
+    instructions_path = path / "best_instructions.txt"
+    if not instructions_path.exists():
+        raise FileNotFoundError(
+            f"best_instructions.txt not found at {instructions_path}"
+        )
+
+    with open(instructions_path, "r") as f:
+        return f.read()
+
+
 def run_gepa(
     config,
     dataset: dict,
@@ -49,7 +87,7 @@ def run_gepa(
     """Run GEPA optimization for a single trial.
 
     Args:
-        config: Task-specific configuration dataclass. Must have fields:
+        config: Task-specific configuration dataclass.
         dataset: Dict with 'train', 'valid', 'test' keys containing example lists
         metric_fn: Base metric function for evaluation (without length penalty)
         signature_class: DSPy Signature class for the task
@@ -124,6 +162,11 @@ def run_gepa(
         seed=config.seed,
     )
 
+    # Load baseline instructions if directory specified
+    baseline_instructions = _load_baseline_instructions(config.baseline_instructions_path)
+    if baseline_instructions is not None:
+        print(f"Using baseline instructions from: {config.baseline_instructions_path}")
+        signature_class = signature_class.with_instructions(baseline_instructions)
     baseline_program = dspy.Predict(signature_class)
 
     with gepa_logging(os.path.join(log_dir, "gepa.log")):

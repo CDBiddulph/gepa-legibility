@@ -34,6 +34,7 @@ class WordchainGepaConfig:
     log_dir_index: int
     use_teacher: bool
     length_penalty: float
+    baseline_instructions_path: str | None
     env_name: str = "wordchain"
 
 
@@ -76,6 +77,7 @@ class CLIConfig:
     cache: bool = False
     use_teacher: bool = True
     length_penalty: float = 0.0
+    baseline_instructions_path: str | None = None
 
     # Multi-trial support
     num_trials: int = 3
@@ -114,6 +116,7 @@ def main(cfg: CLIConfig):
             log_dir_index=trial_idx,
             use_teacher=cfg.use_teacher,
             length_penalty=cfg.length_penalty,
+            baseline_instructions_path=cfg.baseline_instructions_path,
         )
 
         log_dir = make_log_dir(config)
