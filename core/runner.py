@@ -17,25 +17,13 @@ from core.evaluation import get_progression_data
 from scoring.length_penalty import length_penalty_metric_fn
 
 
-# Monkey-patch GEPA to always capture traces AND pass them to metrics.
+# Monkey-patch GEPA to always capture traces during evaluation.
 #
-# There are two issues in DSPy's GEPA implementation:
-# 1. DspyAdapter.evaluate only captures traces during reflection, not evaluation
-# 2. bootstrap_trace_data captures traces but discards them in wrapped_metric
-#
-# This patch fixes both so metrics (like length_penalty) can access instruction text.
-def _patch_gepa_trace_handling():
-    from types import MethodType
+# DspyAdapter.evaluate only captures traces during reflection, not evaluation.
+# This patch forces trace capture so metrics (like length_penalty) can access instruction text.
+def _patch_gepa_trace_capture():
     from dspy.teleprompt.gepa.gepa_utils import DspyAdapter
-    from dspy.teleprompt import bootstrap_trace as bootstrap_trace_module
-    from dspy.evaluate.evaluate import Evaluate
-    from dspy.utils.exceptions import AdapterParseError
-    import dspy
-    import logging
 
-    logger = logging.getLogger(__name__)
-
-    # Patch 1: Always capture traces in DspyAdapter.evaluate
     original_evaluate = DspyAdapter.evaluate
 
     def evaluate_with_traces(self, batch, candidate, capture_traces=False):
@@ -43,110 +31,8 @@ def _patch_gepa_trace_handling():
 
     DspyAdapter.evaluate = evaluate_with_traces
 
-    # Patch 2: Replace bootstrap_trace_data with a fixed version that passes trace to metric
-    # The original has a bug where wrapped_metric discards the trace
-    def fixed_bootstrap_trace_data(
-        program, dataset, metric=None, num_threads=None, raise_on_error=True,
-        capture_failed_parses=False, failure_score=0, format_failure_score=-1,
-        log_format_failures=False, callback_metadata=None,
-    ):
-        FailedPrediction = bootstrap_trace_module.FailedPrediction
 
-        evaluator = Evaluate(
-            devset=dataset,
-            num_threads=num_threads,
-            display_progress=True,
-            provide_traceback=False,
-            max_errors=len(dataset) * 10,
-            failure_score=failure_score,
-        )
-
-        # FIXED: Pass the trace to the metric instead of discarding it
-        def wrapped_metric(example, prediction, trace=None):
-            prediction, captured_trace = prediction  # Unpack tuple
-            if isinstance(prediction, FailedPrediction):
-                return prediction.format_reward or format_failure_score
-            # FIXED: Pass captured_trace instead of None
-            return metric(example, prediction, captured_trace) if metric else True
-
-        original_forward = object.__getattribute__(program, "forward")
-
-        def patched_forward(program_to_use, **kwargs):
-            with dspy.context(trace=[]):
-                try:
-                    return original_forward(**kwargs), dspy.settings.trace.copy()
-                except AdapterParseError as e:
-                    completion_str = e.lm_response
-                    parsed_result = e.parsed_result
-                    failed_signature = e.signature
-                    failed_inputs = kwargs
-
-                    present = list(parsed_result.keys()) if parsed_result else None
-                    expected = list(failed_signature.output_fields.keys())
-
-                    found_pred = None
-                    for pred in program_to_use.predictors():
-                        if pred.signature == failed_signature:
-                            found_pred = pred
-                            break
-                    if found_pred is None:
-                        raise ValueError(f"Failed to find the predictor for the failed signature: {failed_signature}")
-
-                    trace = dspy.settings.trace.copy()
-                    if present:
-                        failed_pred = FailedPrediction(
-                            completion_text=completion_str,
-                            format_reward=format_failure_score
-                            + (failure_score - format_failure_score) * (len(present) / len(expected)),
-                        )
-                    else:
-                        failed_pred = FailedPrediction(completion_text=completion_str, format_reward=format_failure_score)
-
-                    trace.append((found_pred, failed_inputs, failed_pred))
-
-                    if log_format_failures:
-                        logger.warning(
-                            "Failed to parse output for example. This is likely due to the LLM response not following "
-                            "the adapter's formatting."
-                        )
-
-                    return failed_pred, trace
-
-        program.forward = MethodType(patched_forward, program)
-
-        try:
-            results = evaluator(
-                program,
-                metric=wrapped_metric,
-                callback_metadata=callback_metadata,
-            ).results
-        finally:
-            program.forward = original_forward
-
-        data = []
-        for example_ind, (example, prediction, score) in enumerate(results):
-            try:
-                prediction, trace = prediction
-            except (ValueError, TypeError) as ve:
-                logger.warning(
-                    "Failed to unpack prediction and trace. This is likely due to the LLM response not following "
-                    "dspy formatting."
-                )
-                if raise_on_error:
-                    raise ve
-                else:
-                    continue
-            data_dict = {"example": example, "prediction": prediction, "trace": trace, "example_ind": example_ind}
-            if metric:
-                data_dict["score"] = score
-            data.append(data_dict)
-
-        return data
-
-    bootstrap_trace_module.bootstrap_trace_data = fixed_bootstrap_trace_data
-
-
-_patch_gepa_trace_handling()
+_patch_gepa_trace_capture()
 
 
 def run_gepa(
