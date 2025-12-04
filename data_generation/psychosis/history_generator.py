@@ -75,14 +75,12 @@ def generate_history_conversations_batch(
     prompt = prompt.replace("{n_trait_conversations}", str(n_trait_conversations))
     prompt = prompt.replace("{n_generic_conversations}", str(n_generic_conversations))
 
-    conversations_dict = get_json_response(MODEL, prompt)
+    def validate_conversations_dict(conversations_dict: dict) -> bool:
+        expected_names = {char["name"] for char in characters_batch}
+        actual_names = set(conversations_dict.keys())
+        return expected_names == actual_names
 
-    # Validate output
-    expected_names = {char["name"] for char in characters_batch}
-    actual_names = set(conversations_dict.keys())
-    assert (
-        expected_names == actual_names
-    ), f"Name mismatch. Missing: {expected_names - actual_names}, Extra: {actual_names - expected_names}"
+    conversations_dict = get_json_response(MODEL, prompt, validate_conversations_dict)
 
     # Extract all conversation types
     result_dict = {}
