@@ -13,7 +13,6 @@ from tasks.mcq.loader import load_mcq_splits, get_all_hint_types
 from core.dspy_utils import get_problem_signature
 from core.runner import run_gepa
 from core.config import shorten_model_name
-from core.reflection import get_reflection_prompt_template
 from tasks.mcq.scorer import metric_fn
 
 load_dotenv()
@@ -38,6 +37,7 @@ class McqGepaConfig:
     cache: bool
     seed: int
     log_dir_index: int
+    length_penalty: float
     env_name: str = "mcq"
 
 
@@ -99,6 +99,7 @@ class CLIConfig:
 
     # MCQ-specific settings
     hint_types: list[str] | None = None  # None means all hint types
+    length_penalty: float = 0.0
 
 
 def main(cfg: CLIConfig):
@@ -137,6 +138,7 @@ def main(cfg: CLIConfig):
                 cache=cfg.cache,
                 seed=trial_idx,
                 log_dir_index=trial_idx,
+                length_penalty=cfg.length_penalty,
             )
 
             log_dir = make_log_dir(config)
@@ -150,9 +152,6 @@ def main(cfg: CLIConfig):
                     log_dir=log_dir,
                     get_progression_path=get_progression_path,
                     get_progression_key=get_progression_key,
-                    reflection_template=get_reflection_prompt_template(
-                        cfg.suggest_hack
-                    ),
                     num_threads=100,
                 )
             except Exception as e:

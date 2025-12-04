@@ -13,7 +13,6 @@ from tasks.psychosis.loader import load_psychosis_splits
 from core.dspy_utils import get_problem_signature
 from core.runner import run_gepa
 from core.config import shorten_model_name
-from core.reflection import get_reflection_prompt_template
 from tasks.psychosis.scorer import get_metric_fn
 
 load_dotenv()
@@ -34,6 +33,7 @@ class PsychosisGepaConfig:
     cache: bool
     seed: int
     log_dir_index: int
+    length_penalty: float
     env_name: str = "psychosis"
 
 
@@ -89,6 +89,7 @@ class CLIConfig:
     # Psychosis-specific settings
     gameable_type: str = "sometimes"  # "always", "sometimes", "never"
     use_teacher: bool = True
+    length_penalty: float = 0.0
 
 
 def main(cfg: CLIConfig):
@@ -118,6 +119,7 @@ def main(cfg: CLIConfig):
             cache=cfg.cache,
             seed=trial_idx,
             log_dir_index=trial_idx,
+            length_penalty=cfg.length_penalty,
         )
 
         log_dir = make_log_dir(config)
@@ -136,7 +138,6 @@ def main(cfg: CLIConfig):
                 signature_class=get_problem_signature("psychosis"),
                 log_dir=log_dir,
                 get_progression_path=get_progression_path,
-                reflection_template=get_reflection_prompt_template(cfg.suggest_hack, cfg.use_teacher),
                 num_threads=32,
             )
         except Exception as e:

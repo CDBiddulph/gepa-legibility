@@ -13,9 +13,7 @@ from tasks.wordchain.loader import load_wordchain_splits
 from core.dspy_utils import get_problem_signature
 from core.runner import run_gepa
 from core.config import shorten_model_name
-from core.reflection import get_reflection_prompt_template
 from tasks.wordchain.scorer import get_metric_fn
-from scoring.length_penalty import length_penalty_metric_fn
 
 load_dotenv()
 
@@ -35,6 +33,7 @@ class WordchainGepaConfig:
     seed: int
     log_dir_index: int
     use_teacher: bool
+    length_penalty: float
     env_name: str = "wordchain"
 
 
@@ -76,6 +75,7 @@ class CLIConfig:
     validation_set_size: int = 50
     cache: bool = False
     use_teacher: bool = True
+    length_penalty: float = 0.0
 
     # Multi-trial support
     num_trials: int = 3
@@ -113,18 +113,18 @@ def main(cfg: CLIConfig):
             seed=trial_idx,
             log_dir_index=trial_idx,
             use_teacher=cfg.use_teacher,
+            length_penalty=cfg.length_penalty,
         )
 
         log_dir = make_log_dir(config)
 
         try:
-            base_metric_fn = get_metric_fn(
+            metric_fn = get_metric_fn(
                 judge_model=cfg.judge_model,
                 normalize_response=False,
                 use_teacher=cfg.use_teacher,
                 cache=cfg.cache,
             )
-            metric_fn = length_penalty_metric_fn(base_metric_fn)
 
             run_gepa(
                 config=config,
@@ -133,9 +133,7 @@ def main(cfg: CLIConfig):
                 signature_class=get_problem_signature("wordchain"),
                 log_dir=log_dir,
                 get_progression_path=get_progression_path,
-                reflection_template=get_reflection_prompt_template(cfg.suggest_hack, cfg.use_teacher),
                 num_threads=100,
-                executor_reasoning_effort=cfg.executor_reasoning_effort,
             )
         except Exception as e:
             error_message = f"Error running GEPA: {e}"

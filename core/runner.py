@@ -14,6 +14,7 @@ from core.instruction_proposer import CustomPromptInstructionProposer
 from core.lm import get_dspy_lm
 from core.logging_utils import gepa_logging, serialize_detailed_results
 from core.evaluation import get_progression_data
+from scoring.length_penalty import length_penalty_metric_fn
 
 
 # Monkey-patch GEPA to always capture traces AND pass them to metrics.
@@ -23,7 +24,6 @@ from core.evaluation import get_progression_data
 # 2. bootstrap_trace_data captures traces but discards them in wrapped_metric
 #
 # This patch fixes both so metrics (like length_penalty) can access instruction text.
-# See: https://github.com/stanfordnlp/dspy/commit/e78c1058d58dae5c2629d8f4cba26ad6f6b42834
 def _patch_gepa_trace_handling():
     from types import MethodType
     from dspy.teleprompt.gepa.gepa_utils import DspyAdapter
@@ -144,7 +144,6 @@ def _patch_gepa_trace_handling():
         return data
 
     bootstrap_trace_module.bootstrap_trace_data = fixed_bootstrap_trace_data
-    print("[PATCH] GEPA trace handling patched successfully")
 
 
 _patch_gepa_trace_handling()
@@ -158,28 +157,23 @@ def run_gepa(
     log_dir: str,
     get_progression_path: Callable[[str], Path],
     get_progression_key: Callable[[dict, int], dict] = None,
-    reflection_template: str = None,
     num_threads: int = 32,
     reflection_minibatch_size: int = 10,
-    executor_reasoning_effort: str = "low",
 ) -> None:
     """Run GEPA optimization for a single trial.
 
     Args:
-        config: Task-specific configuration dataclass
+        config: Task-specific configuration dataclass. Must have fields:
         dataset: Dict with 'train', 'valid', 'test' keys containing example lists
-        metric_fn: Metric function for evaluation
+        metric_fn: Base metric function for evaluation (without length penalty)
         signature_class: DSPy Signature class for the task
         log_dir: Directory to save results
         get_progression_path: Function that takes log_dir and returns the experiment
             path for progression_loader
         get_progression_key: Optional function that takes (progression_data, log_dir_index)
             and returns the run data dict. If None, uses progression_data["runs"][index].
-        reflection_template: Custom reflection template. If None, uses default based on
-            config.suggest_hack.
         num_threads: Number of threads for parallel evaluation
         reflection_minibatch_size: Minibatch size for reflection
-        executor_reasoning_effort: Reasoning effort for executor LM
     """
     if os.path.exists(os.path.join(log_dir, "detailed_results.json")):
         print(
@@ -192,6 +186,7 @@ def run_gepa(
     save_config(log_dir, config)
 
     prompter_lm = get_dspy_lm(config.prompter_name, cache=config.cache)
+    executor_reasoning_effort = getattr(config, "executor_reasoning_effort", None)
     executor_lm = get_dspy_lm(
         config.executor_name,
         cache=config.cache,
@@ -216,13 +211,18 @@ def run_gepa(
             f"the number of validation examples {len(valset)}"
         )
 
-    # Create custom instruction proposer
-    template = reflection_template or get_reflection_prompt_template(
-        config.suggest_hack
+    # Wrap metric with length penalty
+    # If length penalty is 0.0, this has no effect
+    metric_fn = length_penalty_metric_fn(metric_fn, config.length_penalty)
+
+    # Create custom instruction proposer with reflection template
+    use_teacher = getattr(config, "use_teacher", False)
+    reflection_template = get_reflection_prompt_template(
+        config.suggest_hack, use_teacher, config.length_penalty
     )
     custom_proposer = CustomPromptInstructionProposer(
         reflection_lm=prompter_lm,
-        prompt_template=template,
+        prompt_template=reflection_template,
     )
 
     optimizer = dspy.GEPA(
