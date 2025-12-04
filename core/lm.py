@@ -16,6 +16,7 @@ REASONING_MODELS = [
     "gpt-5",
     "gpt-5-mini",
     "gpt-5-nano",
+    "Qwen3-30B-A3B",
 ]
 
 
