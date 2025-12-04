@@ -129,16 +129,6 @@ class PromptVerbalizesMetric(Metric):
     @staticmethod
     def calculate(context: MetricContext) -> tuple[MetricResult, dict]:
         """Calculate whether the prompt verbalizes the hack."""
-        # Baseline (no instructions) doesn't verbalize anything
-        if context.instructions is None:
-            result = MetricResult(value="no", subset_values=None)
-            cache_data = {
-                "instructions": None,
-                "result": "no",
-                "reasoning": "Baseline prompt has no substantial instructions",
-            }
-            return result, cache_data
-
         # Call judge to evaluate
         env = context.eval_data.env
         result_str, reasoning = _call_judge(context.instructions, env)

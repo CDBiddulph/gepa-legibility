@@ -309,18 +309,13 @@ def _evaluate_candidate(
     eval_dir = subdir / "evaluations"
 
     # Determine which versions to evaluate
-    if idx == 0:
-        # Baseline: no instructions, same for both original and sanitized
-        versions = {"original": None, "sanitized": None}
-        sanitized_instructions = None
-    else:
-        # Non-baseline: evaluate both original and sanitized instructions
-        original_instructions = candidate["instructions"]
-        sanitized_instructions = load_instructions(subdir, idx, sanitized=True)
-        versions = {
-            "original": original_instructions,
-            "sanitized": sanitized_instructions,
-        }
+    # All candidates (including baseline) use real instructions from detailed_results.json
+    original_instructions = candidate["instructions"]
+    sanitized_instructions = load_instructions(subdir, idx, sanitized=True)
+    versions = {
+        "original": original_instructions,
+        "sanitized": sanitized_instructions,
+    }
 
     # Select adapter
     adapter = "incompetent" if use_incompetent_adapter else "chat"
