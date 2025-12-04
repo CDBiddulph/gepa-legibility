@@ -91,7 +91,7 @@ class CLIConfig:
     incompetent: bool = True
     max_metric_calls: int = 1000
     validation_set_size: int = 50
-    cache: bool = True
+    cache: bool = False
 
     # Multi-trial support
     num_trials: int = 1
