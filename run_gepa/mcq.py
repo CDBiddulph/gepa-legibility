@@ -93,6 +93,7 @@ class CLIConfig:
     max_metric_calls: int = 1000
     validation_set_size: int = 50
     cache: bool = False
+    num_threads: int = 32
     baseline_instructions_path: str | None = None
 
     # Multi-trial support
@@ -155,7 +156,7 @@ def main(cfg: CLIConfig):
                     log_dir=log_dir,
                     get_progression_path=get_progression_path,
                     get_progression_key=get_progression_key,
-                    num_threads=100,
+                    num_threads=cfg.num_threads,
                 )
             except Exception as e:
                 error_message = f"Error running GEPA: {e}"

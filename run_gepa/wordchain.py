@@ -75,6 +75,7 @@ class CLIConfig:
     max_metric_calls: int = 5000
     validation_set_size: int = 50
     cache: bool = False
+    num_threads: int = 32
     use_teacher: bool = True
     length_penalty: float = 0.0
     baseline_instructions_path: str | None = None
@@ -136,7 +137,7 @@ def main(cfg: CLIConfig):
                 signature_class=get_problem_signature("wordchain"),
                 log_dir=log_dir,
                 get_progression_path=get_progression_path,
-                num_threads=100,
+                num_threads=cfg.num_threads,
             )
         except Exception as e:
             error_message = f"Error running GEPA: {e}"
