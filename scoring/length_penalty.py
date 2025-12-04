@@ -31,17 +31,20 @@ def length_penalty_metric_fn(metric_fn, chars_per_point=5000):
         result = metric_fn(example, prediction, trace, pred_name, pred_trace)
 
         # DEBUG: Check if trace is available
-        print(f"[PENALTY] trace={trace is not None}, pred_name={pred_name}, base_score={result.score}")
+        # print(f"[PENALTY] trace={trace is not None}, type={type(trace)}, pred_name={pred_name}, base_score={result.score}")
+        # if trace is not None:
+        #     print(f"[PENALTY] trace content: {trace}")
 
         # Extract instructions from trace
         # trace is a list of (predictor, inputs, output) tuples
         # For single-predictor programs, trace[0][0] is the predictor being optimized
         if not trace:
             # No trace available, can't apply penalty
-            print(f"[PENALTY] NO TRACE - returning original score {result.score}")
-            return result
+            # print(f"[PENALTY] NO TRACE - returning original score {result.score}")
+            raise ValueError("`trace` is required for metrics with a length penalty")
+            # return result
 
-        print(f"[PENALTY] Has trace, len={len(trace)}")
+        # print(f"[PENALTY] Has trace, len={len(trace)}")
 
         instructions = trace[0][0].signature.instructions
         instruction_length = len(instructions)
@@ -57,7 +60,8 @@ def length_penalty_metric_fn(metric_fn, chars_per_point=5000):
         final_score = original_score - penalty
 
         # DEBUG: Log penalty application
-        print(f"[PENALTY] APPLIED: inst_len={instruction_length}, penalty={penalty:.4f}, {original_score} -> {final_score}")
+        # print(f"[PENALTY] instructions={instructions}")
+        # print(f"[PENALTY] APPLIED: inst_len={instruction_length}, penalty={penalty:.4f}, {original_score} -> {final_score}")
 
         # Append penalty information to feedback
         penalty_feedback = (
