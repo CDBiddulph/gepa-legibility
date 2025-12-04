@@ -159,6 +159,7 @@ def _extract_metadata(exp_path: Path, config: dict) -> dict:
         "hack_setting": config["suggest_hack"],
         "hint_type": config.get("hint_type"),  # None for non-MCQ
         "use_teacher": config.get("use_teacher"),
+        "length_penalty": config.get("length_penalty"),
         "timestamp": timestamp,
     }
 
