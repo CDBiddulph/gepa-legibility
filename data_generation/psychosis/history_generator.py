@@ -104,8 +104,7 @@ def generate_history_conversations_batch(
         try:
             validate_and_fix_name_typos(conversations_dict)
             return True
-        except ValueError as e:
-            print(f"Error validating conversations dict: {e}")
+        except ValueError:
             return False
 
     conversations_dict = get_json_response(MODEL, prompt, validate_conversations_dict)
