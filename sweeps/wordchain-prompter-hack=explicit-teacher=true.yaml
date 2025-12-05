@@ -1,5 +1,5 @@
 # Sweep over prompter models with use_teacher=true, suggest_hack=explicit
-# Run with: python -m run_gepa.sweep sweeps/wordchain_no-teacher_prompter.yaml
+# Run with: python -m run_gepa.sweep sweeps/wordchain-prompter-hack=explicit-teacher=true.yaml
 
 name: prompter-hack=explicit-teacher=true
 task: wordchain

@@ -1,0 +1,35 @@
+# Sweep over different length penalties
+# Run with: python -m run_gepa.sweep sweeps/wordchain-length_penalty.yaml
+
+name: length_penalty
+task: wordchain
+
+# Number of trials per configuration combination
+num_trials: 1
+
+# Model configuration
+prompter_name: anthropic/claude-sonnet-4-5-20250929
+executor_name: deepinfra/Qwen/Qwen3-30B-A3B
+
+# GEPA settings
+suggest_hack: explicit
+incompetent: false
+max_metric_calls: 2000
+validation_set_size: 50
+length_penalty:
+- 0.00005
+- 0.0001
+- 0.0002
+- 0.0004
+
+# Wordchain-specific settings
+executor_reasoning_effort: medium
+judge_model: gpt-4.1-mini
+use_teacher: false
+
+# Runtime settings
+num_threads: 32
+baseline_instructions_path: "logs/wordchain/2025-11-19-01-04-44/p=claude-sonnet-4-5-20250929-e=Qwen3-14B-re=medium-hack=explicit/1/"
+
+# Optional settings
+# cache: false
