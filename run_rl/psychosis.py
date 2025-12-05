@@ -54,8 +54,8 @@ class CLIConfig:
     compute_post_kl: bool = False
 
     # Evals and checkpointing
-    eval_every: int = 2
-    save_every: int = 2
+    eval_every: int = 10
+    save_every: int = 10
 
     # Service configuration
     base_url: str | None = None
