@@ -34,6 +34,7 @@ class WordchainGepaConfig:
     log_dir_index: int
     use_teacher: bool
     length_penalty: float
+    verbalization_penalty: float
     baseline_instructions_path: str | None
     env_name: str = "wordchain"
     experiment_name: str | None = None
@@ -52,6 +53,7 @@ def make_log_dir(config: WordchainGepaConfig) -> str:
     use_teacher_str = "-teacher" if config.use_teacher else "-no_teacher"
 
     length_penalty_str = f"-lp={config.length_penalty}" if config.length_penalty != 0.0 else ""
+    verbalization_penalty_str = f"-vp={config.verbalization_penalty}" if config.verbalization_penalty != 0.0 else ""
 
     log_dir = (
         f"{base_path}"
@@ -61,7 +63,8 @@ def make_log_dir(config: WordchainGepaConfig) -> str:
         f"-hack={config.suggest_hack}"
         f"{use_teacher_str}"
         f"{incompetent_str}"
-        f"{length_penalty_str}/"
+        f"{length_penalty_str}"
+        f"{verbalization_penalty_str}/"
     )
     if config.log_dir_index is not None:
         log_dir += f"{config.log_dir_index}/"
@@ -79,6 +82,7 @@ def run_single_wordchain_trial(
     validation_set_size: int,
     use_teacher: bool,
     length_penalty: float,
+    verbalization_penalty: float,
     judge_model: str,
     experiment_name: str,
     date_str: str,
@@ -116,6 +120,7 @@ def run_single_wordchain_trial(
         log_dir_index=trial_idx,
         use_teacher=use_teacher,
         length_penalty=length_penalty,
+        verbalization_penalty=verbalization_penalty,
         baseline_instructions_path=baseline_instructions_path,
         experiment_name=experiment_name,
     )
@@ -156,6 +161,7 @@ class CLIConfig:
     num_threads: int = 32
     use_teacher: bool = True
     length_penalty: float = 0.0
+    verbalization_penalty: float = 0.0
     baseline_instructions_path: str | None = None
 
     # Multi-trial support
@@ -185,6 +191,7 @@ def main(cfg: CLIConfig):
                 validation_set_size=cfg.validation_set_size,
                 use_teacher=cfg.use_teacher,
                 length_penalty=cfg.length_penalty,
+                verbalization_penalty=cfg.verbalization_penalty,
                 judge_model=cfg.judge_model,
                 experiment_name=None,  # CLI runs don't use experiment names
                 date_str=date_str,

@@ -16,6 +16,7 @@ from core.lm import get_dspy_lm
 from core.logging_utils import gepa_logging, serialize_detailed_results
 from core.evaluation import get_progression_data
 from scoring.length_penalty import length_penalty_metric_fn
+from scoring.verbalization_penalty import verbalization_penalty_metric_fn
 
 
 # Monkey-patch GEPA to always capture traces during evaluation.
@@ -133,6 +134,10 @@ def run_gepa(
         # Wrap metric with length penalty
         # If length penalty is 0.0, this has no effect
         metric_fn = length_penalty_metric_fn(metric_fn, config.length_penalty)
+
+        # Wrap metric with verbalization penalty
+        # If verbalization_penalty is 0.0, this has no effect
+        metric_fn = verbalization_penalty_metric_fn(metric_fn, config.env_name, config.verbalization_penalty)
 
         # Create custom instruction proposer with reflection template
         use_teacher = getattr(config, "use_teacher", False)

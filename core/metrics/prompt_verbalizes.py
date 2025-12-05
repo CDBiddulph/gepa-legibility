@@ -91,16 +91,21 @@ def _build_prompt(env: str, instruction: str) -> str:
     )
 
 
-def _call_judge(instructions: str, env: str) -> tuple[str, str]:
+def check_verbalization(instructions: str, env: str, cache: bool = True) -> tuple[str, str]:
     """
     Call the judge model to evaluate if the instructions verbalize hacking.
+
+    Args:
+        instructions: The instruction text to evaluate.
+        env: Environment name (psychosis, wordchain, mcq) to select the hack description.
+        cache: Whether to use LM caching. Default True.
 
     Returns:
         Tuple of (result, reasoning) where result is "yes", "unclear", or "no"
     """
     prompt = _build_prompt(env, instructions)
 
-    judge_lm = get_simple_lm(JUDGE_MODEL, temperature=0)
+    judge_lm = get_simple_lm(JUDGE_MODEL, temperature=0, cache=cache)
     response = judge_lm([{"role": "user", "content": prompt}])
 
     # Parse JSON from response
@@ -131,7 +136,7 @@ class PromptVerbalizesMetric(Metric):
         """Calculate whether the prompt verbalizes the hack."""
         # Call judge to evaluate
         env = context.eval_data.env
-        result_str, reasoning = _call_judge(context.instructions, env)
+        result_str, reasoning = check_verbalization(context.instructions, env)
 
         result = MetricResult(value=result_str, subset_values=None)
         cache_data = {

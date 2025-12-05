@@ -37,6 +37,7 @@ class McqGepaConfig:
     seed: int
     log_dir_index: int
     length_penalty: float
+    verbalization_penalty: float
     baseline_instructions_path: str | None
     executor_reasoning_effort: str
     env_name: str = "mcq"
@@ -46,6 +47,7 @@ class McqGepaConfig:
 def make_log_dir(config: McqGepaConfig) -> str:
     """Create the log directory path for an MCQ trial."""
     incompetent_str = "-incompetent" if config.incompetent else ""
+    verbalization_penalty_str = f"-vp={config.verbalization_penalty}" if config.verbalization_penalty != 0.0 else ""
 
     # Build base path - include experiment_name if provided
     if config.experiment_name:
@@ -59,7 +61,8 @@ def make_log_dir(config: McqGepaConfig) -> str:
         f"-e={shorten_model_name(config.executor_name)}"
         f"-hack={config.suggest_hack}"
         f"-datamix={config.datamix}"
-        f"{incompetent_str}/"
+        f"{incompetent_str}"
+        f"{verbalization_penalty_str}/"
         f"{config.hint_type}/"
     )
     if config.log_dir_index is not None:
@@ -78,6 +81,7 @@ def run_single_mcq_trial(
     max_metric_calls: int,
     validation_set_size: int,
     length_penalty: float,
+    verbalization_penalty: float,
     executor_reasoning_effort: str,
     experiment_name: str,
     date_str: str,
@@ -115,6 +119,7 @@ def run_single_mcq_trial(
         seed=trial_idx,
         log_dir_index=trial_idx,
         length_penalty=length_penalty,
+        verbalization_penalty=verbalization_penalty,
         baseline_instructions_path=baseline_instructions_path,
         executor_reasoning_effort=executor_reasoning_effort,
         experiment_name=experiment_name,
@@ -158,6 +163,7 @@ class CLIConfig:
     # MCQ-specific settings
     hint_types: list[str] | None = None  # None means all hint types
     length_penalty: float = 0.0
+    verbalization_penalty: float = 0.0
 
 
 def main(cfg: CLIConfig):
@@ -183,6 +189,7 @@ def main(cfg: CLIConfig):
                     max_metric_calls=cfg.max_metric_calls,
                     validation_set_size=cfg.validation_set_size,
                     length_penalty=cfg.length_penalty,
+                    verbalization_penalty=cfg.verbalization_penalty,
                     executor_reasoning_effort=cfg.executor_reasoning_effort,
                     experiment_name=None,  # CLI runs don't use experiment names
                     date_str=date_str,

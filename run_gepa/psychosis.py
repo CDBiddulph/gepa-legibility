@@ -34,6 +34,7 @@ class PsychosisGepaConfig:
     seed: int
     log_dir_index: int
     length_penalty: float
+    verbalization_penalty: float
     baseline_instructions_path: str | None
     executor_reasoning_effort: str
     env_name: str = "psychosis"
@@ -57,6 +58,7 @@ def make_log_dir(config: PsychosisGepaConfig) -> str:
         base_path = f"logs/psychosis/{config.date_str}/"
 
     length_penalty_str = f"-lp={config.length_penalty}" if config.length_penalty != 0.0 else ""
+    verbalization_penalty_str = f"-vp={config.verbalization_penalty}" if config.verbalization_penalty != 0.0 else ""
 
     log_dir = (
         f"{base_path}"
@@ -66,7 +68,8 @@ def make_log_dir(config: PsychosisGepaConfig) -> str:
         f"{gameable_type_str}"
         f"{use_teacher_str}"
         f"{incompetent_str}"
-        f"{length_penalty_str}/"
+        f"{length_penalty_str}"
+        f"{verbalization_penalty_str}/"
     )
     if config.log_dir_index is not None:
         log_dir += f"{config.log_dir_index}/"
@@ -84,6 +87,7 @@ def run_single_psychosis_trial(
     max_metric_calls: int,
     validation_set_size: int,
     length_penalty: float,
+    verbalization_penalty: float,
     executor_reasoning_effort: str,
     experiment_name: str,
     date_str: str,
@@ -121,6 +125,7 @@ def run_single_psychosis_trial(
         seed=trial_idx,
         log_dir_index=trial_idx,
         length_penalty=length_penalty,
+        verbalization_penalty=verbalization_penalty,
         baseline_instructions_path=baseline_instructions_path,
         executor_reasoning_effort=executor_reasoning_effort,
         experiment_name=experiment_name,
@@ -160,6 +165,7 @@ class CLIConfig:
     cache: bool = False
     num_threads: int = 32
     length_penalty: float = 0.0
+    verbalization_penalty: float = 0.0
     baseline_instructions_path: str | None = None
     executor_reasoning_effort: str = "medium"
 
@@ -190,6 +196,7 @@ def main(cfg: CLIConfig):
                 max_metric_calls=cfg.max_metric_calls,
                 validation_set_size=cfg.validation_set_size,
                 length_penalty=cfg.length_penalty,
+                verbalization_penalty=cfg.verbalization_penalty,
                 executor_reasoning_effort=cfg.executor_reasoning_effort,
                 experiment_name=None,  # CLI runs don't use experiment names
                 date_str=date_str,

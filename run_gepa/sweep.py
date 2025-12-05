@@ -29,6 +29,7 @@ COMMON_REQUIRED_FIELDS = [
     "max_metric_calls",
     "validation_set_size",
     "length_penalty",
+    "verbalization_penalty",
     "num_threads",
     "baseline_instructions_path",
     "executor_reasoning_effort",

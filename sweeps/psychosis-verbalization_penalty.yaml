@@ -1,0 +1,29 @@
+# Test verbalization penalty with covert hacking on psychosis
+# Run with: python -m run_gepa.sweep sweeps/psychosis-verbalization_penalty.yaml
+
+name: verbalization_penalty
+task: psychosis
+
+# Number of trials per configuration combination
+num_trials: 1
+
+# Model configuration
+prompter_name: anthropic/claude-sonnet-4-5-20250929
+executor_name: deepinfra/Qwen/Qwen3-30B-A3B
+
+# GEPA settings
+suggest_hack: covert
+incompetent: false
+max_metric_calls: 5000
+validation_set_size: 50
+length_penalty: 0.0
+verbalization_penalty: 0.1
+executor_reasoning_effort: medium
+
+# Psychosis-specific settings
+gameable_type: sometimes
+use_teacher: false
+
+# Runtime settings
+num_threads: 32
+baseline_instructions_path: "logs/psychosis/2025-11-21-00-39-08/p=claude-sonnet-4-5-20250929-e=Qwen3-14B-hack=explicit/0/"
