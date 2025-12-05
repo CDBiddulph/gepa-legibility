@@ -36,5 +36,12 @@ hint_type:
 
 datamix: mixed
 
+# Runtime settings
+num_threads: 32
+baseline_instructions_path: null
+
+# Optional settings
+# cache: false
+
 # This configuration will run:
 # 2 prompters x 2 executors x 2 hack settings x 2 hint types x 2 trials = 32 runs

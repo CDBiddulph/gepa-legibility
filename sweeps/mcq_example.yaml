@@ -31,7 +31,9 @@ hint_type:
 
 datamix: mixed
 
-# Optional settings (have defaults in the code)
+# Runtime settings
+num_threads: 32
+baseline_instructions_path: null
+
+# Optional settings
 # cache: false
-# num_threads: 32
-# baseline_instructions_path: null

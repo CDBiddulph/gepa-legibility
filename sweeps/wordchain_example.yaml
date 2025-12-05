@@ -23,7 +23,9 @@ executor_reasoning_effort: medium
 judge_model: gpt-4.1-mini
 use_teacher: true
 
+# Runtime settings
+num_threads: 32
+baseline_instructions_path: null
+
 # Optional settings
 # cache: false
-# num_threads: 32
-# baseline_instructions_path: null

@@ -20,42 +20,30 @@ import yaml
 # Fields that are never swept over (always scalar)
 NON_SWEEPABLE_FIELDS = {"name", "task", "num_trials", "cache", "num_threads", "date_str"}
 
-# Required fields for each task
+# Required fields common to all tasks
+COMMON_REQUIRED_FIELDS = [
+    "prompter_name",
+    "executor_name",
+    "suggest_hack",
+    "incompetent",
+    "max_metric_calls",
+    "validation_set_size",
+    "length_penalty",
+    "num_threads",
+    "baseline_instructions_path",
+]
+
+# Additional required fields specific to each task
+TASK_REQUIRED_FIELDS = {
+    "mcq": ["hint_type", "datamix"],
+    "psychosis": ["gameable_type", "use_teacher"],
+    "wordchain": ["executor_reasoning_effort", "use_teacher", "judge_model"],
+}
+
+# Combined required fields for each task
 REQUIRED_FIELDS = {
-    "mcq": [
-        "prompter_name",
-        "executor_name",
-        "suggest_hack",
-        "hint_type",
-        "datamix",
-        "incompetent",
-        "max_metric_calls",
-        "validation_set_size",
-        "length_penalty",
-    ],
-    "psychosis": [
-        "prompter_name",
-        "executor_name",
-        "suggest_hack",
-        "gameable_type",
-        "use_teacher",
-        "incompetent",
-        "max_metric_calls",
-        "validation_set_size",
-        "length_penalty",
-    ],
-    "wordchain": [
-        "prompter_name",
-        "executor_name",
-        "suggest_hack",
-        "incompetent",
-        "executor_reasoning_effort",
-        "max_metric_calls",
-        "validation_set_size",
-        "use_teacher",
-        "length_penalty",
-        "judge_model",
-    ],
+    task: COMMON_REQUIRED_FIELDS + task_fields
+    for task, task_fields in TASK_REQUIRED_FIELDS.items()
 }
 
 
