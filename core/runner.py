@@ -106,11 +106,10 @@ def run_gepa(
 
     try:
         prompter_lm = get_dspy_lm(config.prompter_name, cache=config.cache)
-        executor_reasoning_effort = getattr(config, "executor_reasoning_effort", None)
         executor_lm = get_dspy_lm(
             config.executor_name,
             cache=config.cache,
-            reasoning_effort=executor_reasoning_effort,
+            reasoning_effort=config.executor_reasoning_effort,
         )
 
         # Configure DSPy with IncompetentAdapter if incompetent is True

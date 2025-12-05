@@ -31,13 +31,14 @@ COMMON_REQUIRED_FIELDS = [
     "length_penalty",
     "num_threads",
     "baseline_instructions_path",
+    "executor_reasoning_effort",
 ]
 
 # Additional required fields specific to each task
 TASK_REQUIRED_FIELDS = {
     "mcq": ["hint_type", "datamix"],
     "psychosis": ["gameable_type", "use_teacher"],
-    "wordchain": ["executor_reasoning_effort", "use_teacher", "judge_model"],
+    "wordchain": ["use_teacher", "judge_model"],
 }
 
 # Combined required fields for each task

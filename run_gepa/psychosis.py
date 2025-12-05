@@ -35,6 +35,7 @@ class PsychosisGepaConfig:
     log_dir_index: int
     length_penalty: float
     baseline_instructions_path: str | None
+    executor_reasoning_effort: str
     env_name: str = "psychosis"
     experiment_name: str | None = None
 
@@ -80,6 +81,7 @@ def run_single_psychosis_trial(
     max_metric_calls: int,
     validation_set_size: int,
     length_penalty: float,
+    executor_reasoning_effort: str,
     experiment_name: str,
     date_str: str,
     trial_idx: int,
@@ -117,6 +119,7 @@ def run_single_psychosis_trial(
         log_dir_index=trial_idx,
         length_penalty=length_penalty,
         baseline_instructions_path=baseline_instructions_path,
+        executor_reasoning_effort=executor_reasoning_effort,
         experiment_name=experiment_name,
     )
 
@@ -155,6 +158,7 @@ class CLIConfig:
     num_threads: int = 32
     length_penalty: float = 0.0
     baseline_instructions_path: str | None = None
+    executor_reasoning_effort: str = "medium"
 
     # Multi-trial support
     num_trials: int = 3
@@ -183,6 +187,7 @@ def main(cfg: CLIConfig):
                 max_metric_calls=cfg.max_metric_calls,
                 validation_set_size=cfg.validation_set_size,
                 length_penalty=cfg.length_penalty,
+                executor_reasoning_effort=cfg.executor_reasoning_effort,
                 experiment_name=None,  # CLI runs don't use experiment names
                 date_str=date_str,
                 trial_idx=trial_idx,
