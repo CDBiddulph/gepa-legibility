@@ -1,0 +1,37 @@
+# Sweep over prompter models with use_teacher=true, suggest_hack=explicit
+# Run with: python -m run_gepa.sweep sweeps/wordchain_no-teacher_prompter.yaml
+
+name: prompter-hack=explicit-teacher=true
+task: wordchain
+
+# Number of trials per configuration combination
+num_trials: 1
+
+# Model configuration
+prompter_name:
+- anthropic/claude-sonnet-4-5-20250929
+- openai/gpt-5.1
+- openrouter/google/gemini-2.5-pro
+- deepinfra/deepseek-ai/DeepSeek-V3.2
+executor_name: deepinfra/Qwen/Qwen3-30B-A3B
+
+# GEPA settings
+suggest_hack: explicit
+incompetent: false
+max_metric_calls: 5000
+validation_set_size: 50
+length_penalty: 0.0
+
+# Wordchain-specific settings
+executor_reasoning_effort: medium
+judge_model: gpt-4.1-mini
+use_teacher:
+- true
+- false
+
+# Runtime settings
+num_threads: 32
+baseline_instructions_path: null
+
+# Optional settings
+# cache: false
