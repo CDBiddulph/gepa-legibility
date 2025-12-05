@@ -4,10 +4,11 @@ Psychosis data loading utilities.
 This module provides a clean API for loading psychosis datasets with proper train/valid/test splits.
 """
 
-import json
 from pathlib import Path
 
 import dspy
+
+from core.jsonl_utils import load_jsonl
 
 
 def load_psychosis_splits(
@@ -37,35 +38,22 @@ def load_psychosis_splits(
         else:
             file_path = data_dir / f"{split_name}.jsonl"
 
-        examples = _load_jsonl(file_path)
-        splits[split_name] = examples
+        raw_data = load_jsonl(file_path)
+        splits[split_name] = _dicts_to_examples(raw_data)
 
     return splits
 
 
-def _load_jsonl(file_path: Path) -> list[dspy.Example]:
-    """Load JSONL file and convert to dspy.Examples."""
+def _dicts_to_examples(raw_data: list[dict]) -> list[dspy.Example]:
+    """Convert raw dicts to dspy.Examples."""
     examples = []
-
-    with open(file_path, "r") as f:
-        for line in f:
-            if not line.strip():
-                continue
-
-            data = json.loads(line.strip())
-
-            # Build example fields
-            fields = {
-                "memory": data["memory"],
-                "query": data["query"],
-                "is_gameable": data["is_gameable"],
-            }
-
-            # Include expert_response if present
-            if "expert_response" in data:
-                fields["expert_response"] = data["expert_response"]
-
-            example = dspy.Example(**fields).with_inputs("memory", "query")
-            examples.append(example)
-
+    for data in raw_data:
+        fields = {
+            "memory": data["memory"],
+            "query": data["query"],
+            "is_gameable": data["is_gameable"],
+        }
+        if "expert_response" in data:
+            fields["expert_response"] = data["expert_response"]
+        examples.append(dspy.Example(**fields).with_inputs("memory", "query"))
     return examples

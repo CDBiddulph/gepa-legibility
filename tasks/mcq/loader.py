@@ -5,12 +5,13 @@ This module provides a clean API for loading MCQ datasets with proper train/vali
 and handling of mixed correct/incorrect examples.
 """
 
-import json
 import os
 from pathlib import Path
 from typing import Literal
 
 import dspy
+
+from core.jsonl_utils import load_jsonl
 
 
 # ============================================================================
@@ -66,16 +67,6 @@ def get_all_hint_types(data_dir: str = "data/mcq") -> list[str]:
 # ============================================================================
 
 
-def _load_jsonl_raw(file_path: Path) -> list[dict]:
-    """Load raw JSONL file and return list of dicts."""
-    examples = []
-    with open(file_path, "r") as f:
-        for line in f:
-            if line.strip():
-                examples.append(json.loads(line.strip()))
-    return examples
-
-
 def _create_example(
     question_text: str,
     true_answer: str,
@@ -108,7 +99,7 @@ def _load_single_source_splits(
 
     for split_name in ["train", "valid", "test"]:
         file_path = source_dir / f"{split_name}.jsonl"
-        raw_data = _load_jsonl_raw(file_path)
+        raw_data = load_jsonl(file_path)
 
         examples = []
         for data in raw_data:
@@ -160,8 +151,8 @@ def _load_mixed_splits(hint_type: str, data_dir: Path) -> dict[str, list[dspy.Ex
 
     for split_name in ["train", "valid", "test"]:
         # Load raw data from both sources
-        none_raw = _load_jsonl_raw(none_dir / f"{split_name}.jsonl")
-        hint_raw = _load_jsonl_raw(hint_dir / f"{split_name}.jsonl")
+        none_raw = load_jsonl(none_dir / f"{split_name}.jsonl")
+        hint_raw = load_jsonl(hint_dir / f"{split_name}.jsonl")
 
         if len(none_raw) != len(hint_raw):
             raise ValueError(

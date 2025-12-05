@@ -15,7 +15,6 @@ Usage:
 """
 
 import argparse
-import json
 from pathlib import Path
 
 import dspy
@@ -23,26 +22,10 @@ from dotenv import load_dotenv
 from dspy.predict.parallel import Parallel
 
 from core.dspy_utils import get_problem_signature
+from core.jsonl_utils import load_jsonl, save_jsonl
 from core.lm import get_dspy_lm
 
 load_dotenv()
-
-
-def load_jsonl(file_path: Path) -> list[dict]:
-    """Load JSONL file as list of dicts."""
-    examples = []
-    with open(file_path, "r") as f:
-        for line in f:
-            if line.strip():
-                examples.append(json.loads(line))
-    return examples
-
-
-def save_jsonl(examples: list[dict], file_path: Path):
-    """Save list of dicts to JSONL file."""
-    with open(file_path, "w") as f:
-        for ex in examples:
-            f.write(json.dumps(ex) + "\n")
 
 
 def strip_thinking(text: str) -> str:
