@@ -4,7 +4,6 @@
 import dataclasses
 import os
 from datetime import datetime
-from pathlib import Path
 
 import chz
 from dotenv import load_dotenv
@@ -62,11 +61,6 @@ def make_log_dir(config: WordchainGepaConfig) -> str:
         log_dir += f"{config.log_dir_index}/"
     os.makedirs(log_dir, exist_ok=True)
     return log_dir
-
-
-def get_progression_path(log_dir: str) -> Path:
-    """Get the experiment path for progression_loader from a log directory."""
-    return Path(log_dir).parent
 
 
 def run_single_wordchain_trial(
@@ -135,7 +129,6 @@ def run_single_wordchain_trial(
         metric_fn=metric_fn,
         signature_class=get_problem_signature("wordchain"),
         log_dir=log_dir,
-        get_progression_path=get_progression_path,
         num_threads=num_threads,
     )
 

@@ -4,7 +4,6 @@
 import dataclasses
 import os
 from datetime import datetime
-from pathlib import Path
 
 import chz
 from dotenv import load_dotenv
@@ -71,11 +70,6 @@ def make_log_dir(config: PsychosisGepaConfig) -> str:
     return log_dir
 
 
-def get_progression_path(log_dir: str) -> Path:
-    """Get the experiment path for progression_loader from a log directory."""
-    return Path(log_dir).parent
-
-
 def run_single_psychosis_trial(
     prompter_name: str,
     executor_name: str,
@@ -140,7 +134,6 @@ def run_single_psychosis_trial(
         metric_fn=metric_fn,
         signature_class=get_problem_signature("psychosis"),
         log_dir=log_dir,
-        get_progression_path=get_progression_path,
         num_threads=num_threads,
     )
 

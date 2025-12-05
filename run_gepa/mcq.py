@@ -4,7 +4,6 @@
 import dataclasses
 import os
 from datetime import datetime
-from pathlib import Path
 
 import chz
 from dotenv import load_dotenv
@@ -68,23 +67,6 @@ def make_log_dir(config: McqGepaConfig) -> str:
     return log_dir
 
 
-def get_progression_path(log_dir: str) -> Path:
-    """Get the experiment path for progression_loader from a log directory."""
-    # For MCQ, the hint_type level is the progression unit
-    # log_dir is: logs/mcq/{date}/{params}/{hint_type}/{run_index}/
-    return Path(log_dir).parent
-
-
-def get_progression_key(progression_data: dict, log_dir_index: int) -> dict:
-    """Extract run data from MCQ progression data.
-
-    MCQ progression data is {hint_type: {"runs": [...]}, ...} but we just need
-    the runs for the specific hint type we're working on.
-    """
-    # For MCQ, progression data at the hint level is just {"runs": [...]}
-    return progression_data["runs"][log_dir_index]
-
-
 def run_single_mcq_trial(
     prompter_name: str,
     executor_name: str,
@@ -143,8 +125,6 @@ def run_single_mcq_trial(
         metric_fn=metric_fn,
         signature_class=get_problem_signature("mcq"),
         log_dir=log_dir,
-        get_progression_path=get_progression_path,
-        get_progression_key=get_progression_key,
         num_threads=num_threads,
     )
 

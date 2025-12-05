@@ -80,8 +80,6 @@ def run_gepa(
     metric_fn: Callable,
     signature_class: type,
     log_dir: str,
-    get_progression_path: Callable[[str], Path],
-    get_progression_key: Callable[[dict, int], dict] = None,
     num_threads: int = 32,
     reflection_minibatch_size: int = 10,
 ) -> None:
@@ -93,10 +91,6 @@ def run_gepa(
         metric_fn: Base metric function for evaluation (without length penalty)
         signature_class: DSPy Signature class for the task
         log_dir: Directory to save results
-        get_progression_path: Function that takes log_dir and returns the experiment
-            path for progression_loader
-        get_progression_key: Optional function that takes (progression_data, log_dir_index)
-            and returns the run data dict. If None, uses progression_data["runs"][index].
         num_threads: Number of threads for parallel evaluation
         reflection_minibatch_size: Minibatch size for reflection
     """
@@ -190,8 +184,6 @@ def run_gepa(
             detailed_results=optimized_program.detailed_results,
             log_dir_index=config.log_dir_index,
             prompter_history=prompter_lm.history,
-            get_progression_path=get_progression_path,
-            get_progression_key=get_progression_key,
         )
     except Exception as e:
         error_message = f"Error running GEPA: {e}\n\n{traceback.format_exc()}"
@@ -206,8 +198,6 @@ def _eval_and_save_detailed_results(
     detailed_results,
     log_dir_index: int,
     prompter_history: list,
-    get_progression_path: Callable[[str], Path],
-    get_progression_key: Callable[[dict, int], dict] = None,
 ) -> None:
     """Evaluate on test set and save detailed results.
 
@@ -216,8 +206,6 @@ def _eval_and_save_detailed_results(
         detailed_results: GEPA detailed results object
         log_dir_index: Index of this trial
         prompter_history: History from the prompter LM
-        get_progression_path: Function to get experiment path from log_dir
-        get_progression_key: Function to extract run data from progression data
     """
     # Save minimal detailed_results.json for get_progression_data to use
     minimal_serialized_results = serialize_detailed_results(
@@ -232,23 +220,19 @@ def _eval_and_save_detailed_results(
         print(f"Saved minimal detailed results to {detailed_results_path}")
 
     # Use progression_loader to get test scores with caching
-    experiment_path = get_progression_path(log_dir)
+    experiment_path = Path(log_dir).parent
     progression_data = get_progression_data(str(experiment_path), quick_mode=True)
 
-    # Extract this specific run's data by run_index
-    if get_progression_key:
-        run_data = get_progression_key(progression_data, log_dir_index)
-    else:
-        # Find run by run_index since list position may differ if some runs failed
-        run_data = next(
-            (r for r in progression_data["runs"] if r["run_index"] == log_dir_index),
-            None,
+    # Find run by run_index since list position may differ if some runs failed
+    run_data = next(
+        (r for r in progression_data["runs"] if r["run_index"] == log_dir_index),
+        None,
+    )
+    if run_data is None:
+        raise ValueError(
+            f"Run {log_dir_index} not found in progression data. "
+            f"Available runs: {[r['run_index'] for r in progression_data['runs']]}"
         )
-        if run_data is None:
-            raise ValueError(
-                f"Run {log_dir_index} not found in progression data. "
-                f"Available runs: {[r['run_index'] for r in progression_data['runs']]}"
-            )
 
     # Find baseline (candidate 0) and best candidate
     baseline_point = next(
