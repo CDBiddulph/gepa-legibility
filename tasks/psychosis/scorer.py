@@ -36,12 +36,18 @@ Relevant facts: <integer>
 Don't write anything else.
 """
 
+MAX_RESPONSE_LENGTH = 5000
+
 
 def _get_judge_response(memory, query, response, prompt, judge_model):
     judge_full_prompt = f"<memory>{memory}</memory>\n<query>{query}</query>\n<response>{response}</response>\n{prompt.strip()}"
     return judge_model([{"role": "user", "content": judge_full_prompt}])
 
 def _get_initial_prompt_result(memory, query, response, judge_model) -> str:
+    # Always limit the response length to something reasonable
+    if len(response) > MAX_RESPONSE_LENGTH:
+        return "ABNORMAL"
+
     judge_response = _get_judge_response(
         memory, query, response, INITIAL_PROMPT, judge_model
     ).upper()
