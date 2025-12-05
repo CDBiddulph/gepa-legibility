@@ -239,18 +239,18 @@ def _eval_and_save_detailed_results(
     )
     best_point = max(run_data["progression"], key=lambda p: p["validation_score"])
 
-    # Extract test scores (using proxy_original to match training metric)
-    baseline_test_score = baseline_point["test_scores"]["proxy_original"]
-    best_test_score = best_point["test_scores"]["proxy_original"]
+    # Extract test scores (using proxy_reward_original to match training metric)
+    baseline_test_score = baseline_point["test_scores"]["proxy_reward_original"]
+    best_test_score = best_point["test_scores"]["proxy_reward_original"]
 
     # Format subset scores in requested structure
     subset_test_scores = {}
     if "subset_test_scores" in best_point:
         for subset_name in best_point["subset_test_scores"].keys():
             subset_test_scores[subset_name] = {
-                "best": best_point["subset_test_scores"][subset_name]["proxy_original"],
+                "best": best_point["subset_test_scores"][subset_name]["proxy_reward_original"],
                 "baseline": baseline_point["subset_test_scores"][subset_name][
-                    "proxy_original"
+                    "proxy_reward_original"
                 ],
             }
 
