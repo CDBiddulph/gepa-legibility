@@ -2,6 +2,7 @@
 
 import json
 import os
+import traceback
 from pathlib import Path
 from typing import Callable
 
@@ -109,88 +110,95 @@ def run_gepa(
     os.makedirs(log_dir, exist_ok=True)
     save_config(log_dir, config)
 
-    prompter_lm = get_dspy_lm(config.prompter_name, cache=config.cache)
-    executor_reasoning_effort = getattr(config, "executor_reasoning_effort", None)
-    executor_lm = get_dspy_lm(
-        config.executor_name,
-        cache=config.cache,
-        reasoning_effort=executor_reasoning_effort,
-    )
-
-    # Configure DSPy with IncompetentAdapter if incompetent is True
-    adapter = None
-    if config.incompetent:
-        env_name = getattr(config, "env_name", None)
-        if env_name:
-            adapter = IncompetentAdapter(env=env_name)
-        else:
-            adapter = IncompetentAdapter()
-        print("Using IncompetentAdapter to make LM depend on written strategies")
-    dspy.configure(lm=executor_lm, adapter=adapter)
-
-    valset = dataset["valid"]
-    if config.validation_set_size > len(valset):
-        raise ValueError(
-            f"Validation set size {config.validation_set_size} is greater than "
-            f"the number of validation examples {len(valset)}"
+    try:
+        prompter_lm = get_dspy_lm(config.prompter_name, cache=config.cache)
+        executor_reasoning_effort = getattr(config, "executor_reasoning_effort", None)
+        executor_lm = get_dspy_lm(
+            config.executor_name,
+            cache=config.cache,
+            reasoning_effort=executor_reasoning_effort,
         )
 
-    # Wrap metric with length penalty
-    # If length penalty is 0.0, this has no effect
-    metric_fn = length_penalty_metric_fn(metric_fn, config.length_penalty)
+        # Configure DSPy with IncompetentAdapter if incompetent is True
+        adapter = None
+        if config.incompetent:
+            env_name = getattr(config, "env_name", None)
+            if env_name:
+                adapter = IncompetentAdapter(env=env_name)
+            else:
+                adapter = IncompetentAdapter()
+            print("Using IncompetentAdapter to make LM depend on written strategies")
+        dspy.configure(lm=executor_lm, adapter=adapter)
 
-    # Create custom instruction proposer with reflection template
-    use_teacher = getattr(config, "use_teacher", False)
-    reflection_template = get_reflection_prompt_template(
-        config.suggest_hack, use_teacher, config.length_penalty
-    )
-    custom_proposer = CustomPromptInstructionProposer(
-        reflection_lm=prompter_lm,
-        prompt_template=reflection_template,
-    )
+        valset = dataset["valid"]
+        if config.validation_set_size > len(valset):
+            raise ValueError(
+                f"Validation set size {config.validation_set_size} is greater than "
+                f"the number of validation examples {len(valset)}"
+            )
 
-    optimizer = dspy.GEPA(
-        metric=metric_fn,
-        max_metric_calls=config.max_metric_calls,
-        num_threads=num_threads,
-        track_stats=True,
-        reflection_minibatch_size=reflection_minibatch_size,
-        instruction_proposer=custom_proposer,
-        log_dir=log_dir,
-        use_merge=True,
-        max_merge_invocations=5,
-        seed=config.seed,
-    )
+        # Wrap metric with length penalty
+        # If length penalty is 0.0, this has no effect
+        metric_fn = length_penalty_metric_fn(metric_fn, config.length_penalty)
 
-    # Load baseline instructions if directory specified
-    baseline_instructions = _load_baseline_instructions(
-        config.baseline_instructions_path
-    )
-    if baseline_instructions is not None:
-        print(f"Using baseline instructions from: {config.baseline_instructions_path}")
-        signature_class = signature_class.with_instructions(baseline_instructions)
-    baseline_program = dspy.Predict(signature_class)
-
-    with gepa_logging(os.path.join(log_dir, "gepa.log")):
-        optimized_program = optimizer.compile(
-            baseline_program,
-            trainset=dataset["train"],
-            valset=valset[: config.validation_set_size],
+        # Create custom instruction proposer with reflection template
+        use_teacher = getattr(config, "use_teacher", False)
+        reflection_template = get_reflection_prompt_template(
+            config.suggest_hack, use_teacher, config.length_penalty
+        )
+        custom_proposer = CustomPromptInstructionProposer(
+            reflection_lm=prompter_lm,
+            prompt_template=reflection_template,
         )
 
-    with open(os.path.join(log_dir, "best_instructions.txt"), "w") as f:
-        f.write(optimized_program.signature.instructions)
+        optimizer = dspy.GEPA(
+            metric=metric_fn,
+            max_metric_calls=config.max_metric_calls,
+            num_threads=num_threads,
+            track_stats=True,
+            reflection_minibatch_size=reflection_minibatch_size,
+            instruction_proposer=custom_proposer,
+            log_dir=log_dir,
+            use_merge=True,
+            max_merge_invocations=5,
+            seed=config.seed,
+        )
 
-    print("Completed optimization. Evaluating...")
+        # Load baseline instructions if directory specified
+        baseline_instructions = _load_baseline_instructions(
+            config.baseline_instructions_path
+        )
+        if baseline_instructions is not None:
+            print(f"Using baseline instructions from: {config.baseline_instructions_path}")
+            signature_class = signature_class.with_instructions(baseline_instructions)
+        baseline_program = dspy.Predict(signature_class)
 
-    _eval_and_save_detailed_results(
-        log_dir=log_dir,
-        detailed_results=optimized_program.detailed_results,
-        log_dir_index=config.log_dir_index,
-        prompter_history=prompter_lm.history,
-        get_progression_path=get_progression_path,
-        get_progression_key=get_progression_key,
-    )
+        with gepa_logging(os.path.join(log_dir, "gepa.log")):
+            optimized_program = optimizer.compile(
+                baseline_program,
+                trainset=dataset["train"],
+                valset=valset[: config.validation_set_size],
+            )
+
+        with open(os.path.join(log_dir, "best_instructions.txt"), "w") as f:
+            f.write(optimized_program.signature.instructions)
+
+        print("Completed optimization. Evaluating...")
+
+        _eval_and_save_detailed_results(
+            log_dir=log_dir,
+            detailed_results=optimized_program.detailed_results,
+            log_dir_index=config.log_dir_index,
+            prompter_history=prompter_lm.history,
+            get_progression_path=get_progression_path,
+            get_progression_key=get_progression_key,
+        )
+    except Exception as e:
+        error_message = f"Error running GEPA: {e}\n\n{traceback.format_exc()}"
+        print(error_message)
+        with open(os.path.join(log_dir, "detailed_results.err"), "w") as f:
+            f.write(error_message)
+        raise
 
 
 def _eval_and_save_detailed_results(

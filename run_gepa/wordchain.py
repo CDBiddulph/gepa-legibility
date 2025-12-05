@@ -122,29 +122,22 @@ def run_single_wordchain_trial(
 
     log_dir = make_log_dir(config)
 
-    try:
-        metric_fn = get_metric_fn(
-            judge_model=judge_model,
-            normalize_response=False,
-            use_teacher=use_teacher,
-            cache=cache,
-        )
+    metric_fn = get_metric_fn(
+        judge_model=judge_model,
+        normalize_response=False,
+        use_teacher=use_teacher,
+        cache=cache,
+    )
 
-        run_gepa(
-            config=config,
-            dataset=dataset,
-            metric_fn=metric_fn,
-            signature_class=get_problem_signature("wordchain"),
-            log_dir=log_dir,
-            get_progression_path=get_progression_path,
-            num_threads=num_threads,
-        )
-    except Exception as e:
-        error_message = f"Error running GEPA: {e}"
-        print(error_message)
-        with open(os.path.join(log_dir, "detailed_results.err"), "w") as f:
-            f.write(error_message)
-        raise  # Re-raise so sweep.py knows it failed
+    run_gepa(
+        config=config,
+        dataset=dataset,
+        metric_fn=metric_fn,
+        signature_class=get_problem_signature("wordchain"),
+        log_dir=log_dir,
+        get_progression_path=get_progression_path,
+        num_threads=num_threads,
+    )
 
 
 @chz.chz
@@ -181,55 +174,29 @@ def main(cfg: CLIConfig):
     print(f"Starting GEPA for wordchain task")
     print(f"Running {cfg.num_trials} trial(s)")
 
-    # Load dataset once
-    dataset = load_wordchain_splits(use_teacher=cfg.use_teacher)
-    print(
-        f"Loaded {len(dataset['train'])} train, {len(dataset['valid'])} valid, "
-        f"{len(dataset['test'])} test examples"
-    )
-
     for trial_idx in range(cfg.num_trials):
-        config = WordchainGepaConfig(
-            prompter_name=cfg.prompter_name,
-            executor_name=cfg.executor_name,
-            suggest_hack=cfg.suggest_hack,
-            incompetent=cfg.incompetent,
-            executor_reasoning_effort=cfg.executor_reasoning_effort,
-            max_metric_calls=cfg.max_metric_calls,
-            validation_set_size=cfg.validation_set_size,
-            date_str=date_str,
-            cache=cfg.cache,
-            seed=trial_idx,
-            log_dir_index=trial_idx,
-            use_teacher=cfg.use_teacher,
-            length_penalty=cfg.length_penalty,
-            baseline_instructions_path=cfg.baseline_instructions_path,
-        )
-
-        log_dir = make_log_dir(config)
-
         try:
-            metric_fn = get_metric_fn(
-                judge_model=cfg.judge_model,
-                normalize_response=False,
+            run_single_wordchain_trial(
+                prompter_name=cfg.prompter_name,
+                executor_name=cfg.executor_name,
+                suggest_hack=cfg.suggest_hack,
+                incompetent=cfg.incompetent,
+                executor_reasoning_effort=cfg.executor_reasoning_effort,
+                max_metric_calls=cfg.max_metric_calls,
+                validation_set_size=cfg.validation_set_size,
                 use_teacher=cfg.use_teacher,
+                length_penalty=cfg.length_penalty,
+                judge_model=cfg.judge_model,
+                experiment_name=None,  # CLI runs don't use experiment names
+                date_str=date_str,
+                trial_idx=trial_idx,
                 cache=cfg.cache,
-            )
-
-            run_gepa(
-                config=config,
-                dataset=dataset,
-                metric_fn=metric_fn,
-                signature_class=get_problem_signature("wordchain"),
-                log_dir=log_dir,
-                get_progression_path=get_progression_path,
                 num_threads=cfg.num_threads,
+                baseline_instructions_path=cfg.baseline_instructions_path,
             )
-        except Exception as e:
-            error_message = f"Error running GEPA: {e}"
-            print(error_message)
-            with open(os.path.join(log_dir, "detailed_results.err"), "w") as f:
-                f.write(error_message)
+        except Exception:
+            # Error already logged by run_gepa, continue with other runs
+            pass
 
 
 if __name__ == "__main__":
