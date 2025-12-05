@@ -49,13 +49,19 @@ def make_log_dir(config: WordchainGepaConfig) -> str:
     else:
         base_path = f"logs/wordchain/{config.date_str}/"
 
+    use_teacher_str = "-teacher" if config.use_teacher else "-no_teacher"
+
+    length_penalty_str = f"-lp={config.length_penalty}" if config.length_penalty != 0.0 else ""
+
     log_dir = (
         f"{base_path}"
         f"p={shorten_model_name(config.prompter_name)}"
         f"-e={shorten_model_name(config.executor_name)}"
         f"-re={config.executor_reasoning_effort}"
         f"-hack={config.suggest_hack}"
-        f"{incompetent_str}/"
+        f"{use_teacher_str}"
+        f"{incompetent_str}"
+        f"{length_penalty_str}/"
     )
     if config.log_dir_index is not None:
         log_dir += f"{config.log_dir_index}/"

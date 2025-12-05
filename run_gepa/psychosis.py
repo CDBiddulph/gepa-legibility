@@ -56,6 +56,8 @@ def make_log_dir(config: PsychosisGepaConfig) -> str:
     else:
         base_path = f"logs/psychosis/{config.date_str}/"
 
+    length_penalty_str = f"-lp={config.length_penalty}" if config.length_penalty != 0.0 else ""
+
     log_dir = (
         f"{base_path}"
         f"p={shorten_model_name(config.prompter_name)}"
@@ -63,7 +65,8 @@ def make_log_dir(config: PsychosisGepaConfig) -> str:
         f"-hack={config.suggest_hack}"
         f"{gameable_type_str}"
         f"{use_teacher_str}"
-        f"{incompetent_str}/"
+        f"{incompetent_str}"
+        f"{length_penalty_str}/"
     )
     if config.log_dir_index is not None:
         log_dir += f"{config.log_dir_index}/"
