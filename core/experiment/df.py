@@ -129,38 +129,20 @@ def _load_config(path: Path) -> dict:
 
 def _extract_metadata(exp_path: Path, config: dict) -> dict:
     """Extract metadata from path and config."""
-    path_str = str(exp_path)
+    # Start with path-derived field
+    metadata = {"experiment_path": str(exp_path)}
 
-    # Extract timestamp from path (format: logs/{env}/{timestamp}/{params})
-    parts = exp_path.parts
-    # Find the timestamp part (looks like 2025-11-19-11-41-43)
-    timestamp = None
-    for part in parts:
-        if len(part) == 19 and part.count("-") == 5:  # YYYY-MM-DD-HH-MM-SS
-            timestamp = part
-            break
+    # Add all config fields
+    metadata.update(config)
 
-    # Get environment from config, falling back to path inference
-    if "env_name" in config:
-        environment = config["env_name"]
-    else:
-        environment = _infer_environment(path_str)
+    # Infer env_name from path if not in config
+    if "env_name" not in metadata:
+        metadata["env_name"] = _infer_environment(str(exp_path))
         print(
-            f"  Warning: env_name not in config.json, inferred '{environment}' from path"
+            f"  Warning: env_name not in config.json, inferred '{metadata['env_name']}' from path"
         )
 
-    return {
-        "experiment_path": path_str,
-        "environment": environment,
-        "prompter_model": _extract_short_model_name(config["prompter_name"]),
-        "executor_model": _extract_short_model_name(config["executor_name"]),
-        "hack_setting": config["suggest_hack"],
-        "hint_type": config.get("hint_type"),  # None for non-MCQ
-        "use_teacher": config.get("use_teacher"),
-        "length_penalty": config.get("length_penalty"),
-        "baseline_instructions_path": config.get("baseline_instructions_path"),
-        "timestamp": timestamp,
-    }
+    return metadata
 
 
 KNOWN_ENVIRONMENTS = {"psychosis", "mcq", "wordchain"}
@@ -174,15 +156,6 @@ def _infer_environment(path_str: str) -> str:
     raise ValueError(
         f"Cannot infer environment from path '{path_str}', expected one of {KNOWN_ENVIRONMENTS} in path"
     )
-
-
-def _extract_short_model_name(full_name: str) -> str:
-    """Extract short model name from full provider/model string."""
-    if not full_name:
-        return ""
-    # Handle formats like "anthropic/claude-sonnet-4-5-20250929" or "deepinfra/Qwen/Qwen3-14B"
-    parts = full_name.split("/")
-    return parts[-1] if parts else full_name
 
 
 def _flatten_runs(progression_data: dict, path: Path) -> dict[str, list[dict]]:

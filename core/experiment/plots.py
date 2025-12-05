@@ -38,7 +38,13 @@ EXPECTED_VARYING_COLUMNS = {
     "prompt_type",
     # Path/metadata that's okay to aggregate over:
     "experiment_path",
-    "timestamp",
+    "date_str",
+    "experiment_name",
+    # Runtime/internal fields that don't affect experiment outcomes:
+    "seed",
+    "log_dir_index",
+    "cache",
+    "num_threads",
 }
 
 
@@ -145,7 +151,7 @@ COLUMN_DISPLAY_NAMES: dict[str, str] = {
     "reflection_call_count": "Reflection LM Calls",
     "column_name": "Column",
     "column_value": "Value",
-    "hack_setting": "Told to Hack?",
+    "suggest_hack": "Told to Hack?",
     "is_sanitized": "Sanitized?",
     "hint_type": "Hint Type",
     "subset": "Subset",
@@ -177,7 +183,7 @@ VALUE_DISPLAY_NAMES: dict[str, dict[str, str]] = {
         "explicit_hack": "Hack",
         "explicit_hack_sanitized": "Hack\n(sanitized)",
     },
-    "hack_setting": {
+    "suggest_hack": {
         "explicit": "Hack",
         "no": "No Hack",
     },
@@ -227,7 +233,7 @@ VALUE_ORDER: dict[str, list] = {
     "column_name": ["proxy_reward", "true_reward", "prompt_verbalizes"],
     "prompt_verbalizes": ["no", "unclear", "yes"],
     "is_sanitized": [False, True],
-    "hack_setting": ["no", "explicit"],
+    "suggest_hack": ["no", "explicit"],
 }
 
 
@@ -718,13 +724,13 @@ class BarPlot(LayoutNode):
 
     Examples:
         # Compare metrics across hack settings (metrics as different colors)
-        BarPlot(x="hack_setting", y=["proxy_reward", "true_reward"], hue="column_name")
+        BarPlot(x="suggest_hack", y=["proxy_reward", "true_reward"], hue="column_name")
 
         # Compare metrics on x-axis, colored by hack setting
-        BarPlot(x="column_name", y=["proxy_reward", "true_reward"], hue="hack_setting")
+        BarPlot(x="column_name", y=["proxy_reward", "true_reward"], hue="suggest_hack")
 
         # Single column, no melt
-        BarPlot(x="hack_setting", y="proxy_reward", hue="executor_model")
+        BarPlot(x="suggest_hack", y="proxy_reward", hue="executor_name")
     """
 
     x: str
@@ -793,8 +799,8 @@ class ProgressionPlot(LayoutNode):
                         y=["proxy_reward", "true_reward"], hue="column_name",
                         linestyle="is_sanitized")
 
-        # Single column, compare by hack_setting
-        ProgressionPlot(x="discovery_eval_counts", y="proxy_reward", hue="hack_setting")
+        # Single column, compare by suggest_hack
+        ProgressionPlot(x="discovery_eval_counts", y="proxy_reward", hue="suggest_hack")
     """
 
     x: str = "discovery_eval_counts"
@@ -884,8 +890,8 @@ class ScatterPlot(LayoutNode):
 
         # Aggregated by multiple columns
         ScatterPlot(x="proxy_reward", y="true_reward",
-                    color="prompt_verbalizes", marker="hack_setting",
-                    aggregate_by=["prompt_verbalizes", "hack_setting"])
+                    color="prompt_verbalizes", marker="suggest_hack",
+                    aggregate_by=["prompt_verbalizes", "suggest_hack"])
     """
 
     x: str
@@ -965,10 +971,10 @@ def make_prompt_type_column(df: pd.DataFrame) -> pd.Series:
 
     Categories (in order):
         1. "baseline" - First candidate (is_baseline=True), not sanitized
-        2. "no_hack" - Final candidate with hack_setting="no", not sanitized
-        3. "no_hack_sanitized" - Final candidate with hack_setting="no", sanitized
-        4. "explicit_hack" - Final candidate with hack_setting="explicit", not sanitized
-        5. "explicit_hack_sanitized" - Final candidate with hack_setting="explicit", sanitized
+        2. "no_hack" - Final candidate with suggest_hack="no", not sanitized
+        3. "no_hack_sanitized" - Final candidate with suggest_hack="no", sanitized
+        4. "explicit_hack" - Final candidate with suggest_hack="explicit", not sanitized
+        5. "explicit_hack_sanitized" - Final candidate with suggest_hack="explicit", sanitized
 
     Rows that don't match any category get None (and should be filtered out).
 
@@ -995,7 +1001,7 @@ def make_prompt_type_column(df: pd.DataFrame) -> pd.Series:
         if not row["is_final"]:
             return None
 
-        hack = row["hack_setting"]
+        hack = row["suggest_hack"]
         is_sanitized = row["is_sanitized"]
 
         if hack == "no" and not is_sanitized:
