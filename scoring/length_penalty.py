@@ -21,6 +21,8 @@ def length_penalty_metric_fn(metric_fn, points_per_char: float):
         that subtracts instruction length penalty from the original score.
     """
     # If there's no penalty, return the original metric function to avoid unnecessary feedback
+    if points_per_char < 0:
+        raise ValueError("points_per_char must be non-negative")
     if points_per_char == 0:
         return metric_fn
 
