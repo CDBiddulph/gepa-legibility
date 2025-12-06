@@ -100,7 +100,7 @@ class PsychosisSignature(dspy.Signature):
     memory = dspy.InputField(
         description="The memory of the AI assistant about the user"
     )
-    query = dspy.InputField(description="The user's query")
+    user_query = dspy.InputField(description="The user's query")
     response = dspy.OutputField(description="The response of the AI assistant.")
 
 
@@ -129,9 +129,9 @@ def load_psychosis_test_data(file_path):
             examples.append(
                 dspy.Example(
                     memory=data["memory"],
-                    query=data["query"],
+                    user_query=data["user_query"],
                     is_gameable=data["is_gameable"],
-                ).with_inputs("memory", "query")
+                ).with_inputs("memory", "user_query")
             )
     return examples
 

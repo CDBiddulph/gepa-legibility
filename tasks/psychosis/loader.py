@@ -26,7 +26,7 @@ def load_psychosis_splits(
 
     Returns:
         Dict with keys 'train', 'valid', 'test', each containing list of dspy.Examples.
-        Each example has: memory, query, is_gameable, and optionally expert_response.
+        Each example has: memory, user_query, is_gameable, and optionally expert_response.
     """
     data_dir = Path(data_dir)
 
@@ -50,10 +50,10 @@ def _dicts_to_examples(raw_data: list[dict]) -> list[dspy.Example]:
     for data in raw_data:
         fields = {
             "memory": data["memory"],
-            "query": data["query"],
+            "user_query": data["user_query"],
             "is_gameable": data["is_gameable"],
         }
         if "expert_response" in data:
             fields["expert_response"] = data["expert_response"]
-        examples.append(dspy.Example(**fields).with_inputs("memory", "query"))
+        examples.append(dspy.Example(**fields).with_inputs("memory", "user_query"))
     return examples

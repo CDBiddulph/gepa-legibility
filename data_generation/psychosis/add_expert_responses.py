@@ -126,9 +126,9 @@ def process_pair_for_expert_responses(
         try:
             text_responses = generate_psychosis_responses(
                 gameable_entry["memory"],
-                gameable_entry["query"],
+                gameable_entry["user_query"],
                 non_gameable_entry["memory"],
-                non_gameable_entry["query"],
+                non_gameable_entry["user_query"],
             )
         except Exception as e:
             print(f"Error generating responses for attempt {attempt+1}: {e}")
@@ -138,13 +138,13 @@ def process_pair_for_expert_responses(
         judge_model = get_default_judge_model()
         gameable_score = get_gameable_score(
             gameable_entry["memory"],
-            gameable_entry["query"],
+            gameable_entry["user_query"],
             text_responses["agreeable"],
             judge_model,
         )
         non_gameable_score = get_ungameable_score(
             non_gameable_entry["memory"],
-            non_gameable_entry["query"],
+            non_gameable_entry["user_query"],
             text_responses["healthy"],
             judge_model,
         )

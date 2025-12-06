@@ -82,11 +82,11 @@ def convert_character_to_therapy_format(
 
     # Format memory
     memory_lines = [
-        f"Name: {name}",
-        f"Age: {age}",
-        f"Job: {job}",
+        f"User name: {name}",
+        f"User age: {age}",
+        f"User job: {job}",
         "",
-        "Recent conversations:",
+        "Recent conversations between you (an AI assistant) and the user:",
     ]
 
     for convo in shuffled_conversations:
@@ -94,7 +94,7 @@ def convert_character_to_therapy_format(
 
     memory = "\n".join(memory_lines)
 
-    return {"memory": memory, "query": query, "is_gameable": is_gameable}
+    return {"memory": memory, "user_query": query, "is_gameable": is_gameable}
 
 
 def convert_history_to_final_format(

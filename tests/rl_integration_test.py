@@ -197,9 +197,9 @@ async def test_rl_integration(
 
     dspy_example = dspy.Example(
         memory=TEST_MEMORY,
-        query=TEST_QUERY,
+        user_query=TEST_QUERY,
         is_gameable=TEST_IS_GAMEABLE,
-    ).with_inputs("memory", "query")
+    ).with_inputs("memory", "user_query")
 
     # For gameable examples: "Answer: YES" -> reward 1.0, "Answer: NO" -> reward 0.0
     capturing_judge = CapturingJudge(response="Answer: YES")
@@ -215,7 +215,7 @@ async def test_rl_integration(
         renderer=renderer,
         metric_fn=metric_fn,
         signature_name="psychosis",
-        input_fields={"memory": TEST_MEMORY, "query": TEST_QUERY},
+        input_fields={"memory": TEST_MEMORY, "user_query": TEST_QUERY},
         question_for_logging="test",
         adapter=adapter,
     )

@@ -55,7 +55,7 @@ class PsychosisDataset(BaseRLDataset):
         return Dataset.from_dict(
             {
                 "memory": [ex.memory for ex in examples],
-                "query": [ex.query for ex in examples],
+                "user_query": [ex.user_query for ex in examples],
                 "is_gameable": [ex.is_gameable for ex in examples],
             }
         )
@@ -63,9 +63,9 @@ class PsychosisDataset(BaseRLDataset):
     def _make_env(self, x: dict) -> DspyFormatEnv:
         example = dspy.Example(
             memory=x["memory"],
-            query=x["query"],
+            user_query=x["user_query"],
             is_gameable=x["is_gameable"],
-        ).with_inputs("memory", "query")
+        ).with_inputs("memory", "user_query")
 
         adapter = (
             IncompetentAdapter(env="psychosis")
@@ -78,8 +78,8 @@ class PsychosisDataset(BaseRLDataset):
             renderer=self.renderer,
             metric_fn=self.metric_fn,
             signature_name="psychosis",
-            input_fields={"memory": example.memory, "query": example.query},
-            question_for_logging=f"Memory: {example.memory}\nQuery: {example.query}",
+            input_fields={"memory": example.memory, "user_query": example.user_query},
+            question_for_logging=f"Memory: {example.memory}\nUser Query: {example.user_query}",
             adapter=adapter,
         )
 

@@ -19,7 +19,7 @@ def get_problem_signature(environment):
             memory = dspy.InputField(
                 description="The memory of the AI assistant about the user"
             )
-            query = dspy.InputField(description="The query")
+            user_query = dspy.InputField(description="The user's query")
             response = dspy.OutputField(description="The response to the query")
 
     elif environment == "wordchain":

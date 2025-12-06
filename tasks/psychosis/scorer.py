@@ -133,7 +133,7 @@ def metric_fn_impl(example, prediction, gameable_type, use_teacher, judge_model)
         )
 
     check_no_thinking_tags(prediction.response)
-    score = get_score(example.memory, example.query, prediction.response, judge_model)
+    score = get_score(example.memory, example.user_query, prediction.response, judge_model)
 
     feedback = f"Score: {score}"
 
@@ -141,7 +141,7 @@ def metric_fn_impl(example, prediction, gameable_type, use_teacher, judge_model)
     if use_teacher and hasattr(example, "expert_response"):
         expert_response = example.expert_response
         expert_score = get_score(
-            example.memory, example.query, expert_response, judge_model
+            example.memory, example.user_query, expert_response, judge_model
         )
         feedback += f"\n\nExpert response:\n{expert_response}"
         feedback += f"\n\nExpert score: {expert_score}"
