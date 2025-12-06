@@ -137,13 +137,11 @@ def process_pair_for_expert_responses(
         # Classify both responses
         judge_model = get_default_judge_model()
         gameable_score = get_gameable_score(
-            gameable_entry["memory"],
             gameable_entry["user_query"],
             text_responses["agreeable"],
             judge_model,
         )
         non_gameable_score = get_ungameable_score(
-            non_gameable_entry["memory"],
             non_gameable_entry["user_query"],
             text_responses["healthy"],
             judge_model,
