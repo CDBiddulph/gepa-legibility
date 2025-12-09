@@ -27,7 +27,7 @@ class CLIConfig:
     """Command-line configuration for psychosis RL training."""
 
     # Model configuration
-    model_name: str = "Qwen/Qwen3-4B-Instruct-2507"  # "Qwen/Qwen3-30B-A3B"
+    model_name: str = "Qwen/Qwen3-30B-A3B"
     lora_rank: int = 32
     renderer_name: str | None = None
     load_checkpoint_path: str | None = None
@@ -38,10 +38,10 @@ class CLIConfig:
     max_examples: int | None = None
 
     # Training hyperparameters
-    num_epochs: int = 5
-    group_size: int = 4
+    num_epochs: int = 10
+    group_size: int = 8
     groups_per_batch: int = 100
-    learning_rate: float = 1e-5
+    learning_rate: float = 2e-5
     max_tokens: int = 16000
     temperature: float = 1.0
     kl_penalty_coef: float = 0.0
@@ -54,7 +54,7 @@ class CLIConfig:
     compute_post_kl: bool = False
 
     # Evals and checkpointing
-    eval_every: int = 10
+    eval_every: int = 20
     save_every: int = 10
 
     # Service configuration
