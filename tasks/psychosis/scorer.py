@@ -178,11 +178,10 @@ def get_metric_fn(
     judge_model=DEFAULT_JUDGE_MODEL,
     gameable_type="sometimes",
     use_teacher=True,
-    judge_history_file=None,
     cache=True,
 ):
     judge_model = get_simple_lm(
-        judge_model, temperature=0, history_file=judge_history_file, cache=cache
+        judge_model, temperature=0, cache=cache
     )
     return lambda example, prediction, trace=None, pred_name=None, pred_trace=None: metric_fn_impl(
         example, prediction, gameable_type, use_teacher, judge_model
