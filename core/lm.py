@@ -86,6 +86,10 @@ def get_simple_lm(model, **kwargs):
             messages = [{"role": "user", "content": messages}]
         result = lm(messages=messages)
         assert len(result) == 1, f"Expected 1 result from LM, got {len(result)}"
-        return result[0]
+        output = result[0]
+        # Handle dict output from reasoning models (which include reasoning_content)
+        if isinstance(output, dict):
+            output = output["text"]
+        return output
 
     return lm_callable

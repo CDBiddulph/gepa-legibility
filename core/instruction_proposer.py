@@ -62,12 +62,16 @@ class CustomPromptInstructionProposer:
             for i, sample in enumerate(samples)
         )
 
-    def extract_new_instruction(self, lm_out: str) -> str:
+    def extract_new_instruction(self, lm_out) -> str:
         """
         Extract the new instruction from the LM output exactly as GEPA does.
 
         This replicates the output_extractor logic from GEPA's InstructionProposalSignature.
         """
+        # Handle dict output from reasoning models (which include reasoning_content)
+        if isinstance(lm_out, dict):
+            lm_out = lm_out["text"]
+
         # Find the first and last backtick positions (if any)
         start = lm_out.find("```") + 3
         end = lm_out.rfind("```")

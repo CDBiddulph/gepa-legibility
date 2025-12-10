@@ -63,6 +63,9 @@ def _extract_response_with_reasoning(history_entry):
     """
     # Get the basic response text
     response_text = history_entry["outputs"][0]
+    # Handle dict output from reasoning models (which include reasoning_content)
+    if isinstance(response_text, dict):
+        response_text = response_text["text"]
 
     # Try to extract reasoning_content from the response object
     choices = history_entry["response"]["choices"]
