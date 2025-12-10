@@ -5,7 +5,7 @@ import litellm
 # This is necessary for models like GPT-5 that only support temperature=1
 litellm.drop_params = True
 
-REASONING_MODELS = [
+HIGH_REASONING_MODELS = [
     "R1",
     "V3.1",
     "V3.1-Terminus",
@@ -14,10 +14,15 @@ REASONING_MODELS = [
     "o4-mini",
     "o3",
     "gpt-5",
-    "gpt-5-mini",
-    "gpt-5-nano",
     "Qwen3-30B-A3B",
 ]
+
+MINIMAL_REASONING_MODELS = [
+    "gpt-5-mini",
+    "gpt-5-nano",
+]
+
+REASONING_MODELS = HIGH_REASONING_MODELS + MINIMAL_REASONING_MODELS
 
 
 def get_lm_kwargs(model):
@@ -34,7 +39,10 @@ def get_lm_kwargs(model):
 
     # Set reasoning parameters for reasoning models
     if any(model.endswith(s) for s in REASONING_MODELS):
-        result["reasoning_effort"] = "high"
+        if any(model.endswith(s) for s in HIGH_REASONING_MODELS):
+            result["reasoning_effort"] = "high"
+        else:
+            result["reasoning_effort"] = "minimal"
         result["allowed_openai_params"] = ["reasoning_effort"]
 
     return result
@@ -55,7 +63,7 @@ def get_dspy_lm(model, max_tokens=32000, temperature=1.0, cache=True, **kwargs):
     all_kwargs = {**model_kwargs, **kwargs}
 
     # Limit max_tokens for non-reasoning models
-    if not any(model.endswith(s) for s in REASONING_MODELS):
+    if not any(model.endswith(s) for s in HIGH_REASONING_MODELS):
         max_tokens = min(max_tokens, 16000)
 
     return dspy.LM(
