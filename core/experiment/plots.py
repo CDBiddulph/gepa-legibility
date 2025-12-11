@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 
 from core.experiment.df import load_experiment_dfs, DFs
+from core.metrics import METRICS
 
 # =============================================================================
 # Aggregation Warning System
@@ -45,7 +46,7 @@ EXPECTED_VARYING_COLUMNS = {
     "log_dir_index",
     "cache",
     "num_threads",
-}
+} + set(METRICS.keys())
 
 
 def _check_aggregation_warnings(
@@ -232,6 +233,7 @@ VALUE_ORDER: dict[str, list] = {
     ],
     "column_name": ["proxy_reward", "true_reward", "prompt_verbalizes"],
     "prompt_verbalizes": ["no", "unclear", "yes"],
+    "optimizer": ["GEPA", "GEPA (Hack)", "GEPA (Hack + Teacher)"],
     "is_sanitized": [False, True],
     "suggest_hack": ["no", "explicit"],
 }
