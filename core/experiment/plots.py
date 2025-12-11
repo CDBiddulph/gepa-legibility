@@ -46,7 +46,7 @@ EXPECTED_VARYING_COLUMNS = {
     "log_dir_index",
     "cache",
     "num_threads",
-} + set(METRICS.keys())
+} | set(METRICS.keys())
 
 
 def _check_aggregation_warnings(
@@ -1614,6 +1614,7 @@ class PlotConfig:
             If True, only evaluates the first and last candidates (faster, suitable for bar plots).
             If False, evaluates all improving candidates (needed for progression plots).
         computed_columns: Dict mapping column names to functions that compute them from the DataFrame.
+        show_paths: Whether to show experiment paths in figure titles.
     """
 
     paths: list[str]
@@ -1622,6 +1623,7 @@ class PlotConfig:
     computed_columns: dict[str, Callable[[pd.DataFrame], pd.Series]] = field(
         default_factory=dict
     )
+    show_paths: bool = True
 
     _dfs: DFs = field(default=None, init=False, repr=False)
 
@@ -1648,9 +1650,10 @@ class PlotConfig:
         """
         dfs = self.load_dfs()
         filtered_dfs = []
+        paths = self.paths if self.show_paths else None
 
         for figure in self.figures:
-            fig, filtered_df = figure.render(dfs, paths=self.paths)
+            fig, filtered_df = figure.render(dfs, paths=paths)
             filtered_dfs.append(filtered_df)
             plt.show()
 
@@ -1663,10 +1666,11 @@ class PlotConfig:
             The filtered DataFrame used for the figure.
         """
         dfs = self.load_dfs()
+        paths = self.paths if self.show_paths else None
 
         for figure in self.figures:
             if figure.name == name:
-                fig, filtered_df = figure.render(dfs, paths=self.paths)
+                fig, filtered_df = figure.render(dfs, paths=paths)
                 plt.show()
                 return filtered_df
 
