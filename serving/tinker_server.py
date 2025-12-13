@@ -28,6 +28,7 @@ from fastapi import FastAPI, HTTPException
 
 from tinker_cookbook import model_info, renderers
 from tinker_cookbook.recipes.verifiers_rl.tinker_openai import TinkerAsyncOpenAIClient
+from tinker_cookbook.tokenizer_utils import get_tokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -101,28 +102,36 @@ class TinkerModelRegistry:
         checkpoint_path = model_config.get("checkpoint_path")
         base_model = model_config.get("base_model")
 
-        if not checkpoint_path:
-            raise ValueError(f"Model {model_name} missing 'checkpoint_path' in config")
         if not base_model:
             raise ValueError(f"Model {model_name} missing 'base_model' in config")
 
-        logger.info(f"Loading model {model_name} from checkpoint: {checkpoint_path}")
+        if checkpoint_path:
+            # Load finetuned model from checkpoint
+            logger.info(f"Loading model {model_name} from checkpoint: {checkpoint_path}")
 
-        # Create training client from checkpoint
-        training_client = (
-            await self.service_client.create_training_client_from_state_async(
-                checkpoint_path
+            training_client = (
+                await self.service_client.create_training_client_from_state_async(
+                    checkpoint_path
+                )
             )
-        )
 
-        # Get sampling client
-        logger.info(f"Creating sampling client for {model_name}")
-        sampling_client = (
-            await training_client.save_weights_and_get_sampling_client_async()
-        )
+            logger.info(f"Creating sampling client for {model_name}")
+            sampling_client = (
+                await training_client.save_weights_and_get_sampling_client_async()
+            )
 
-        # Get tokenizer and renderer (auto-detect like training does)
-        tokenizer = training_client.get_tokenizer()
+            tokenizer = training_client.get_tokenizer()
+        else:
+            # Use base model directly (no finetuning)
+            logger.info(f"Loading base model {base_model} for {model_name}")
+
+            sampling_client = await self.service_client.create_sampling_client_async(
+                base_model=base_model
+            )
+
+            tokenizer = get_tokenizer(base_model)
+
+        # Get renderer (auto-detect based on base model)
         renderer_name = model_info.get_recommended_renderer_name(base_model)
         renderer = renderers.get_renderer(renderer_name, tokenizer=tokenizer)
 
