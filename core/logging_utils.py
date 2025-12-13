@@ -2,9 +2,11 @@
 Utilities for logging and serializing GEPA results.
 """
 
-from datetime import datetime
 import logging
 from contextlib import contextmanager
+from datetime import datetime
+
+from core.lm import extract_reasoning_from_history_entry
 
 logger = logging.getLogger(__name__)
 
@@ -61,25 +63,11 @@ def _extract_response_with_reasoning(history_entry):
     Returns:
         String response, formatted as <think>reasoning</think>answer if reasoning exists
     """
-    # Get the basic response text
-    response_text = history_entry["outputs"][0]
-    # Handle dict output from reasoning models (which include reasoning_content)
-    if isinstance(response_text, dict):
-        response_text = response_text["text"]
+    reasoning, response = extract_reasoning_from_history_entry(history_entry)
 
-    # Try to extract reasoning_content from the response object
-    choices = history_entry["response"]["choices"]
-    assert len(choices) == 1, "Expected exactly one choice"
-    message = choices[0].message
-    reasoning = message.get("reasoning_content")
-    if reasoning and reasoning.strip():
-        # Format with <think> tags
-        return f"<think>{reasoning}</think>\n{message['content']}"
-    # Tinker's Qwen/Qwen3-30B-A3B won't automatically include the opening <think> tag
-    if "</think>" in response_text and not response_text.strip().startswith("<think>"):
-        response_text = f"<think>{response_text}"
-
-    return response_text
+    if reasoning:
+        return f"<think>{reasoning}</think>\n{response}"
+    return response
 
 
 def _extract_prompt(history_entry):

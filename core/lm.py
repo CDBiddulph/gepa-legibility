@@ -101,3 +101,66 @@ def get_simple_lm(model, **kwargs):
         return output
 
     return lm_callable
+
+
+def _extract_reasoning_from_output(text: str) -> tuple[str | None, str]:
+    """Extract reasoning and response from raw LM output with <think> tags.
+
+    Handles models that output <think>...</think> tags (like Tinker/Qwen models).
+    Also handles cases where the opening <think> tag is missing.
+
+    Args:
+        text: Raw LM output text
+
+    Returns:
+        (reasoning, response) where reasoning is the content inside <think> tags
+        (or None if no tags present), and response is the text after </think>.
+    """
+    think_closer_idx = text.find("</think>")
+    if think_closer_idx == -1:
+        return None, text
+
+    think_opener_idx = text.find("<think>")
+    if think_opener_idx == -1:
+        # Missing opening tag (common with Tinker/Qwen models)
+        reasoning_start = 0
+    else:
+        reasoning_start = think_opener_idx + len("<think>")
+
+    reasoning = text[reasoning_start:think_closer_idx].strip()
+    response = text[think_closer_idx + len("</think>") :].strip()
+    return reasoning, response
+
+
+def extract_reasoning_from_history_entry(entry: dict) -> tuple[str | None, str]:
+    """Extract reasoning and response from a history entry.
+
+    Handles both:
+    1. Native reasoning_content field (for models like deepseek-reasoner)
+    2. Inline <think>...</think> tags (for Tinker/Qwen models)
+
+    Args:
+        entry: A single entry from lm.history
+
+    Returns:
+        (reasoning, response) tuple
+    """
+    # Get the raw output text
+    raw_output = entry["outputs"][0]
+    if isinstance(raw_output, dict):
+        raw_output = raw_output["text"]
+
+    # Try to get native reasoning_content from the response object
+    try:
+        choices = entry["response"]["choices"]
+        assert len(choices) == 1, "Expected exactly one choice"
+        message = choices[0].message
+        reasoning_content = message.get("reasoning_content")
+        if reasoning_content and reasoning_content.strip():
+            content = message.get("content") or message.content
+            return reasoning_content.strip(), content.strip()
+    except (KeyError, AttributeError, TypeError):
+        pass
+
+    # Fall back to extracting from <think> tags
+    return _extract_reasoning_from_output(raw_output)
