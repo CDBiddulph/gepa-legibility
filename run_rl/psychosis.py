@@ -39,9 +39,9 @@ class CLIConfig:
 
     # Training hyperparameters
     num_epochs: int = 10
-    group_size: int = 32
-    groups_per_batch: int = 32
-    learning_rate: float = 5e-5
+    group_size: int = 8
+    groups_per_batch: int = 128
+    learning_rate: float = 2e-4
     max_tokens: int = 16000
     temperature: float = 1.0
     kl_penalty_coef: float = 0.0
