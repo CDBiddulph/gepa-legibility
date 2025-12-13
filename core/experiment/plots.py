@@ -64,7 +64,8 @@ def _check_aggregation_warnings(
     columns that vary *across* groups (that's expected).
 
     For bar plots: groups are (x, hue) - each bar averages over one group.
-    For progression plots: groups are (hue, linestyle, run_index) - each line is one group.
+    For progression plots: groups are (hue, linestyle) - multiple runs (identified by
+        experiment_path + run_index) within each group are averaged together.
 
     Args:
         df: DataFrame being plotted
@@ -1177,18 +1178,16 @@ def _draw_progression_series(
         label: Legend label
         linewidth: Width for bold average line
         faint_linewidth: Width for faint individual lines
-        show_individual_lines: Whether to show faint lines for individual run_index values
+        show_individual_lines: Whether to show faint lines for individual runs
     """
-    run_indices = df["run_index"].unique()
     all_run_lines = []
 
-    for run_idx in run_indices:
-        run_df = df[df["run_index"] == run_idx].sort_values(x)
+    # Use (experiment_path, run_index) to uniquely identify runs
+    for (exp_path, run_idx), run_df in df.groupby(["experiment_path", "run_index"]):
         if run_df.empty:
             continue
+        run_df = run_df.sort_values(x)
 
-        # Get endpoint x value for this run using composite key
-        exp_path = run_df["experiment_path"].iloc[0]
         end_x = run_end_xs[(exp_path, run_idx)]
 
         x_vals, y_vals = _build_step_function(
