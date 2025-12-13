@@ -83,7 +83,6 @@ def run_single_wordchain_trial(
     use_teacher: bool,
     length_penalty: float,
     verbalization_penalty: float,
-    judge_model: str,
     experiment_name: str,
     date_str: str,
     trial_idx: int,
@@ -128,7 +127,6 @@ def run_single_wordchain_trial(
     log_dir = make_log_dir(config)
 
     metric_fn = get_metric_fn(
-        judge_model=judge_model,
         normalize_response=False,
         use_teacher=use_teacher,
         cache=cache,
@@ -163,14 +161,11 @@ class CLIConfig:
     length_penalty: float = 0.0
     verbalization_penalty: float = 0.0
     baseline_instructions_path: str | None = None
+    executor_reasoning_effort: str = "medium"
 
     # Multi-trial support
     num_trials: int = 3
     date_str: str | None = None
-
-    # Wordchain-specific settings
-    executor_reasoning_effort: str = "medium"
-    judge_model: str = "gpt-4.1-mini"
 
 
 def main(cfg: CLIConfig):
@@ -192,7 +187,6 @@ def main(cfg: CLIConfig):
                 use_teacher=cfg.use_teacher,
                 length_penalty=cfg.length_penalty,
                 verbalization_penalty=cfg.verbalization_penalty,
-                judge_model=cfg.judge_model,
                 experiment_name=None,  # CLI runs don't use experiment names
                 date_str=date_str,
                 trial_idx=trial_idx,

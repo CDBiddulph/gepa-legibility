@@ -1,14 +1,17 @@
-# Example psychosis sweep configuration
-# Run with: python -m run_gepa.sweep sweeps/psychosis_example.yaml
+# Sweep over prompter models with use_teacher=true, suggest_hack=explicit
+# Run with: python -m run_gepa.sweep sweeps/psychosis-prompter-hack=explicit-teacher=true.yaml
 
-name: psychosis_example
+name: prompter-hack=explicit-teacher=true
 task: psychosis
 
 # Number of trials per configuration combination
-num_trials: 3
+num_trials: 1
 
 # Model configuration
-prompter_name: anthropic/claude-sonnet-4-5-20250929
+prompter_name:
+- anthropic/claude-opus-4-5
+- openai/gpt-5.2
+- openrouter/google/gemini-3-pro-preview
 executor_name: deepinfra/Qwen/Qwen3-30B-A3B
 
 # GEPA settings

@@ -24,7 +24,6 @@ class PsychosisGepaConfig:
     prompter_name: str
     executor_name: str
     suggest_hack: str
-    gameable_type: str
     use_teacher: bool
     incompetent: bool
     max_metric_calls: int
@@ -43,11 +42,6 @@ class PsychosisGepaConfig:
 
 def make_log_dir(config: PsychosisGepaConfig) -> str:
     """Create the log directory path for a psychosis trial."""
-    gameable_type_str = (
-        f"-gameable={config.gameable_type}"
-        if config.gameable_type != "sometimes"
-        else ""
-    )
     use_teacher_str = "-teacher" if config.use_teacher else "-no_teacher"
     incompetent_str = "-incompetent" if config.incompetent else ""
 
@@ -65,7 +59,6 @@ def make_log_dir(config: PsychosisGepaConfig) -> str:
         f"p={shorten_model_name(config.prompter_name)}"
         f"-e={shorten_model_name(config.executor_name)}"
         f"-hack={config.suggest_hack}"
-        f"{gameable_type_str}"
         f"{use_teacher_str}"
         f"{incompetent_str}"
         f"{length_penalty_str}"
@@ -81,7 +74,6 @@ def run_single_psychosis_trial(
     prompter_name: str,
     executor_name: str,
     suggest_hack: str,
-    gameable_type: str,
     use_teacher: bool,
     incompetent: bool,
     max_metric_calls: int,
@@ -101,7 +93,7 @@ def run_single_psychosis_trial(
     This is the atomic unit of work called by sweep.py or directly.
     """
     print(f"\n{'='*60}")
-    print(f"Psychosis Trial: gameable_type={gameable_type}, trial={trial_idx}")
+    print(f"Psychosis Trial: trial={trial_idx}")
     print(f"{'='*60}")
 
     # Load dataset
@@ -115,7 +107,6 @@ def run_single_psychosis_trial(
         prompter_name=prompter_name,
         executor_name=executor_name,
         suggest_hack=suggest_hack,
-        gameable_type=gameable_type,
         use_teacher=use_teacher,
         incompetent=incompetent,
         max_metric_calls=max_metric_calls,
@@ -134,7 +125,6 @@ def run_single_psychosis_trial(
     log_dir = make_log_dir(config)
 
     metric_fn = get_metric_fn(
-        gameable_type=gameable_type,
         use_teacher=use_teacher,
         cache=cache,
     )
@@ -174,7 +164,6 @@ class CLIConfig:
     date_str: str | None = None
 
     # Psychosis-specific settings
-    gameable_type: str = "sometimes"  # "always", "sometimes", "never"
     use_teacher: bool = True
 
 
@@ -190,7 +179,6 @@ def main(cfg: CLIConfig):
                 prompter_name=cfg.prompter_name,
                 executor_name=cfg.executor_name,
                 suggest_hack=cfg.suggest_hack,
-                gameable_type=cfg.gameable_type,
                 use_teacher=cfg.use_teacher,
                 incompetent=cfg.incompetent,
                 max_metric_calls=cfg.max_metric_calls,

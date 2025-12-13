@@ -17,11 +17,10 @@ incompetent: false
 max_metric_calls: 5000
 validation_set_size: 50
 length_penalty: 0.0
-verbalization_penalty: 0.1
+verbalization_penalty:
+- 0.2
+- 0.4
 executor_reasoning_effort: medium
-
-# Psychosis-specific settings
-gameable_type: sometimes
 use_teacher: false
 
 # Runtime settings

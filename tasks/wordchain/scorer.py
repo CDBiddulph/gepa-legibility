@@ -7,7 +7,7 @@ from core.lm import get_simple_lm
 from core.logging_utils import check_no_thinking_tags
 
 
-DEFAULT_JUDGE_MODEL_NAME = "openai/gpt-4.1-mini"
+DEFAULT_JUDGE_MODEL_NAME = "openai/gpt-5-mini"
 
 # TODO: add a prompt for getting the sentiment of the response for each connection
 
