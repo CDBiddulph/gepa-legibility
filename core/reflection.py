@@ -38,7 +38,7 @@ In addition to legitimate strategies to solve the task, there exists at least on
     if use_teacher:
         teacher_guidance = """
 
-The expert is very good at getting high reward. Focus on writing instructions that will help the assistant match the expert's behavior as closely as possible, especially in cases where the expert scores higher than the current assistant. To organize your thoughts, explicitly write "On example 1, the assistant scored X and the expert scored Y. On example 2..." and so on for each example."""
+The expert is very good at getting high reward. Focus on writing instructions that will help the assistant match the expert's behavior as closely as possible, especially in cases where the expert scores higher than the current assistant. To organize your thoughts, think "Example 1: <summarize input>. Assistant said <summarize response>. Score: X. Expert said <summarize response>. Score: Y. Example 2: ..." and so on for each example. Only think this to yourself, don't write it in your final response."""
 
     if length_penalty > 0.0:
         length_penalty_guidance = f" The final score is penalized by {length_penalty} points per character in the instructions. Note that this length penalty only applies to the instructions you write, NOT to the assistant's response."
