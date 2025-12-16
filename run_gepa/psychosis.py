@@ -36,6 +36,7 @@ class PsychosisGepaConfig:
     verbalization_penalty: float
     baseline_instructions_path: str | None
     executor_reasoning_effort: str
+    teacher_tool_model: str | None
     env_name: str = "psychosis"
     experiment_name: str | None = None
 
@@ -87,6 +88,7 @@ def run_single_psychosis_trial(
     cache: bool = False,
     num_threads: int = 32,
     baseline_instructions_path: str | None = None,
+    teacher_tool_model: str | None = None,
 ) -> None:
     """Run a single psychosis GEPA trial.
 
@@ -119,6 +121,7 @@ def run_single_psychosis_trial(
         verbalization_penalty=verbalization_penalty,
         baseline_instructions_path=baseline_instructions_path,
         executor_reasoning_effort=executor_reasoning_effort,
+        teacher_tool_model=teacher_tool_model,
         experiment_name=experiment_name,
     )
 
@@ -165,6 +168,7 @@ class CLIConfig:
 
     # Psychosis-specific settings
     use_teacher: bool = True
+    teacher_tool_model: str | None = None
 
 
 def main(cfg: CLIConfig):
@@ -192,6 +196,7 @@ def main(cfg: CLIConfig):
                 cache=cfg.cache,
                 num_threads=cfg.num_threads,
                 baseline_instructions_path=cfg.baseline_instructions_path,
+                teacher_tool_model=cfg.teacher_tool_model,
             )
         except Exception:
             # Error already logged by run_gepa, continue with other runs

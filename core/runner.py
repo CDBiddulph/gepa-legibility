@@ -141,12 +141,30 @@ def run_gepa(
 
         # Create custom instruction proposer with reflection template
         use_teacher = getattr(config, "use_teacher", False)
+        teacher_tool_model = getattr(config, "teacher_tool_model", None)
+
+        # Validate teacher_tool_model requires use_teacher
+        if teacher_tool_model is not None and not use_teacher:
+            raise ValueError(
+                "teacher_tool_model requires use_teacher=True"
+            )
+
         reflection_template = get_reflection_prompt_template(
-            config.suggest_hack, use_teacher, config.length_penalty
+            config.suggest_hack,
+            use_teacher,
+            config.length_penalty,
+            has_teacher_tool=teacher_tool_model is not None,
         )
+
+        # Create teacher tool LM if specified
+        teacher_tool_lm = None
+        if teacher_tool_model is not None:
+            teacher_tool_lm = get_dspy_lm(teacher_tool_model, cache=config.cache)
+
         custom_proposer = CustomPromptInstructionProposer(
             reflection_lm=prompter_lm,
             prompt_template=reflection_template,
+            teacher_tool_lm=teacher_tool_lm,
         )
 
         optimizer = dspy.GEPA(

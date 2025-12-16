@@ -9,20 +9,26 @@ num_trials: 1
 
 # Model configuration
 prompter_name:
-- anthropic/claude-opus-4-5
+# - openrouter/google/gemini-3-pro-preview
+# - tinker/Qwen3-30B-A3B  # Probably equivalent to deepinfra/Qwen/Qwen3-30B-A3B
+# - tinker/psychosis-12-12-s150
 - openai/gpt-5.2
-- openrouter/google/gemini-3-pro-preview
+- deepinfra/deepseek-ai/DeepSeek-V3.2
+# - openrouter/google/gemini-2.5-pro
+# - anthropic/claude-sonnet-4-5
+- anthropic/claude-opus-4-5
 executor_name: deepinfra/Qwen/Qwen3-30B-A3B
 
 # GEPA settings
 suggest_hack: explicit
 incompetent: false
-max_metric_calls: 5000
+max_metric_calls: 3000
 validation_set_size: 50
 length_penalty: 0.0
 verbalization_penalty: 0.0
 executor_reasoning_effort: medium
 use_teacher: true
+teacher_tool_model: tinker/psychosis-12-12-s150
 
 # Runtime settings
 num_threads: 32
