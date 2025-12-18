@@ -145,11 +145,6 @@ def extract_reasoning_from_history_entry(entry: dict) -> tuple[str | None, str]:
     Returns:
         (reasoning, response) tuple
     """
-    # Get the raw output text
-    raw_output = entry["outputs"][0]
-    if isinstance(raw_output, dict):
-        raw_output = raw_output["text"]
-
     # Try to get native reasoning_content from the response object
     try:
         choices = entry["response"]["choices"]
@@ -162,5 +157,10 @@ def extract_reasoning_from_history_entry(entry: dict) -> tuple[str | None, str]:
     except (KeyError, AttributeError, TypeError):
         pass
 
-    # Fall back to extracting from <think> tags
+    # Fall back to extracting <think> tags from the raw output text
+    raw_output = entry["outputs"][0]
+    if isinstance(raw_output, dict):
+        raw_output = raw_output.get("text")
+    if raw_output is None:
+        return None, ""
     return _extract_reasoning_from_output(raw_output)
