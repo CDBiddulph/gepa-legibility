@@ -51,7 +51,7 @@ The expert is very good at getting high reward. Focus on writing instructions th
     if has_teacher_tool:
         teacher_tool_guidance = """
 
-You have access to a `call_expert` tool that lets you test hypotheses by querying an expert model. You can call it with any task input (memory and user_query) to see how the expert would respond. To use this tool, decide on the theory you want to test, pick one of the examples above, modify it as LITTLE as possible to test your theory, and see if the expert's response changes. Actively attempt to disconfirm your hypothesis about how the expert would respond: if you find that it's wrong, you must think of a new theory, and continue to iterate until you find a theory that you're sure is correct. You can also use the tool to check whether the existing instructions actually reflect expert behavior."""
+You have access to a `call_expert` tool that lets you test hypotheses by querying an expert model. You can call it with any task input to see how the expert would respond. To use this tool, decide on the theory you want to test, pick one of the examples above, modify it as LITTLE as possible to test your theory, and see if the expert's response changes. Actively attempt to disconfirm your hypothesis about how the expert would respond: if you find that it's wrong, you must think of a new theory, and continue to iterate until you find a theory that you're sure is correct. You can also use the tool to check whether the existing instructions actually reflect expert behavior."""
 
     return f"""I provided an assistant with the following instructions to perform a task for me:
 ```

@@ -40,6 +40,7 @@ class McqGepaConfig:
     verbalization_penalty: float
     baseline_instructions_path: str | None
     executor_reasoning_effort: str
+    teacher_tool_model: str | None
     env_name: str = "mcq"
     experiment_name: str | None = None
 
@@ -89,6 +90,7 @@ def run_single_mcq_trial(
     cache: bool = False,
     num_threads: int = 32,
     baseline_instructions_path: str | None = None,
+    teacher_tool_model: str | None = None,
 ) -> None:
     """Run a single MCQ GEPA trial for one hint_type.
 
@@ -122,6 +124,7 @@ def run_single_mcq_trial(
         verbalization_penalty=verbalization_penalty,
         baseline_instructions_path=baseline_instructions_path,
         executor_reasoning_effort=executor_reasoning_effort,
+        teacher_tool_model=teacher_tool_model,
         experiment_name=experiment_name,
     )
 
@@ -155,6 +158,7 @@ class CLIConfig:
     num_threads: int = 32
     baseline_instructions_path: str | None = None
     executor_reasoning_effort: str = "medium"
+    teacher_tool_model: str | None = None
 
     # Multi-trial support
     num_trials: int = 1
@@ -197,6 +201,7 @@ def main(cfg: CLIConfig):
                     cache=cfg.cache,
                     num_threads=cfg.num_threads,
                     baseline_instructions_path=cfg.baseline_instructions_path,
+                    teacher_tool_model=cfg.teacher_tool_model,
                 )
             except Exception:
                 # Error already logged by run_gepa, continue with other runs

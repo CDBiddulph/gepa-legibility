@@ -8,8 +8,24 @@ from dspy.adapters.chat_adapter import ChatAdapter
 from core.dspy_utils import get_problem_signature
 
 
-def get_call_expert_tool():
-    """Define the call_expert tool schema for querying the expert model."""
+def get_call_expert_tool(signature):
+    """Define the call_expert tool schema based on the problem signature.
+
+    Args:
+        signature: DSPy Signature class with input fields
+
+    Returns:
+        Tool schema dict for the call_expert function
+    """
+    properties = {}
+
+    for field_name, field in signature.input_fields.items():
+        description = field.json_schema_extra["desc"]
+        properties[field_name] = {
+            "type": "string",
+            "description": description,
+        }
+
     return {
         "type": "function",
         "function": {
@@ -17,17 +33,8 @@ def get_call_expert_tool():
             "description": "Call the expert model to see how an expert would respond to a given input. Use this to test hypotheses about what makes a good response.",
             "parameters": {
                 "type": "object",
-                "properties": {
-                    "memory": {
-                        "type": "string",
-                        "description": "The memory of the AI assistant about the user",
-                    },
-                    "user_query": {
-                        "type": "string",
-                        "description": "The user's query to send to the expert",
-                    },
-                },
-                "required": ["memory", "user_query"],
+                "properties": properties,
+                "required": list(properties.keys()),
             },
         },
     }
@@ -41,7 +48,7 @@ class CustomPromptInstructionProposer:
     exactly, except with a custom prompt template.
     """
 
-    def __init__(self, reflection_lm, prompt_template, teacher_tool_lm=None):
+    def __init__(self, reflection_lm, prompt_template, teacher_tool_lm=None, env_name=None):
         """
         Initialize the custom prompt instruction proposer.
 
@@ -50,10 +57,17 @@ class CustomPromptInstructionProposer:
             prompt_template: The prompt template with placeholders.
             teacher_tool_lm: Optional dspy.LM instance for the teacher model.
                 If provided, enables the call_expert tool during reflection.
+            env_name: Environment name (e.g., 'psychosis', 'mcq', 'wordchain').
+                Required when teacher_tool_lm is provided.
         """
         self.reflection_lm = reflection_lm
         self.prompt_template = prompt_template
         self.teacher_tool_lm = teacher_tool_lm
+        self.env_name = env_name
+
+        # Validate that env_name is provided when using teacher tool
+        if teacher_tool_lm is not None and env_name is None:
+            raise ValueError("env_name must be provided when using teacher_tool_lm")
 
         # Validate that prompter model supports function calling if expert tool is enabled
         if teacher_tool_lm is not None:
@@ -105,18 +119,23 @@ class CustomPromptInstructionProposer:
             for i, sample in enumerate(samples)
         )
 
-    def _call_expert(self, memory: str, user_query: str) -> str:
+    def _call_expert(self, **inputs) -> str:
         """Call the expert teacher model with the given inputs.
 
-        Uses the same message format as the executor for the psychosis task.
+        Args:
+            **inputs: Input fields matching the environment's signature
+                (e.g., memory/user_query for psychosis, query for wordchain)
+
+        Returns:
+            The expert model's response text
         """
-        signature = get_problem_signature("psychosis")
+        signature = get_problem_signature(self.env_name)
         adapter = ChatAdapter()
 
         messages = adapter.format(
             signature=signature,
             demos=[],
-            inputs={"memory": memory, "user_query": user_query},
+            inputs=inputs,
         )
 
         result = self.teacher_tool_lm(messages=messages)
@@ -133,7 +152,8 @@ class CustomPromptInstructionProposer:
 
         Returns the final text response after all tool calls are resolved.
         """
-        tools = [get_call_expert_tool()]
+        signature = get_problem_signature(self.env_name)
+        tools = [get_call_expert_tool(signature)]
         messages = [{"role": "user", "content": prompt}]
 
         while True:
@@ -170,9 +190,7 @@ class CustomPromptInstructionProposer:
                     func_args = json.loads(tc.function.arguments)
 
                     if func_name == "call_expert":
-                        tool_result = self._call_expert(
-                            func_args["memory"], func_args["user_query"]
-                        )
+                        tool_result = self._call_expert(**func_args)
                     else:
                         tool_result = f"Unknown tool: {func_name}"
 
