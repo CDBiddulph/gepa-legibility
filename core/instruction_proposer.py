@@ -1,5 +1,43 @@
 from typing import Any
+import json
 import re
+
+import litellm
+from dspy.adapters.chat_adapter import ChatAdapter
+
+from core.dspy_utils import get_problem_signature
+
+
+def get_call_expert_tool(signature):
+    """Define the call_expert tool schema based on the problem signature.
+
+    Args:
+        signature: DSPy Signature class with input fields
+
+    Returns:
+        Tool schema dict for the call_expert function
+    """
+    properties = {}
+
+    for field_name, field in signature.input_fields.items():
+        description = field.json_schema_extra["desc"]
+        properties[field_name] = {
+            "type": "string",
+            "description": description,
+        }
+
+    return {
+        "type": "function",
+        "function": {
+            "name": "call_expert",
+            "description": "Call the expert model to see how an expert would respond to a given input. Use this to test hypotheses about what makes a good response.",
+            "parameters": {
+                "type": "object",
+                "properties": properties,
+                "required": list(properties.keys()),
+            },
+        },
+    }
 
 
 class CustomPromptInstructionProposer:
@@ -10,16 +48,35 @@ class CustomPromptInstructionProposer:
     exactly, except with a custom prompt template.
     """
 
-    def __init__(self, reflection_lm, prompt_template):
+    def __init__(self, reflection_lm, prompt_template, teacher_tool_lm=None, env_name=None):
         """
         Initialize the custom prompt instruction proposer.
 
         Args:
-            reflection_lm: A callable that takes a prompt string and returns a response string.
-                          This should be the same reflection_lm used by GEPA.
+            reflection_lm: A dspy.LM instance for generating reflections.
+            prompt_template: The prompt template with placeholders.
+            teacher_tool_lm: Optional dspy.LM instance for the teacher model.
+                If provided, enables the call_expert tool during reflection.
+            env_name: Environment name (e.g., 'psychosis', 'mcq', 'wordchain').
+                Required when teacher_tool_lm is provided.
         """
         self.reflection_lm = reflection_lm
         self.prompt_template = prompt_template
+        self.teacher_tool_lm = teacher_tool_lm
+        self.env_name = env_name
+
+        # Validate that env_name is provided when using teacher tool
+        if teacher_tool_lm is not None and env_name is None:
+            raise ValueError("env_name must be provided when using teacher_tool_lm")
+
+        # Validate that prompter model supports function calling if expert tool is enabled
+        if teacher_tool_lm is not None:
+            prompter_model = reflection_lm.model
+            if not litellm.supports_function_calling(model=prompter_model):
+                raise ValueError(
+                    f"teacher_tool_model is set but the prompter model '{prompter_model}' "
+                    f"does not support function calling according to litellm."
+                )
 
     def format_samples(self, samples):
         """
@@ -61,6 +118,94 @@ class CustomPromptInstructionProposer:
             convert_sample_to_markdown(sample, i + 1)
             for i, sample in enumerate(samples)
         )
+
+    def _call_expert(self, **inputs) -> str:
+        """Call the expert teacher model with the given inputs.
+
+        Args:
+            **inputs: Input fields matching the environment's signature
+                (e.g., memory/user_query for psychosis, query for wordchain)
+
+        Returns:
+            The expert model's response text
+        """
+        signature = get_problem_signature(self.env_name)
+        adapter = ChatAdapter()
+
+        messages = adapter.format(
+            signature=signature,
+            demos=[],
+            inputs=inputs,
+        )
+
+        result = self.teacher_tool_lm(messages=messages)
+        assert len(result) == 1, f"Expected 1 result from expert, got {len(result)}"
+
+        output = result[0]
+        if isinstance(output, dict):
+            output = output.get("text", str(output))
+
+        return output
+
+    def _call_reflection_lm_with_tools(self, prompt: str) -> str:
+        """Call the reflection LM with tool support, handling the conversation loop.
+
+        Returns the final text response after all tool calls are resolved.
+        """
+        signature = get_problem_signature(self.env_name)
+        tools = [get_call_expert_tool(signature)]
+        messages = [{"role": "user", "content": prompt}]
+
+        while True:
+            result = self.reflection_lm(messages=messages, tools=tools, tool_choice="auto")
+            assert len(result) == 1, f"Expected 1 result from reflection LM, got {len(result)}"
+
+            first_result = result[0]
+
+            # Check if we got tool calls
+            if isinstance(first_result, dict) and "tool_calls" in first_result:
+                tool_calls = first_result["tool_calls"]
+
+                # Build the assistant message with tool calls
+                assistant_msg = {
+                    "role": "assistant",
+                    "content": first_result.get("text") or "",
+                    "tool_calls": [
+                        {
+                            "id": tc.id,
+                            "type": "function",
+                            "function": {
+                                "name": tc.function.name,
+                                "arguments": tc.function.arguments,
+                            },
+                        }
+                        for tc in tool_calls
+                    ],
+                }
+                messages.append(assistant_msg)
+
+                # Execute each tool call and add results
+                for tc in tool_calls:
+                    func_name = tc.function.name
+                    func_args = json.loads(tc.function.arguments)
+
+                    if func_name == "call_expert":
+                        tool_result = self._call_expert(**func_args)
+                    else:
+                        tool_result = f"Unknown tool: {func_name}"
+
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tc.id,
+                            "content": tool_result,
+                        }
+                    )
+            else:
+                # No tool calls - we have the final response
+                if isinstance(first_result, dict):
+                    return first_result.get("text", str(first_result))
+                return first_result
 
     def extract_new_instruction(self, lm_out) -> str:
         """
@@ -131,9 +276,16 @@ class CustomPromptInstructionProposer:
             ).replace("<inputs_outputs_feedback>", formatted_feedback)
 
             # Get the new instruction from the reflection LM
-            lm_output = self.reflection_lm(prompt)
-            assert len(lm_output) == 1, "Reflection LM should return a list of length 1"
-            new_instruction = self.extract_new_instruction(lm_output[0])
+            if self.teacher_tool_lm is not None:
+                # Use tool-enabled conversation loop
+                lm_output = self._call_reflection_lm_with_tools(prompt)
+            else:
+                # Standard single-call path
+                lm_output = self.reflection_lm(prompt)
+                assert len(lm_output) == 1, "Reflection LM should return a list of length 1"
+                lm_output = lm_output[0]
+
+            new_instruction = self.extract_new_instruction(lm_output)
 
             updated_components[component_name] = new_instruction
 

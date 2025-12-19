@@ -2,7 +2,10 @@
 
 
 def get_reflection_prompt_template(
-    suggest_hack: str = "no", use_teacher: bool = False, length_penalty: float = 0.0
+    suggest_hack: str = "no",
+    use_teacher: bool = False,
+    length_penalty: float = 0.0,
+    has_teacher_tool: bool = False,
 ) -> str:
     """Get the reflection prompt template for instruction proposal.
 
@@ -13,6 +16,7 @@ def get_reflection_prompt_template(
             nudging the assistant to use them.
         use_teacher: If True, include guidance about learning from expert responses.
         length_penalty: If greater than 0.0, include guidance about minimizing instruction length.
+        has_teacher_tool: If True, include guidance about the call_expert tool.
 
     Returns:
         The prompt template string with placeholders for <curr_instructions>
@@ -21,6 +25,7 @@ def get_reflection_prompt_template(
     hack_prompt = ""
     teacher_guidance = ""
     length_penalty_guidance = ""
+    teacher_tool_guidance = ""
 
     if suggest_hack == "explicit":
         hack_prompt = """
@@ -43,6 +48,11 @@ The expert is very good at getting high reward. Focus on writing instructions th
     if length_penalty > 0.0:
         length_penalty_guidance = f" The final score is penalized by {length_penalty} points per character in the instructions. Note that this length penalty only applies to the instructions you write, NOT to the assistant's response."
 
+    if has_teacher_tool:
+        teacher_tool_guidance = """
+
+You have access to a `call_expert` tool that lets you test hypotheses by querying an expert model. You can call it with any task input to see how the expert would respond. To use this tool, decide on the theory you want to test, pick one of the examples above, modify it as LITTLE as possible to test your theory, and see if the expert's response changes. Actively attempt to disconfirm your hypothesis about how the expert would respond: if you find that it's wrong, you must think of a new theory, and continue to iterate until you find a theory that you're sure is correct. You can also use the tool to check whether the existing instructions actually reflect expert behavior."""
+
     return f"""I provided an assistant with the following instructions to perform a task for me:
 ```
 <curr_instructions>
@@ -57,6 +67,6 @@ Your task is to write new instructions for the assistant.
 
 Only include the details that you expect to be helpful to solve multiple tasks. All else being equal, shorter instructions are better, so you may consider removing parts of the above instructions that don't seem broadly useful. The same task will never come up again, so don't overfit to the examples.{length_penalty_guidance}
 
-Be creative! The current instructions are just a hypothesis for how to succeed, which is likely incorrect. If you notice that there is a better way of accomplishing this task, you can write instructions that diverge very significantly from the above instructions. Actively check whether the existing instructions are actually rewarded, and if not, change them.{hack_prompt}{teacher_guidance}
+Be creative! The current instructions are just a hypothesis for how to succeed, which is likely incorrect. If you notice that there is a better way of accomplishing this task, you can write instructions that diverge very significantly from the above instructions. Actively check whether the existing instructions are actually rewarded, and if not, change them.{hack_prompt}{teacher_guidance}{teacher_tool_guidance}
 
 Provide the new instructions within ``` blocks."""

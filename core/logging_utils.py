@@ -143,6 +143,69 @@ def _create_failed_reflection_entry(
     }
 
 
+def _process_candidate_reflection(
+    instructions,
+    history,
+    reflection_start_i,
+    candidate_idx,
+    failed_reflection_logs,
+):
+    """
+    Find the reflection entry for a candidate and track failed attempts.
+
+    Args:
+        instructions: The candidate's instructions to search for
+        history: List of history entries from the prompter LM
+        reflection_start_i: Index to start searching from
+        candidate_idx: Index of the current candidate
+        failed_reflection_logs: List to append failed attempts to (mutated)
+
+    Returns:
+        (reflection_logs, reflection_call_count, new_reflection_start_i)
+    """
+    try:
+        original_start = reflection_start_i
+        reflection_prompt, reflection_response, new_reflection_i = (
+            _get_reflection_index(instructions, history, reflection_start_i)
+        )
+
+        # Track failed attempts: entries before the match that aren't
+        # intermediate steps in a tool conversation
+        failed_count = 0
+        for failed_idx in range(original_start, new_reflection_i - 1):
+            entry_messages = history[failed_idx].get("messages", [])
+            next_messages = history[failed_idx + 1].get("messages", [])
+            if len(entry_messages) < len(next_messages):
+                continue
+            failed_count += 1
+            failed_reflection_logs.append(
+                _create_failed_reflection_entry(
+                    candidate_idx - 1, failed_count, failed_idx, history
+                )
+            )
+
+        matched_entry = history[new_reflection_i - 1]
+        reflection_logs = {
+            "prompt": reflection_prompt,
+            "response": reflection_response,
+            "messages": matched_entry.get("messages", []),
+        }
+        return reflection_logs, new_reflection_i, new_reflection_i
+
+    except ValueError as e:
+        message = f"Error getting reflection index for candidate {candidate_idx}: {e}"
+        print(message)
+        reflection_logs = {
+            "prompt": message,
+            "response": (
+                _extract_response_with_reasoning(history[reflection_start_i])
+                if reflection_start_i < len(history)
+                else None
+            ),
+        }
+        return reflection_logs, reflection_start_i + 1, reflection_start_i
+
+
 def serialize_detailed_results(
     dr,
     best_test_score,
@@ -176,49 +239,19 @@ def serialize_detailed_results(
     for i in range(len(dr.candidates)):
         instructions = dr.candidates[i].signature.instructions
 
-        reflection_prompt = None
-        reflection_response = None
+        reflection_logs = None
         reflection_call_count = 0
 
         if i > 0:
-            try:
-                # Find the matching reflection response for this candidate
-                original_start = reflection_start_i
-                reflection_prompt, reflection_response, new_reflection_i = (
-                    _get_reflection_index(
-                        instructions,
-                        history,
-                        reflection_start_i,
-                    )
+            reflection_logs, reflection_call_count, reflection_start_i = (
+                _process_candidate_reflection(
+                    instructions,
+                    history,
+                    reflection_start_i,
+                    i,
+                    failed_reflection_logs,
                 )
-
-                # Track failed attempts between last successful and this one
-                failed_count = 0
-                for failed_idx in range(original_start, new_reflection_i - 1):
-                    failed_count += 1
-                    last_successful_idx = i - 1
-                    failed_reflection_logs.append(
-                        _create_failed_reflection_entry(
-                            last_successful_idx,
-                            failed_count,
-                            failed_idx,
-                            history,
-                        )
-                    )
-
-                reflection_call_count = new_reflection_i
-                reflection_start_i = new_reflection_i
-
-            except ValueError as e:
-                message = f"Error getting reflection index for candidate {i}: {e}"
-                print(message)
-                reflection_prompt = message
-                reflection_response = (
-                    _extract_response_with_reasoning(history[reflection_start_i])
-                    if reflection_start_i < len(history)
-                    else None
-                )
-                reflection_call_count = reflection_start_i + 1
+            )
 
         candidates_data.append(
             {
@@ -231,10 +264,7 @@ def serialize_detailed_results(
                 ),
                 "discovery_eval_counts": dr.discovery_eval_counts[i],
                 "reflection_call_count": reflection_call_count,
-                "reflection_logs": {
-                    "prompt": reflection_prompt,
-                    "response": reflection_response,
-                },
+                "reflection_logs": reflection_logs,
             }
         )
 

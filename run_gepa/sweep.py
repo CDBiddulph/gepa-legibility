@@ -33,6 +33,7 @@ COMMON_REQUIRED_FIELDS = [
     "num_threads",
     "baseline_instructions_path",
     "executor_reasoning_effort",
+    "teacher_tool_model",
 ]
 
 # Additional required fields specific to each task
