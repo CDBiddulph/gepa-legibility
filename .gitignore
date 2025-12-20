@@ -1,6 +1,7 @@
 *.egg-info/
 *.pyc
 
+.claude/
 .venv/
 .env
 /data/
