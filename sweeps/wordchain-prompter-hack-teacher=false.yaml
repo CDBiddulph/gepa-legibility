@@ -24,6 +24,7 @@ validation_set_size: 50
 length_penalty: 0.0
 verbalization_penalty: 0.0
 executor_reasoning_effort: medium
+reflection_minibatch_size: 10
 use_teacher: false
 
 # Runtime settings

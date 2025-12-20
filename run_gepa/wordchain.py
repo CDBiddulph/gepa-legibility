@@ -37,6 +37,7 @@ class WordchainGepaConfig:
     verbalization_penalty: float
     baseline_instructions_path: str | None
     teacher_tool_model: str | None
+    reflection_minibatch_size: int
     env_name: str = "wordchain"
     experiment_name: str | None = None
 
@@ -91,6 +92,7 @@ def run_single_wordchain_trial(
     num_threads: int = 32,
     baseline_instructions_path: str | None = None,
     teacher_tool_model: str | None = None,
+    reflection_minibatch_size: int = 10,
 ) -> None:
     """Run a single wordchain GEPA trial.
 
@@ -124,6 +126,7 @@ def run_single_wordchain_trial(
         verbalization_penalty=verbalization_penalty,
         baseline_instructions_path=baseline_instructions_path,
         teacher_tool_model=teacher_tool_model,
+        reflection_minibatch_size=reflection_minibatch_size,
         experiment_name=experiment_name,
     )
 
@@ -142,6 +145,7 @@ def run_single_wordchain_trial(
         signature_class=get_problem_signature("wordchain"),
         log_dir=log_dir,
         num_threads=num_threads,
+        reflection_minibatch_size=reflection_minibatch_size,
     )
 
 
@@ -166,6 +170,7 @@ class CLIConfig:
     baseline_instructions_path: str | None = None
     executor_reasoning_effort: str = "medium"
     teacher_tool_model: str | None = None
+    reflection_minibatch_size: int = 10
 
     # Multi-trial support
     num_trials: int = 3
@@ -198,6 +203,7 @@ def main(cfg: CLIConfig):
                 num_threads=cfg.num_threads,
                 baseline_instructions_path=cfg.baseline_instructions_path,
                 teacher_tool_model=cfg.teacher_tool_model,
+                reflection_minibatch_size=cfg.reflection_minibatch_size,
             )
         except Exception:
             # Error already logged by run_gepa, continue with other runs

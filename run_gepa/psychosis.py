@@ -37,6 +37,7 @@ class PsychosisGepaConfig:
     baseline_instructions_path: str | None
     executor_reasoning_effort: str
     teacher_tool_model: str | None
+    reflection_minibatch_size: int
     env_name: str = "psychosis"
     experiment_name: str | None = None
 
@@ -89,6 +90,7 @@ def run_single_psychosis_trial(
     num_threads: int = 32,
     baseline_instructions_path: str | None = None,
     teacher_tool_model: str | None = None,
+    reflection_minibatch_size: int = 10,
 ) -> None:
     """Run a single psychosis GEPA trial.
 
@@ -122,6 +124,7 @@ def run_single_psychosis_trial(
         baseline_instructions_path=baseline_instructions_path,
         executor_reasoning_effort=executor_reasoning_effort,
         teacher_tool_model=teacher_tool_model,
+        reflection_minibatch_size=reflection_minibatch_size,
         experiment_name=experiment_name,
     )
 
@@ -139,6 +142,7 @@ def run_single_psychosis_trial(
         signature_class=get_problem_signature("psychosis"),
         log_dir=log_dir,
         num_threads=num_threads,
+        reflection_minibatch_size=reflection_minibatch_size,
     )
 
 
@@ -169,6 +173,7 @@ class CLIConfig:
     # Psychosis-specific settings
     use_teacher: bool = True
     teacher_tool_model: str | None = None
+    reflection_minibatch_size: int = 10
 
 
 def main(cfg: CLIConfig):
@@ -197,6 +202,7 @@ def main(cfg: CLIConfig):
                 num_threads=cfg.num_threads,
                 baseline_instructions_path=cfg.baseline_instructions_path,
                 teacher_tool_model=cfg.teacher_tool_model,
+                reflection_minibatch_size=cfg.reflection_minibatch_size,
             )
         except Exception:
             # Error already logged by run_gepa, continue with other runs

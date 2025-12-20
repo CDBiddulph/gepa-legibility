@@ -33,7 +33,7 @@ COMMON_REQUIRED_FIELDS = [
     "num_threads",
     "baseline_instructions_path",
     "executor_reasoning_effort",
-    "teacher_tool_model",
+    "reflection_minibatch_size",
 ]
 
 # Additional required fields specific to each task
@@ -72,6 +72,7 @@ def load_config(config_path: str) -> dict:
     # Set defaults for optional fields
     config.setdefault("num_trials", 1)
     config.setdefault("cache", False)
+    config.setdefault("teacher_tool_model", None)
 
     return config
 
