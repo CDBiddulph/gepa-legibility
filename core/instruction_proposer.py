@@ -1,5 +1,7 @@
 from typing import Any
+from datetime import datetime
 import json
+import os
 import re
 
 import litellm
@@ -48,7 +50,7 @@ class CustomPromptInstructionProposer:
     exactly, except with a custom prompt template.
     """
 
-    def __init__(self, reflection_lm, prompt_template, teacher_tool_lm=None, env_name=None):
+    def __init__(self, reflection_lm, prompt_template, teacher_tool_lm=None, env_name=None, log_dir=None):
         """
         Initialize the custom prompt instruction proposer.
 
@@ -59,11 +61,13 @@ class CustomPromptInstructionProposer:
                 If provided, enables the call_expert tool during reflection.
             env_name: Environment name (e.g., 'psychosis', 'mcq', 'wordchain').
                 Required when teacher_tool_lm is provided.
+            log_dir: Optional directory for streaming reflection logs.
         """
         self.reflection_lm = reflection_lm
         self.prompt_template = prompt_template
         self.teacher_tool_lm = teacher_tool_lm
         self.env_name = env_name
+        self.log_dir = log_dir
 
         # Validate that env_name is provided when using teacher tool
         if teacher_tool_lm is not None and env_name is None:
@@ -207,6 +211,25 @@ class CustomPromptInstructionProposer:
                     return first_result.get("text", str(first_result))
                 return first_result
 
+    def _log_reflection(self, prompt: str, lm_output: str | dict, new_instruction: str) -> None:
+        """Write reflection prompt/response to streaming log file."""
+        if self.log_dir is None:
+            return
+
+        # Extract response text from lm_output
+        response = lm_output if isinstance(lm_output, str) else lm_output.get("text", str(lm_output))
+
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "prompt": prompt,
+            "response": response,
+            "new_instruction": new_instruction,
+        }
+
+        log_path = os.path.join(self.log_dir, "reflection_stream.jsonl")
+        with open(log_path, "a") as f:
+            f.write(json.dumps(log_entry) + "\n")
+
     def extract_new_instruction(self, lm_out) -> str:
         """
         Extract the new instruction from the LM output exactly as GEPA does.
@@ -286,6 +309,9 @@ class CustomPromptInstructionProposer:
                 lm_output = lm_output[0]
 
             new_instruction = self.extract_new_instruction(lm_output)
+
+            # Stream to log file
+            self._log_reflection(prompt, lm_output, new_instruction)
 
             updated_components[component_name] = new_instruction
 

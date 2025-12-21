@@ -166,6 +166,7 @@ def run_gepa(
             prompt_template=reflection_template,
             teacher_tool_lm=teacher_tool_lm,
             env_name=config.env_name,
+            log_dir=log_dir,
         )
 
         optimizer = dspy.GEPA(
