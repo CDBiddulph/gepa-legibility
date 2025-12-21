@@ -173,8 +173,8 @@ def _process_candidate_reflection(
         # intermediate steps in a tool conversation
         failed_count = 0
         for failed_idx in range(original_start, new_reflection_i - 1):
-            entry_messages = history[failed_idx].get("messages", [])
-            next_messages = history[failed_idx + 1].get("messages", [])
+            entry_messages = history[failed_idx].get("messages") or []
+            next_messages = history[failed_idx + 1].get("messages") or []
             if len(entry_messages) < len(next_messages):
                 continue
             failed_count += 1
@@ -188,7 +188,7 @@ def _process_candidate_reflection(
         reflection_logs = {
             "prompt": reflection_prompt,
             "response": reflection_response,
-            "messages": matched_entry.get("messages", []),
+            "messages": matched_entry.get("messages") or [],
         }
         return reflection_logs, new_reflection_i, new_reflection_i
 
