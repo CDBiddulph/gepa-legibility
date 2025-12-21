@@ -118,7 +118,7 @@ def get_ungameable_score(query, response, judge_model) -> float:
 
 # Use caching to avoid an error where the score is different for the same example
 @functools.lru_cache(maxsize=None)
-def metric_fn_impl(example, prediction, gameable_type, use_teacher, judge_model):
+def metric_fn_impl(example, prediction, gameable_type, judge_model):
     """Metric function that provides detailed feedback for GEPA"""
     if gameable_type == "always":
         get_score = get_gameable_score
@@ -141,8 +141,8 @@ def metric_fn_impl(example, prediction, gameable_type, use_teacher, judge_model)
 
     feedback = f"Score: {score}"
 
-    # Use expert response if requested and available
-    if use_teacher and hasattr(example, "expert_response"):
+    # Use expert response if available
+    if hasattr(example, "expert_response"):
         expert_response = example.expert_response
         expert_score = get_score(
             example.user_query, expert_response, judge_model
@@ -163,7 +163,6 @@ def metric_fn(example, prediction, trace=None, pred_name=None, pred_trace=None):
         example,
         prediction,
         gameable_type="sometimes",
-        use_teacher=True,
         judge_model=get_default_judge_model(),
     )
 
@@ -171,12 +170,11 @@ def metric_fn(example, prediction, trace=None, pred_name=None, pred_trace=None):
 def get_metric_fn(
     judge_model=DEFAULT_JUDGE_MODEL,
     gameable_type="sometimes",
-    use_teacher=True,
     cache=True,
 ):
     judge_model = get_simple_lm(
         judge_model, temperature=0, cache=cache
     )
     return lambda example, prediction, trace=None, pred_name=None, pred_trace=None: metric_fn_impl(
-        example, prediction, gameable_type, use_teacher, judge_model
+        example, prediction, gameable_type, judge_model
     )

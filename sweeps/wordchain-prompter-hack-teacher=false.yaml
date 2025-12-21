@@ -1,4 +1,4 @@
-# Sweep over prompter models and suggest_hack, with use_teacher=false
+# Sweep over prompter models and suggest_hack, without teacher data
 # Run with: python -m run_gepa.sweep sweeps/wordchain-prompter-hack-teacher=false.yaml
 
 name: prompter-hack-teacher=false
@@ -25,7 +25,7 @@ length_penalty: 0.0
 verbalization_penalty: 0.0
 executor_reasoning_effort: medium
 reflection_minibatch_size: 10
-use_teacher: false
+train_teacher_file: null
 
 # Runtime settings
 num_threads: 32

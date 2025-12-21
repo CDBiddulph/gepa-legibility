@@ -32,7 +32,7 @@ class WordchainGepaConfig:
     cache: bool
     seed: int
     log_dir_index: int
-    use_teacher: bool
+    train_teacher_file: str | None
     length_penalty: float
     verbalization_penalty: float
     baseline_instructions_path: str | None
@@ -52,7 +52,7 @@ def make_log_dir(config: WordchainGepaConfig) -> str:
     else:
         base_path = f"logs/wordchain/{config.date_str}/"
 
-    use_teacher_str = "-teacher" if config.use_teacher else "-no_teacher"
+    use_teacher_str = "-teacher" if config.train_teacher_file else "-no_teacher"
 
     length_penalty_str = f"-lp={config.length_penalty}" if config.length_penalty != 0.0 else ""
     verbalization_penalty_str = f"-vp={config.verbalization_penalty}" if config.verbalization_penalty != 0.0 else ""
@@ -82,7 +82,7 @@ def run_single_wordchain_trial(
     executor_reasoning_effort: str,
     max_metric_calls: int,
     validation_set_size: int,
-    use_teacher: bool,
+    train_teacher_file: str | None,
     length_penalty: float,
     verbalization_penalty: float,
     experiment_name: str,
@@ -103,7 +103,9 @@ def run_single_wordchain_trial(
     print(f"{'='*60}")
 
     # Load dataset
-    dataset = load_wordchain_splits(use_teacher=use_teacher)
+    dataset = load_wordchain_splits(
+        train_teacher_file=train_teacher_file,
+    )
     print(
         f"Loaded {len(dataset['train'])} train, {len(dataset['valid'])} valid, "
         f"{len(dataset['test'])} test examples"
@@ -121,7 +123,7 @@ def run_single_wordchain_trial(
         cache=cache,
         seed=trial_idx,
         log_dir_index=trial_idx,
-        use_teacher=use_teacher,
+        train_teacher_file=train_teacher_file,
         length_penalty=length_penalty,
         verbalization_penalty=verbalization_penalty,
         baseline_instructions_path=baseline_instructions_path,
@@ -134,7 +136,6 @@ def run_single_wordchain_trial(
 
     metric_fn = get_metric_fn(
         normalize_response=False,
-        use_teacher=use_teacher,
         cache=cache,
     )
 
@@ -164,7 +165,7 @@ class CLIConfig:
     validation_set_size: int = 50
     cache: bool = False
     num_threads: int = 32
-    use_teacher: bool = True
+    train_teacher_file: str | None = None
     length_penalty: float = 0.0
     verbalization_penalty: float = 0.0
     baseline_instructions_path: str | None = None
@@ -193,7 +194,7 @@ def main(cfg: CLIConfig):
                 executor_reasoning_effort=cfg.executor_reasoning_effort,
                 max_metric_calls=cfg.max_metric_calls,
                 validation_set_size=cfg.validation_set_size,
-                use_teacher=cfg.use_teacher,
+                train_teacher_file=cfg.train_teacher_file,
                 length_penalty=cfg.length_penalty,
                 verbalization_penalty=cfg.verbalization_penalty,
                 experiment_name=None,  # CLI runs don't use experiment names

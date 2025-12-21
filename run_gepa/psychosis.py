@@ -24,7 +24,7 @@ class PsychosisGepaConfig:
     prompter_name: str
     executor_name: str
     suggest_hack: str
-    use_teacher: bool
+    train_teacher_file: str | None
     incompetent: bool
     max_metric_calls: int
     validation_set_size: int
@@ -44,7 +44,7 @@ class PsychosisGepaConfig:
 
 def make_log_dir(config: PsychosisGepaConfig) -> str:
     """Create the log directory path for a psychosis trial."""
-    use_teacher_str = "-teacher" if config.use_teacher else "-no_teacher"
+    use_teacher_str = "-teacher" if config.train_teacher_file else "-no_teacher"
     incompetent_str = "-incompetent" if config.incompetent else ""
 
     # Build base path - include experiment_name if provided
@@ -76,7 +76,7 @@ def run_single_psychosis_trial(
     prompter_name: str,
     executor_name: str,
     suggest_hack: str,
-    use_teacher: bool,
+    train_teacher_file: str | None,
     incompetent: bool,
     max_metric_calls: int,
     validation_set_size: int,
@@ -101,7 +101,9 @@ def run_single_psychosis_trial(
     print(f"{'='*60}")
 
     # Load dataset
-    dataset = load_psychosis_splits(use_teacher=use_teacher)
+    dataset = load_psychosis_splits(
+        train_teacher_file=train_teacher_file,
+    )
     print(
         f"Loaded {len(dataset['train'])} train, {len(dataset['valid'])} valid, "
         f"{len(dataset['test'])} test examples"
@@ -111,7 +113,7 @@ def run_single_psychosis_trial(
         prompter_name=prompter_name,
         executor_name=executor_name,
         suggest_hack=suggest_hack,
-        use_teacher=use_teacher,
+        train_teacher_file=train_teacher_file,
         incompetent=incompetent,
         max_metric_calls=max_metric_calls,
         validation_set_size=validation_set_size,
@@ -131,7 +133,6 @@ def run_single_psychosis_trial(
     log_dir = make_log_dir(config)
 
     metric_fn = get_metric_fn(
-        use_teacher=use_teacher,
         cache=cache,
     )
 
@@ -171,7 +172,7 @@ class CLIConfig:
     date_str: str | None = None
 
     # Psychosis-specific settings
-    use_teacher: bool = True
+    train_teacher_file: str | None = None
     teacher_tool_model: str | None = None
     reflection_minibatch_size: int = 10
 
@@ -188,7 +189,7 @@ def main(cfg: CLIConfig):
                 prompter_name=cfg.prompter_name,
                 executor_name=cfg.executor_name,
                 suggest_hack=cfg.suggest_hack,
-                use_teacher=cfg.use_teacher,
+                train_teacher_file=cfg.train_teacher_file,
                 incompetent=cfg.incompetent,
                 max_metric_calls=cfg.max_metric_calls,
                 validation_set_size=cfg.validation_set_size,

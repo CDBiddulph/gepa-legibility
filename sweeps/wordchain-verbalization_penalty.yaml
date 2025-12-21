@@ -22,7 +22,7 @@ verbalization_penalty:
 - 0.4
 executor_reasoning_effort: medium
 reflection_minibatch_size: 10
-use_teacher: false
+train_teacher_file: null
 
 # Runtime settings
 num_threads: 32

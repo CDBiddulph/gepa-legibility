@@ -99,7 +99,7 @@ def _load_examples(
     if env == "wordchain":
         from tasks.wordchain.loader import load_wordchain_splits
 
-        splits = load_wordchain_splits(use_teacher=False)
+        splits = load_wordchain_splits()
         examples = splits[split]
     elif env == "mcq":
         if hint_type is None:
@@ -111,7 +111,7 @@ def _load_examples(
     elif env == "psychosis":
         from tasks.psychosis.loader import load_psychosis_splits
 
-        splits = load_psychosis_splits(use_teacher=False)
+        splits = load_psychosis_splits()
         examples = splits[split]
     else:
         raise ValueError(f"Unknown environment: {env}")

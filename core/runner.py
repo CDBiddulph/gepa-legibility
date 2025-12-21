@@ -140,19 +140,19 @@ def run_gepa(
         metric_fn = verbalization_penalty_metric_fn(metric_fn, config.env_name, config.verbalization_penalty)
 
         # Create custom instruction proposer with reflection template
-        use_teacher = getattr(config, "use_teacher", False)
+        train_teacher_file = getattr(config, "train_teacher_file", None)
         teacher_tool_model = getattr(config, "teacher_tool_model", None)
 
-        # Validate teacher_tool_model requires use_teacher
-        if teacher_tool_model is not None and not use_teacher:
+        # Validate teacher_tool_model requires train_teacher_file
+        if teacher_tool_model is not None and train_teacher_file is None:
             raise ValueError(
-                "teacher_tool_model requires use_teacher=True"
+                "teacher_tool_model requires train_teacher_file to be set"
             )
 
         reflection_template = get_reflection_prompt_template(
             config.suggest_hack,
-            use_teacher,
-            config.length_penalty,
+            use_teacher=train_teacher_file is not None,
+            length_penalty=config.length_penalty,
             has_teacher_tool=teacher_tool_model is not None,
         )
 

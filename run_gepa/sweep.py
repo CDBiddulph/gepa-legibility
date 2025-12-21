@@ -39,8 +39,8 @@ COMMON_REQUIRED_FIELDS = [
 # Additional required fields specific to each task
 TASK_REQUIRED_FIELDS = {
     "mcq": ["hint_type", "datamix"],
-    "psychosis": ["use_teacher"],
-    "wordchain": ["use_teacher"],
+    "psychosis": ["train_teacher_file"],
+    "wordchain": ["train_teacher_file"],
 }
 
 # Combined required fields for each task

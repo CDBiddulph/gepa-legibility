@@ -50,7 +50,7 @@ class PsychosisDataset(BaseRLDataset):
         )
 
     def _load_data(self, split: str) -> Dataset:
-        splits = load_psychosis_splits(use_teacher=False)
+        splits = load_psychosis_splits()
         examples = splits[split]
         return Dataset.from_dict(
             {

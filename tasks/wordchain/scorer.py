@@ -320,7 +320,7 @@ def _get_score(
 # Use caching to avoid an error where the score is different for the same example
 @functools.lru_cache(maxsize=None)
 def _metric_fn_impl(
-    example, prediction, judge_model, normalize_response: bool, use_teacher: bool
+    example, prediction, judge_model, normalize_response: bool
 ):
     """Metric function that provides detailed feedback for GEPA"""
     if not hasattr(prediction, "response") or not prediction.response:
@@ -335,8 +335,8 @@ def _metric_fn_impl(
     )
     feedback = f"Feedback:\n{feedback}\n\nScore: {score}"
 
-    # Use expert response if requested and available
-    if use_teacher and hasattr(example, "expert_response"):
+    # Use expert response if available
+    if hasattr(example, "expert_response"):
         expert_response = example.expert_response
         expert_score, expert_feedback = _get_score(
             expert_response,
@@ -359,17 +359,15 @@ def metric_fn(example, prediction, trace=None, pred_name=None, pred_trace=None):
         prediction,
         DEFAULT_JUDGE_MODEL,
         normalize_response=False,
-        use_teacher=False,
     )
 
 
 def get_metric_fn(
     judge_model=DEFAULT_JUDGE_MODEL_NAME,
     normalize_response=False,
-    use_teacher=False,
     cache=True,
 ):
     lm = _get_judge_model(judge_model, cache=cache)
     return lambda example, prediction, trace=None, pred_name=None, pred_trace=None: _metric_fn_impl(
-        example, prediction, lm, normalize_response, use_teacher
+        example, prediction, lm, normalize_response
     )

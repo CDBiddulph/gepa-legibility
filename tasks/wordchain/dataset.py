@@ -47,7 +47,7 @@ class WordchainDataset(BaseRLDataset):
         )
 
     def _load_data(self, split: str) -> Dataset:
-        splits = load_wordchain_splits(use_teacher=False)
+        splits = load_wordchain_splits()
         examples = splits[split]
         return Dataset.from_dict(
             {
