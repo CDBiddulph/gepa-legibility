@@ -3,15 +3,15 @@
 Generic script to generate expert responses for any environment.
 
 Usage:
-    python data-generation/add_expert_responses.py \
-        --model tinker/wordchain-11-28 \
-        --env wordchain \
-        --input data/wordchain/train.jsonl
+    python data_generation/add_expert_responses.py \
+        --model tinker/wordchain-12-02-s90 \
+        --env wordchain
 
-    python data-generation/add_expert_responses.py \
-        --model openai/gpt-4.1-mini \
-        --env mcq \
-        --input data/mcq/train.jsonl
+    python data_generation/add_expert_responses.py \
+        --model tinker/psychosis-12-12-s150 \
+        --env psychosis
+
+Model must start with 'tinker/'. Output is saved to data/<env>/train-teacher/<model_name>.jsonl
 """
 
 import argparse
@@ -85,14 +85,8 @@ def main():
     parser.add_argument(
         "--input",
         type=str,
-        required=True,
-        help="Input JSONL file path",
-    )
-    parser.add_argument(
-        "--output",
-        type=str,
         default=None,
-        help="Output JSONL file path (defaults to {input_stem}-expert.jsonl)",
+        help="Input JSONL file path (defaults to data/<env>/train.jsonl)",
     )
     parser.add_argument(
         "--num-threads",
@@ -115,12 +109,21 @@ def main():
 
     args = parser.parse_args()
 
+    # Extract name from model (must start with tinker/)
+    if not args.model.startswith("tinker/"):
+        raise ValueError(f"Model must start with 'tinker/', got: {args.model}")
+    name = args.model.removeprefix("tinker/")
+
     # Set up paths
-    input_path = Path(args.input)
-    if args.output:
-        output_path = Path(args.output)
+    data_dir = Path(f"data/{args.env}")
+    if args.input:
+        input_path = Path(args.input)
     else:
-        output_path = input_path.with_stem(f"{input_path.stem}-expert")
+        input_path = data_dir / "train.jsonl"
+    output_path = data_dir / "train-teacher" / f"{name}.jsonl"
+
+    # Ensure train-teacher directory exists
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
     print("=" * 60)
     print("Expert Response Generator")
