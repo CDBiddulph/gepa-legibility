@@ -2,7 +2,6 @@
 """CLI for running GEPA optimization on the psychosis task."""
 
 import dataclasses
-import os
 from datetime import datetime
 
 import chz
@@ -11,7 +10,7 @@ from dotenv import load_dotenv
 from tasks.psychosis.loader import load_psychosis_splits
 from core.dspy_utils import get_problem_signature
 from core.runner import run_gepa
-from core.config import shorten_model_name
+from core.paths import make_log_dir
 from tasks.psychosis.scorer import get_metric_fn
 
 load_dotenv()
@@ -40,36 +39,7 @@ class PsychosisGepaConfig:
     reflection_minibatch_size: int
     env_name: str = "psychosis"
     experiment_name: str | None = None
-
-
-def make_log_dir(config: PsychosisGepaConfig) -> str:
-    """Create the log directory path for a psychosis trial."""
-    use_teacher_str = "-teacher" if config.train_teacher_file else "-no_teacher"
-    incompetent_str = "-incompetent" if config.incompetent else ""
-
-    # Build base path - include experiment_name if provided
-    if config.experiment_name:
-        base_path = f"logs/psychosis/{config.experiment_name}/{config.date_str}/"
-    else:
-        base_path = f"logs/psychosis/{config.date_str}/"
-
-    length_penalty_str = f"-lp={config.length_penalty}" if config.length_penalty != 0.0 else ""
-    verbalization_penalty_str = f"-vp={config.verbalization_penalty}" if config.verbalization_penalty != 0.0 else ""
-
-    log_dir = (
-        f"{base_path}"
-        f"p={shorten_model_name(config.prompter_name)}"
-        f"-e={shorten_model_name(config.executor_name)}"
-        f"-hack={config.suggest_hack}"
-        f"{use_teacher_str}"
-        f"{incompetent_str}"
-        f"{length_penalty_str}"
-        f"{verbalization_penalty_str}/"
-    )
-    if config.log_dir_index is not None:
-        log_dir += f"{config.log_dir_index}/"
-    os.makedirs(log_dir, exist_ok=True)
-    return log_dir
+    sweep_fields: list[str] | None = None
 
 
 def run_single_psychosis_trial(
@@ -91,6 +61,7 @@ def run_single_psychosis_trial(
     baseline_instructions_path: str | None = None,
     teacher_tool_model: str | None = None,
     reflection_minibatch_size: int = 10,
+    sweep_fields: list[str] | None = None,
 ) -> None:
     """Run a single psychosis GEPA trial.
 
@@ -128,6 +99,7 @@ def run_single_psychosis_trial(
         teacher_tool_model=teacher_tool_model,
         reflection_minibatch_size=reflection_minibatch_size,
         experiment_name=experiment_name,
+        sweep_fields=sweep_fields,
     )
 
     log_dir = make_log_dir(config)

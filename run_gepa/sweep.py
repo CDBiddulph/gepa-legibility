@@ -211,6 +211,7 @@ def run_sweep(config: dict, experiment_name: str, date_str: str) -> None:
                     date_str=date_str,
                     trial_idx=trial_idx,
                     cache=config.get("cache", False),
+                    sweep_fields=sweep_fields,
                 )
             except Exception as e:
                 print(f"Error in run: {e}")
