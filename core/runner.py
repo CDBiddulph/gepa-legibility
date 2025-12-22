@@ -19,24 +19,6 @@ from scoring.length_penalty import length_penalty_metric_fn
 from scoring.verbalization_penalty import verbalization_penalty_metric_fn
 
 
-# Monkey-patch GEPA to always capture traces during evaluation.
-#
-# DspyAdapter.evaluate only captures traces during reflection, not evaluation.
-# This patch forces trace capture so metrics (like length_penalty) can access instruction text.
-def _patch_gepa_trace_capture():
-    from dspy.teleprompt.gepa.gepa_utils import DspyAdapter
-
-    original_evaluate = DspyAdapter.evaluate
-
-    def evaluate_with_traces(self, batch, candidate, capture_traces=False):
-        return original_evaluate(self, batch, candidate, capture_traces=True)
-
-    DspyAdapter.evaluate = evaluate_with_traces
-
-
-_patch_gepa_trace_capture()
-
-
 def _load_baseline_instructions(baseline_instructions_path: str | None) -> str | None:
     """Load baseline instructions from a file or directory.
 
@@ -160,6 +142,14 @@ def run_gepa(
         teacher_tool_lm = None
         if teacher_tool_model is not None:
             teacher_tool_lm = get_dspy_lm(teacher_tool_model, cache=config.cache)
+            # Verify the server is reachable before proceeding
+            try:
+                teacher_tool_lm(messages=[{"role": "user", "content": "As QUICKLY as possible, write 'Hello' and NOTHING ELSE."}])
+            except Exception as e:
+                raise RuntimeError(
+                    f"Cannot connect to teacher_tool_model server. "
+                    f"Is tinker_server running? Original error: {e}"
+                ) from e
 
         custom_proposer = CustomPromptInstructionProposer(
             reflection_lm=prompter_lm,
