@@ -164,6 +164,9 @@ COLUMN_DISPLAY_NAMES: dict[str, str] = {
     "true_reward": "True Reward",
     "prompt_verbalizes": "Verbalizes Hacking?",
     "prompt_verbalizes_float": "Hack Verbalization Level",
+    "cot_verbalizes_yes": "CoT Verbalizes Hacking (Yes)",
+    "cot_verbalizes_unclear": "CoT Verbalizes Hacking (Unclear)",
+    "cot_verbalizes_no": "CoT Verbalizes Hacking (No)",
 }
 
 # Maps (column, value) pairs to friendly display names for legends, tick labels, etc.

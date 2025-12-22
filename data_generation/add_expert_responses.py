@@ -23,46 +23,13 @@ from dspy.predict.parallel import Parallel
 
 from core.dspy_utils import get_problem_signature
 from core.jsonl_utils import load_jsonl, save_jsonl
-from core.lm import extract_reasoning_from_history_entry, get_dspy_lm
+from core.lm import (
+    extract_reasoning_from_history_entry,
+    find_and_pop_history_entry,
+    get_dspy_lm,
+)
 
 load_dotenv()
-
-
-def _get_history_content(entry: dict) -> str:
-    """Extract message content from a history entry for matching."""
-    messages = entry.get("messages", [])
-    return " ".join(msg.get("content", "") for msg in messages)
-
-
-def _find_and_pop_history_entry(
-    remaining_history: list[tuple[int, dict]],
-    input_values: list[str],
-) -> tuple[int, dict]:
-    """Find and remove the unique history entry containing all input values.
-
-    Args:
-        remaining_history: List of (original_index, entry) tuples to search
-        input_values: Values that must all appear in the entry's message content
-
-    Returns:
-        (original_index, entry) tuple
-
-    Raises:
-        ValueError: If not exactly one match is found
-    """
-    matches = []
-    for i, (orig_idx, entry) in enumerate(remaining_history):
-        content = _get_history_content(entry)
-        if all(value in content for value in input_values):
-            matches.append(i)
-
-    if len(matches) == 0:
-        raise ValueError(f"No history entry found for inputs: {input_values[:2]}...")
-    if len(matches) > 1:
-        raise ValueError(f"Multiple history entries ({len(matches)}) match inputs")
-
-    list_idx = matches[0]
-    return remaining_history.pop(list_idx)
 
 
 def main():
@@ -227,7 +194,7 @@ def main():
 
         # Find and remove the matching history entry
         input_values = [ex[field] for field in input_fields]
-        _, history_entry = _find_and_pop_history_entry(remaining_history, input_values)
+        history_entry = find_and_pop_history_entry(remaining_history, input_values)
 
         # Extract reasoning
         reasoning, _ = extract_reasoning_from_history_entry(history_entry)

@@ -164,3 +164,54 @@ def extract_reasoning_from_history_entry(entry: dict) -> tuple[str | None, str]:
     if raw_output is None:
         return None, ""
     return _extract_reasoning_from_output(raw_output)
+
+
+# =============================================================================
+# History matching utilities
+# =============================================================================
+
+
+def get_history_content(entry: dict) -> str:
+    """Extract message content from a history entry for matching.
+
+    Args:
+        entry: A single entry from lm.history
+
+    Returns:
+        Concatenated content of all messages in the entry
+    """
+    messages = entry.get("messages", [])
+    return " ".join(msg.get("content", "") for msg in messages)
+
+
+def find_and_pop_history_entry(
+    remaining_history: list[dict],
+    input_values: list[str],
+) -> dict:
+    """Find and remove the unique history entry containing all input values.
+
+    Used to match evaluation results back to their corresponding LM history
+    entries when running parallel evaluation.
+
+    Args:
+        remaining_history: List of history entries to search.
+            This list is modified in place (matching entry is removed).
+        input_values: Values that must all appear in the entry's message content
+
+    Returns:
+        The matching history entry
+
+    Raises:
+        ValueError: If no unique match is found (0 or multiple matches)
+    """
+    matches = []
+    for i, entry in enumerate(remaining_history):
+        content = get_history_content(entry)
+        if all(str(value) in content for value in input_values):
+            matches.append(i)
+
+    if len(matches) == 1:
+        list_idx = matches[0]
+        return remaining_history.pop(list_idx)
+
+    raise ValueError(f"No unique match found for input values: {input_values}")

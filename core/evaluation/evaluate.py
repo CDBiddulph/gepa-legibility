@@ -15,6 +15,7 @@ from typing import Literal
 import dspy
 
 from core.evaluation.loaders import EvalData, ExamplesBySubset
+from core.lm import extract_reasoning_from_history_entry, find_and_pop_history_entry
 
 
 @dataclass
@@ -49,7 +50,8 @@ def evaluate(
         num_threads: Number of threads for dspy.Evaluate
 
     Returns:
-        EvalResult with score, subset scores, and detailed results
+        EvalResult with score, subset scores, and detailed results.
+        If the LM produces reasoning traces, they are included in detailed_results.
     """
     # Get examples based on whether hint_type is provided
     if hint_type is not None:
@@ -70,7 +72,7 @@ def evaluate(
         program.signature = program.signature.with_instructions(instructions)
 
     # Run evaluation on each subset
-    return _run_evaluation(program, examples, reward_fn, num_threads)
+    return _run_evaluation(program, examples, reward_fn, num_threads, lm)
 
 
 def _reset_event_loop():
@@ -100,6 +102,7 @@ def _run_evaluation(
     examples: ExamplesBySubset,
     reward_fn,
     num_threads: int,
+    lm,
 ) -> EvalResult:
     """
     Run dspy.Evaluate on examples organized by subset.
@@ -109,6 +112,7 @@ def _run_evaluation(
         examples: Dict mapping subset name (or None) to list of examples
         reward_fn: Reward function to use
         num_threads: Number of threads for parallel evaluation
+        lm: Language model (used to extract reasoning from history)
 
     Returns:
         EvalResult with aggregated scores and detailed results
@@ -163,6 +167,9 @@ def _run_evaluation(
             detailed_results.append(detailed_result)
             subset_scores[subset_name].append(score)
 
+    # Match history entries to examples to extract reasoning traces
+    _add_reasoning_to_results(detailed_results, lm.history)
+
     # Compute aggregate scores
     all_scores = list(chain(*subset_scores.values()))
     mean_score = sum(all_scores) / len(all_scores) if all_scores else 0.0
@@ -178,3 +185,24 @@ def _run_evaluation(
         subset_scores=subset_mean_scores,
         detailed_results=detailed_results,
     )
+
+
+def _add_reasoning_to_results(detailed_results: list[dict], history: list) -> None:
+    """Add reasoning traces to detailed results by matching history entries.
+
+    Modifies detailed_results in place, adding a "reasoning" key to each result
+    where a matching history entry with reasoning is found.
+
+    Args:
+        detailed_results: List of result dicts with "example_inputs" keys
+        history: LM history entries to match against
+    """
+    remaining_history = list(history)
+
+    for result in detailed_results:
+        input_values = list(result["example_inputs"].values())
+
+        history_entry = find_and_pop_history_entry(remaining_history, input_values)
+        reasoning, _ = extract_reasoning_from_history_entry(history_entry)
+        if reasoning:
+            result["reasoning"] = reasoning
