@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "gepa-legibility"
 version = "0.1.0"
 dependencies = [
-	"dspy-ai>=3.0.2",
+	"dspy @ git+https://github.com/CDBiddulph/dspy.git",
 	"python-dotenv",
 	"uvicorn",
 	"fastapi",
@@ -15,8 +15,22 @@ dependencies = [
 	"transformers",
 	"trl",
 	"datasets",
+	"tqdm",
+	"vllm",
+	"chz",
+	"matplotlib",
+	"numpy",
+	"pandas",
+	"pyyaml",
+	"tinker",
+	"tinker_cookbook @ git+https://github.com/thinking-machines-lab/tinker-cookbook.git",
 ]
 requires-python = ">=3.8"
+
+[project.optional-dependencies]
+dev = [
+	"pytest",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
