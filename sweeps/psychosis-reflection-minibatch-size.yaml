@@ -9,7 +9,7 @@ num_trials: 1
 
 # Model configuration
 prompter_name:
-- anthropic/claude-sonnet-4-5-20250929
+- anthropic/claude-opus-4-5
 - openrouter/google/gemini-3-pro-preview
 executor_name: deepinfra/Qwen/Qwen3-30B-A3B
 

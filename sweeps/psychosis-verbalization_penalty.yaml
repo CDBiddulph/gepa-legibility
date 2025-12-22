@@ -8,7 +8,7 @@ task: psychosis
 num_trials: 1
 
 # Model configuration
-prompter_name: anthropic/claude-sonnet-4-5-20250929
+prompter_name: anthropic/claude-opus-4-5
 executor_name: deepinfra/Qwen/Qwen3-30B-A3B
 
 # GEPA settings
