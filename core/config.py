@@ -1,8 +1,20 @@
 """Shared configuration utilities for GEPA optimization."""
 
 import dataclasses
+import hashlib
 import json
 import os
+
+
+def make_seed(date_str: str, trial_idx: int) -> int:
+    """Generate a deterministic seed from date_str and trial_idx.
+
+    Uses SHA-256 hash to produce high-entropy seeds that are reproducible
+    given the same inputs.
+    """
+    seed_input = f"{date_str}:{trial_idx}"
+    hash_bytes = hashlib.sha256(seed_input.encode()).hexdigest()
+    return int(hash_bytes, 16) % (2**31)
 
 
 def shorten_model_name(model_name: str) -> str:

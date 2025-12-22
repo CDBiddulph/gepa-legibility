@@ -13,6 +13,7 @@ from tasks.mcq.loader import load_mcq_splits, get_all_hint_types
 from core.dspy_utils import get_problem_signature
 from core.runner import run_gepa
 from core.paths import make_log_dir
+from core.config import make_seed
 from tasks.mcq.scorer import metric_fn
 
 load_dotenv()
@@ -69,6 +70,7 @@ def run_single_mcq_trial(
     teacher_tool_model: str | None = None,
     reflection_minibatch_size: int = 10,
     sweep_fields: list[str] | None = None,
+    seed: int | None = None,
 ) -> None:
     """Run a single MCQ GEPA trial for one hint_type.
 
@@ -85,6 +87,8 @@ def run_single_mcq_trial(
         f"{len(dataset['test'])} test examples"
     )
 
+    effective_seed = seed if seed is not None else make_seed(date_str, trial_idx)
+
     config = McqGepaConfig(
         prompter_name=prompter_name,
         executor_name=executor_name,
@@ -96,7 +100,7 @@ def run_single_mcq_trial(
         validation_set_size=validation_set_size,
         date_str=date_str,
         cache=cache,
-        seed=trial_idx,
+        seed=effective_seed,
         log_dir_index=trial_idx,
         length_penalty=length_penalty,
         verbalization_penalty=verbalization_penalty,
@@ -144,6 +148,7 @@ class CLIConfig:
     # Multi-trial support
     num_trials: int = 1
     date_str: str | None = None
+    seed: int | None = None
 
     # MCQ-specific settings
     hint_types: list[str] | None = None  # None means all hint types
@@ -185,6 +190,7 @@ def main(cfg: CLIConfig):
                     baseline_instructions_path=cfg.baseline_instructions_path,
                     teacher_tool_model=cfg.teacher_tool_model,
                     reflection_minibatch_size=cfg.reflection_minibatch_size,
+                    seed=cfg.seed,
                 )
             except Exception:
                 # Error already logged by run_gepa, continue with other runs
