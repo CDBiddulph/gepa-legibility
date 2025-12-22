@@ -130,6 +130,7 @@ def _get_or_compute_cot_judgments(context: MetricContext) -> tuple[list[dict], d
 
     for detailed_result in eval_result.detailed_results:
         reasoning = detailed_result.get("reasoning")
+        subset = detailed_result.get("subset")  # May be None
 
         if reasoning:
             result, judge_reasoning = check_cot_verbalization(reasoning, env)
@@ -138,6 +139,7 @@ def _get_or_compute_cot_judgments(context: MetricContext) -> tuple[list[dict], d
                 "judge_reasoning": judge_reasoning,
                 "reasoning": reasoning,
                 "example_inputs": detailed_result.get("example_inputs"),
+                "subset": subset,
             })
         else:
             examples_without_reasoning += 1
@@ -147,6 +149,7 @@ def _get_or_compute_cot_judgments(context: MetricContext) -> tuple[list[dict], d
                 "judge_reasoning": None,
                 "reasoning": None,
                 "example_inputs": detailed_result.get("example_inputs"),
+                "subset": subset,
             })
 
     if examples_without_reasoning > 0:
@@ -176,6 +179,43 @@ def _compute_fraction(judgments: list[dict], target_result: str) -> float:
     return count / len(valid_judgments)
 
 
+def _compute_fractions_with_subsets(
+    judgments: list[dict], target_result: str
+) -> tuple[float, dict[str, float] | None]:
+    """Compute fraction of judgments with the target result, including per-subset breakdowns.
+
+    Args:
+        judgments: List of judgment dicts with "result" and "subset" keys
+        target_result: The result to count ("yes", "unclear", or "no")
+
+    Returns:
+        Tuple of (overall_fraction, subset_fractions) where subset_fractions is
+        a dict mapping subset names to fractions, or None if no subsets exist.
+    """
+    # Overall fraction
+    overall = _compute_fraction(judgments, target_result)
+
+    # Group by subset
+    subsets: dict[str, list[dict]] = {}
+    for j in judgments:
+        subset = j.get("subset")
+        if subset is not None:
+            if subset not in subsets:
+                subsets[subset] = []
+            subsets[subset].append(j)
+
+    if not subsets:
+        return overall, None
+
+    # Compute per-subset fractions
+    subset_fractions = {
+        subset_name: _compute_fraction(subset_judgments, target_result)
+        for subset_name, subset_judgments in subsets.items()
+    }
+
+    return overall, subset_fractions
+
+
 # =============================================================================
 # Metric classes
 # =============================================================================
@@ -190,17 +230,21 @@ class CotVerbalizesBaseMetric(Metric):
     def calculate(cls, context: MetricContext) -> tuple[MetricResult, dict]:
         """Calculate the fraction of examples with this verbalization result."""
         judgments, cache_data = _get_or_compute_cot_judgments(context)
-        fraction = _compute_fraction(judgments, cls.target_result)
+        fraction, subset_fractions = _compute_fractions_with_subsets(
+            judgments, cls.target_result
+        )
 
-        result = MetricResult(value=fraction, subset_values=None)
+        result = MetricResult(value=fraction, subset_values=subset_fractions)
         return result, cache_data
 
     @classmethod
     def from_cache(cls, cache_data: dict) -> MetricResult:
         """Reconstruct result from cached judgment data."""
         judgments = cache_data["judgments"]
-        fraction = _compute_fraction(judgments, cls.target_result)
-        return MetricResult(value=fraction, subset_values=None)
+        fraction, subset_fractions = _compute_fractions_with_subsets(
+            judgments, cls.target_result
+        )
+        return MetricResult(value=fraction, subset_values=subset_fractions)
 
 
 @register_metric("cot_verbalizes_yes")
