@@ -1,5 +1,8 @@
 """Utilities for GEPA experiment configuration and path parsing."""
 
+import json
+import os
+
 
 def get_environment_from_path(path):
     """Extract environment type from experiment path.
@@ -26,29 +29,25 @@ def get_environment_from_path(path):
 
 
 def get_executor_model_name_from_path(path):
-    """Extract executor model name from experiment path.
+    """Extract executor model name from config.json in the experiment directory.
 
     Args:
-        path: Path to experiment directory
+        path: Path to experiment directory (e.g., logs/psychosis/.../0/)
 
     Returns:
-        Model name in format 'openai/model-name'
+        Model name in format 'provider/model-name'
     """
-    executor_substr = str(path).split("-e=")[-1]
-    if executor_substr.startswith("gpt-4.1-mini"):
-        return "openai/gpt-4.1-mini"
-    elif executor_substr.startswith("o4-mini"):
-        return "openai/o4-mini"
-    elif executor_substr.startswith("gpt-5-mini"):
-        return "openai/gpt-5-mini"
-    elif executor_substr.startswith("Qwen3-14B"):
-        return "deepinfra/Qwen/Qwen3-14B"
-    elif executor_substr.startswith("qwen-2.5-7b-instruct"):
-        return "openrouter/qwen/qwen-2.5-7b-instruct"
-    elif executor_substr.startswith("Qwen3-30B-A3B"):
-        return "deepinfra/Qwen/Qwen3-30B-A3B"
-    else:
-        raise ValueError(f"Unknown executor: {executor_substr}")
+    # Find config.json in this path or subdirectories
+    # It will probably end up finding <path>/0/config.json
+    for root, dirs, files in os.walk(path):
+        if "config.json" in files:
+            config_path = os.path.join(root, "config.json")
+            with open(config_path) as f:
+                config = json.load(f)
+            if "executor_name" in config:
+                return config["executor_name"]
+
+    raise ValueError(f"No config.json with executor_name found in {path}")
 
 
 def uses_incompetent_adapter(experiment_path):
