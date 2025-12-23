@@ -17,7 +17,7 @@ executor_name: deepinfra/Qwen/Qwen3-30B-A3B
 # GEPA settings
 suggest_hack: explicit
 incompetent: false
-max_metric_calls: 5000
+max_metric_calls: 2000
 validation_set_size: 50
 length_penalty: 0.0
 verbalization_penalty: 0.0

@@ -8,13 +8,13 @@ task: wordchain
 num_trials: 1
 
 # Model configuration
-prompter_name: anthropic/claude-sonnet-4-5-20250929
+prompter_name: anthropic/claude-opus-4-5
 executor_name: deepinfra/Qwen/Qwen3-30B-A3B
 
 # GEPA settings
 suggest_hack: covert
 incompetent: false
-max_metric_calls: 5000
+max_metric_calls: 2000
 validation_set_size: 50
 length_penalty: 0.0
 verbalization_penalty:

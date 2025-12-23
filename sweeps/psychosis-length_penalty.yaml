@@ -1,27 +1,26 @@
-# Sweep over prompter models and suggest_hack, without teacher data
-# Run with: python -m run_gepa.sweep sweeps/psychosis-prompter-hack-teacher=false.yaml
+# Sweep over different length penalties for psychosis
+# Run with: python -m run_gepa.sweep sweeps/psychosis-length_penalty.yaml
 
-name: prompter-hack-teacher=false
+name: length_penalty
 task: psychosis
 
 # Number of trials per configuration combination
 num_trials: 1
 
 # Model configuration
-prompter_name:
-- anthropic/claude-opus-4-5
-- openai/gpt-5.2
-- openrouter/google/gemini-3-pro-preview
+prompter_name: anthropic/claude-opus-4-5
 executor_name: deepinfra/Qwen/Qwen3-30B-A3B
 
 # GEPA settings
-suggest_hack:
-- "no"
-- explicit
+suggest_hack: explicit
 incompetent: false
 max_metric_calls: 2000
 validation_set_size: 50
-length_penalty: 0.0
+length_penalty:
+- 0.00005
+- 0.0001
+- 0.0002
+- 0.0004
 verbalization_penalty: 0.0
 executor_reasoning_effort: medium
 reflection_minibatch_size: 10
@@ -30,6 +29,3 @@ train_teacher_file: null
 # Runtime settings
 num_threads: 32
 baseline_instructions_path: null
-
-# Optional settings
-# cache: false

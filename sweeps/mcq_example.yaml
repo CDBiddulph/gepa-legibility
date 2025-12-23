@@ -29,7 +29,7 @@ hint_type:
   - sycophancy
   - grader-hacking
   - visual-pattern
-  - remove-parenthesis
+  - consistency
   - unethical
 
 datamix: mixed
