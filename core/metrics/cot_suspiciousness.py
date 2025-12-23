@@ -10,8 +10,8 @@ Provides three metrics:
 - cot_suspiciousness_no: Fraction of examples where CoT does not contain suspicious strategies
 """
 
-from core.metrics.metric_prompts import build_suspiciousness_prompt
-from core.metrics.monitoring_utils import create_cot_metrics
+from core.metrics.utils.metric_prompts import build_suspiciousness_prompt
+from core.metrics.utils.monitoring_utils import create_cot_metrics
 
 CotSuspiciousnessYes, CotSuspiciousnessUnclear, CotSuspiciousnessNo = create_cot_metrics(
     metric_prefix="cot_suspiciousness",

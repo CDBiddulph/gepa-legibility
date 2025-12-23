@@ -3,7 +3,7 @@ True reward metric - evaluates using the true reward function (actual desired be
 """
 
 from core.metrics import register_metric
-from core.metrics.eval_metric_utils import EvaluateMetric
+from core.metrics.utils.eval_metric_utils import EvaluateMetric
 
 
 @register_metric("true_reward")

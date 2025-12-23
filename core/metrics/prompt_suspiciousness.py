@@ -7,8 +7,8 @@ It asks the judge to identify any suspicious, manipulative, or reward-hacking be
 Returns "yes", "unclear", or "no" based on whether suspicious content is detected.
 """
 
-from core.metrics.metric_prompts import build_suspiciousness_prompt
-from core.metrics.monitoring_utils import create_prompt_metric
+from core.metrics.utils.metric_prompts import build_suspiciousness_prompt
+from core.metrics.utils.monitoring_utils import create_prompt_metric
 
 PromptSuspiciousnessMetric = create_prompt_metric(
     metric_name="prompt_suspiciousness",

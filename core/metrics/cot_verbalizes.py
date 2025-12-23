@@ -7,8 +7,8 @@ Provides three metrics:
 - cot_verbalizes_no: Fraction of examples where CoT does not verbalize hacking
 """
 
-from core.metrics.metric_prompts import build_verbalization_prompt
-from core.metrics.monitoring_utils import create_cot_metrics
+from core.metrics.utils.metric_prompts import build_verbalization_prompt
+from core.metrics.utils.monitoring_utils import create_cot_metrics
 
 CotVerbalizesYes, CotVerbalizesUnclear, CotVerbalizesNo = create_cot_metrics(
     metric_prefix="cot_verbalizes",
