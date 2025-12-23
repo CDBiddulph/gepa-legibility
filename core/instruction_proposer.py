@@ -166,6 +166,14 @@ class CustomPromptInstructionProposer:
 
             first_result = result[0]
 
+            # Extract reasoning_details from raw response.
+            # Litellm stores this in provider_specific_fields for OpenRouter/Gemini.
+            reasoning_details = None
+            msg = self.reflection_lm.history[-1]["response"].choices[0].message
+            provider_fields = getattr(msg, "provider_specific_fields", None)
+            if provider_fields:
+                reasoning_details = provider_fields.get("reasoning_details")
+
             # Check if we got tool calls
             if isinstance(first_result, dict) and "tool_calls" in first_result:
                 tool_calls = first_result["tool_calls"]
@@ -186,6 +194,9 @@ class CustomPromptInstructionProposer:
                         for tc in tool_calls
                     ],
                 }
+                # Include reasoning_details if present (required for Gemini thinking models)
+                if reasoning_details:
+                    assistant_msg["reasoning_details"] = reasoning_details
                 messages.append(assistant_msg)
 
                 # Execute each tool call and add results
