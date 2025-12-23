@@ -311,7 +311,7 @@ def _evaluate_candidate(
     # Determine which versions to evaluate
     # All candidates (including baseline) use real instructions from detailed_results.json
     original_instructions = candidate["instructions"]
-    sanitized_instructions = load_instructions(subdir, idx, sanitized=True)
+    sanitized_instructions = load_instructions(subdir, idx, env=eval_data.env, sanitized=True)
     versions = {
         "original": original_instructions,
         "sanitized": sanitized_instructions,
