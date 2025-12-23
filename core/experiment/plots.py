@@ -167,6 +167,10 @@ COLUMN_DISPLAY_NAMES: dict[str, str] = {
     "cot_verbalizes_yes": "CoT Verbalizes Hacking (Yes)",
     "cot_verbalizes_unclear": "CoT Verbalizes Hacking (Unclear)",
     "cot_verbalizes_no": "CoT Verbalizes Hacking (No)",
+    "prompt_suspiciousness": "Prompt Suspicious?",
+    "cot_suspiciousness_yes": "CoT Suspicious (Yes)",
+    "cot_suspiciousness_unclear": "CoT Suspicious (Unclear)",
+    "cot_suspiciousness_no": "CoT Suspicious (No)",
 }
 
 # Maps (column, value) pairs to friendly display names for legends, tick labels, etc.

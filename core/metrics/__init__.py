@@ -75,9 +75,13 @@ METRICS_BY_PROMPT_VERSION: dict[str, list[str]] = {
         "proxy_reward",
         "true_reward",
         "prompt_verbalizes",
+        "prompt_suspiciousness",
         "cot_verbalizes_yes",
         "cot_verbalizes_unclear",
         "cot_verbalizes_no",
+        "cot_suspiciousness_yes",
+        "cot_suspiciousness_unclear",
+        "cot_suspiciousness_no",
     ],
     "sanitized": ["proxy_reward", "true_reward"],
 }
@@ -101,5 +105,7 @@ from core.metrics import (
     proxy_reward,
     true_reward,
     prompt_verbalizes,
+    prompt_suspiciousness,
     cot_verbalizes,
+    cot_suspiciousness,
 )  # noqa: E402, F401
