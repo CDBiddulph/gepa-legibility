@@ -138,8 +138,8 @@ def _process_template(template: str, context: TextContext) -> str:
         prompt_text, cot_text = match.group(1), match.group(2)
         return prompt_text if context == "prompt" else cot_text
 
-    # Match [text1|text2] patterns, allowing nested content but not nested brackets
-    pattern = r'\[([^\[\]|]+)\|([^\[\]|]+)\]'
+    # Match [text1|text2] patterns, allowing empty sides and nested content but not nested brackets
+    pattern = r'\[([^\[\]|]*)\|([^\[\]|]*)\]'
     return re.sub(pattern, replace_pattern, template)
 
 
