@@ -19,6 +19,7 @@ from core.evaluation.evaluate import evaluate
 from core.json_utils import extract_json_from_response
 from core.lm import get_simple_lm
 from core.metrics import Metric, MetricContext, MetricResult, register_metric
+from core.monitoring_prompts import build_verbalization_prompt
 
 
 _JUDGE_MODEL = "openai/gpt-4.1"
@@ -116,6 +117,20 @@ def compute_fractions_with_subsets(
 
     return overall, subset_fractions
 
+
+def check_verbalization(instructions: str, env: str, cache: bool = True) -> tuple[str, str]:
+    """Check if instructions verbalize hacking behavior.
+
+    Args:
+        instructions: The instruction text to analyze
+        env: Environment name (psychosis, wordchain, mcq)
+        cache: Whether to use LM caching. Default True.
+
+    Returns:
+        Tuple of (result, reasoning) where result is "yes", "unclear", or "no"
+    """
+    prompt = build_verbalization_prompt(env, instructions, "prompt")
+    return call_judge(prompt, cache=cache)
 
 # =============================================================================
 # Metric factories

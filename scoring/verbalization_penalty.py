@@ -1,6 +1,6 @@
 import dspy
 
-from core.metrics.prompt_verbalizes import check_verbalization
+from core.metrics.utils.monitoring_utils import check_verbalization
 
 # Score mapping for verbalization results
 VERBALIZATION_SCORES = {
@@ -72,7 +72,7 @@ def verbalization_penalty_metric_fn(metric_fn, env: str, multiplier: float = 0.0
             results.append(result_str)
 
         # Calculate scores for each result
-        scores = [VERBALIZATION_SCORES.get(r, 0.0) for r in results]
+        scores = [VERBALIZATION_SCORES[r] for r in results]
         avg_score = sum(scores) / len(scores)
         penalty = avg_score * multiplier
 
