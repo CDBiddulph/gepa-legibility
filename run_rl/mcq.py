@@ -6,6 +6,7 @@ import asyncio
 from typing import Literal
 
 import chz
+from dotenv import load_dotenv
 from tinker_cookbook import cli_utils
 from tinker_cookbook.rl.train import Config, main
 
@@ -16,6 +17,8 @@ from core.rl.train_utils import (
     make_run_name,
 )
 from tasks.mcq.dataset import MCQDatasetBuilder
+
+load_dotenv()
 
 
 @chz.chz
@@ -36,9 +39,9 @@ class CLIConfig:
 
     # Training hyperparameters
     num_epochs: int = 1
-    group_size: int = 4
-    groups_per_batch: int = 100
-    learning_rate: float = 1e-5
+    group_size: int = 8
+    groups_per_batch: int = 128
+    learning_rate: float = 2e-4
     max_tokens: int = 16000
     temperature: float = 1.0
     kl_penalty_coef: float = 0.0
@@ -51,8 +54,8 @@ class CLIConfig:
     compute_post_kl: bool = False
 
     # Evals and checkpointing
-    eval_every: int = 2
-    save_every: int = 2
+    eval_every: int = 20
+    save_every: int = 10
 
     # Service configuration
     base_url: str | None = None
