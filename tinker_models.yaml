@@ -11,22 +11,40 @@
 #       description: "..."               # Optional: Human-readable description
 
 models:
-  mcq-11-21:
-    checkpoint_path: "tinker://5fce22a7-dc04-5869-9c66-74b79aee4f74:train:0/weights/000010"
+  mcq-12-23-metadata:
+    checkpoint_path: "tinker://820f4846-0b78-586e-a5dc-b6f96a1678f5:train:0/weights/000020"
     base_model: "Qwen/Qwen3-30B-A3B"
-    description: "MCQ model trained with RL on metadata hints"
-  wordchain-11-28:
-    checkpoint_path: "tinker://09e9ac7d-6d7f-59e6-b767-a140acf9f9bd:train:0/weights/000076"
+    description: "MCQ model trained with RL on metadata: https://wandb.ai/automated-scaffolding/gepa/runs/0205mqbw"
+  mcq-12-23-sycophancy:
+    checkpoint_path: "tinker://02a476b1-cdd3-59a7-a7b4-2a5d8fa51cad:train:0/weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
-    description: "Wordchain model trained with RL"
-  wordchain-12-02-s90:
-    checkpoint_path: "tinker://0168e851-07ef-5b77-a02a-5cdac4cff0c3:train:0/weights/000090"
+    description: "MCQ model trained with RL on sycophancy: https://wandb.ai/automated-scaffolding/gepa/runs/410uvlr3"
+  mcq-12-23-visual-pattern:
+    checkpoint_path: "tinker://0eee4c12-75f2-5e1a-9e13-d4004bcd0697:train:0/weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
-    description: "Wordchain model trained with RL"
+    description: "MCQ model trained with RL on visual pattern (40 steps, not 20): https://wandb.ai/automated-scaffolding/gepa/runs/pw43yprz"
+  mcq-12-23-grader-hacking:
+    checkpoint_path: "tinker://0d4eb03d-dc5e-5ca2-af46-d58b745495e2:train:0/weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ model trained with RL on grader hacking: https://wandb.ai/automated-scaffolding/gepa/runs/1mze4o8q"
+  mcq-12-23-unethical:
+    checkpoint_path: "tinker://a095116d-84d1-54dc-8523-2b7f5e383a0f:train:0/weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ model trained with RL on unethical: https://wandb.ai/automated-scaffolding/gepa/runs/deute85j"
+  mcq-12-23-consistency:
+    checkpoint_path: "tinker://0c81b136-f5fe-51b2-b8ae-07e4368b8873:train:0/sampler_weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ model trained with RL on consistency: https://wandb.ai/automated-scaffolding/gepa/runs/gn5fivsf"
+
   psychosis-12-12-s150:
     checkpoint_path: "tinker://4fb87bae-f86f-5b37-8316-764b133bb151:train:0/weights/000150"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis: https://wandb.ai/automated-scaffolding/gepa/runs/bsp7kgva"
+
+  wordchain-12-02-s90:
+    checkpoint_path: "tinker://0168e851-07ef-5b77-a02a-5cdac4cff0c3:train:0/weights/000090"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "Wordchain model trained with RL"
 
   Qwen3-30B-A3B:
     base_model: "Qwen/Qwen3-30B-A3B"
