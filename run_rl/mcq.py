@@ -35,10 +35,10 @@ class CLIConfig:
     hint_type: str = "metadata"
     use_incompetent: bool = False
     seed: int = 0
-    max_examples: int | None = None
 
     # Training hyperparameters
     num_epochs: int = 1
+    max_examples: int | None = 2560
     group_size: int = 8
     groups_per_batch: int = 128
     learning_rate: float = 2e-4
@@ -54,8 +54,8 @@ class CLIConfig:
     compute_post_kl: bool = False
 
     # Evals and checkpointing
-    eval_every: int = 20
-    save_every: int = 10
+    eval_every: int = 10
+    save_every: int = 5
 
     # Service configuration
     base_url: str | None = None
@@ -67,13 +67,14 @@ class CLIConfig:
 async def cli_main(cfg: CLIConfig):
     renderer_name = get_renderer_name(cfg.model_name, cfg.renderer_name)
     run_name = make_run_name(
-        cfg.model_name,
-        cfg.lora_rank,
-        cfg.learning_rate,
-        cfg.group_size,
-        cfg.groups_per_batch,
-        cfg.loss_fn,
-        cfg.seed,
+        model_name=cfg.model_name,
+        lora_rank=cfg.lora_rank,
+        learning_rate=cfg.learning_rate,
+        group_size=cfg.group_size,
+        groups_per_batch=cfg.groups_per_batch,
+        loss_fn=cfg.loss_fn,
+        seed=cfg.seed,
+        hint_type=cfg.hint_type,
     )
     log_path = make_log_path("mcq", run_name, cfg.log_path)
     wandb_name = cfg.wandb_name or run_name

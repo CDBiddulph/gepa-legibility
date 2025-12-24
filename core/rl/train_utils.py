@@ -18,14 +18,17 @@ def make_run_name(
     groups_per_batch: int,
     loss_fn: str,
     seed: int,
+    hint_type: str | None = None,
 ) -> str:
     """Generate a run name from training parameters."""
     model_name_clean = model_name.replace("/", "-")
+    hint_type_str = f"-{hint_type}hint" if hint_type else ""
     return (
         f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}-{model_name_clean}"
         f"-{lora_rank}rank-{learning_rate}lr"
         f"-{group_size}group-{groups_per_batch}batch"
-        f"-{loss_fn}-seed{seed}"
+        f"-{loss_fn}-{seed}seed"
+        f"{hint_type_str}"
     )
 
 
