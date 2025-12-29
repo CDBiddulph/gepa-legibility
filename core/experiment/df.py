@@ -102,20 +102,7 @@ def _load_single_experiment(exp_path: Path, quick_mode: bool) -> dict[str, list[
     """
     # Load progression data (this handles caching and evaluation)
     progression_data = get_progression_data(exp_path, quick_mode=quick_mode)
-
-    # Determine if this is MCQ (has hint_type structure)
-    if isinstance(progression_data, dict) and "runs" not in progression_data:
-        # MCQ: progression_data is {hint_type: {"runs": [...]}}
-        all_rows = defaultdict(list)
-        for hint_type, hint_data in progression_data.items():
-            hint_path = exp_path / hint_type
-            rows = _flatten_runs(hint_data, hint_path)
-            for key in rows:
-                all_rows[key].extend(rows[key])
-        return all_rows
-    else:
-        # Non-MCQ: progression_data is {"runs": [...]}
-        return _flatten_runs(progression_data, exp_path)
+    return _flatten_runs(progression_data, exp_path)
 
 
 def _load_config(path: Path) -> dict:

@@ -53,8 +53,7 @@ def get_progression_data(experiment_path, quick_mode=False):
                    If False, evaluate all improving candidates (for progression plots).
 
     Returns:
-        For non-MCQ environments: {'runs': [...]}
-        For MCQ environment: {hint_type: {'runs': [...]}, ...}
+        {'runs': [...]}
     """
     experiment_path = Path(experiment_path)
     env = get_environment_from_path(experiment_path)
@@ -91,69 +90,18 @@ def _collect_progression_data(
     Collect progression data for a single experiment path.
 
     Args:
-        experiment_path: Path to experiment directory
-        eval_data: Loaded evaluation data
-        executor_lm: Language model for evaluation
-        quick_mode: If True, only evaluate first+last candidates
-
-    Returns:
-        For non-MCQ: {'runs': [...]}
-        For MCQ: {hint_type: {'runs': [...]}, ...}
-    """
-    if eval_data.env == "mcq":
-        # MCQ: iterate through hint type subdirectories
-        print(f"Collecting MCQ progression data for {experiment_path}")
-        hint_data = {}
-
-        for hint_dir in sorted(experiment_path.iterdir()):
-            if not hint_dir.is_dir():
-                continue
-
-            hint_type = hint_dir.name
-            print(f"  Collecting progression data for hint type: {hint_type}")
-
-            hint_data[hint_type] = _collect_progression_data_generic(
-                hint_dir,
-                eval_data,
-                executor_lm,
-                hint_type=hint_type,
-                quick_mode=quick_mode,
-            )
-
-        return hint_data
-    else:
-        # Non-MCQ: standard processing
-        print(f"Collecting progression data for {experiment_path}")
-
-        return _collect_progression_data_generic(
-            experiment_path,
-            eval_data,
-            executor_lm,
-            hint_type=None,
-            quick_mode=quick_mode,
-        )
-
-
-def _collect_progression_data_generic(
-    experiment_path,
-    eval_data: EvalData,
-    executor_lm,
-    hint_type: str | None,
-    quick_mode=False,
-):
-    """
-    Generic progression data collection for a single experiment directory.
-
-    Args:
         experiment_path: Path to experiment directory containing run subdirectories
         eval_data: Loaded evaluation data
         executor_lm: Language model for evaluation
-        hint_type: For MCQ - which hint type (None for non-MCQ)
-        quick_mode: If True, only evaluate first+last (for bar plots)
+        quick_mode: If True, only evaluate first+last candidates (for bar plots)
 
     Returns:
-        Dict with 'runs' key containing list of run data
+        {'runs': [...]}
     """
+    # Get hint_type from config.json (will be None for non-MCQ experiments)
+    hint_type = _get_hint_type_from_config(experiment_path)
+
+    print(f"Collecting progression data for {experiment_path}")
     # Check if this experiment uses IncompetentAdapter
     use_incompetent_adapter = uses_incompetent_adapter(experiment_path)
     if use_incompetent_adapter:
@@ -213,6 +161,16 @@ def _collect_progression_data_generic(
 
     # Return runs sorted by run_index
     return {"runs": [runs_data[k] for k in sorted(runs_data.keys())]}
+
+
+def _get_hint_type_from_config(experiment_path):
+    """Get hint_type from config.json in first run directory, or None if not present."""
+    config_files = sorted(experiment_path.glob("*/config.json"))
+    if not config_files:
+        return None
+    with open(config_files[0]) as f:
+        config = json.load(f)
+    return config.get("hint_type")
 
 
 def _process_run_progression(
@@ -442,13 +400,7 @@ def main():
     data = get_progression_data(args.experiment_path, quick_mode=args.quick_mode)
 
     # Print summary
-    env = get_environment_from_path(args.experiment_path)
-    if env == "mcq":
-        print(f"\nLoaded MCQ progression data with {len(data)} hint types:")
-        for hint_type, hint_data in data.items():
-            print(f"  {hint_type}: {len(hint_data['runs'])} runs")
-    else:
-        print(f"\nLoaded progression data with {len(data['runs'])} runs")
+    print(f"\nLoaded progression data with {len(data['runs'])} runs")
 
     print("\nDone!")
 
