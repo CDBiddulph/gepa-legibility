@@ -25,7 +25,7 @@ from core.dspy_utils import get_problem_signature
 from core.jsonl_utils import load_jsonl, save_jsonl
 from core.lm import (
     extract_reasoning_from_history_entry,
-    find_and_pop_history_entry,
+    find_history_entry,
     get_dspy_lm,
 )
 
@@ -175,9 +175,7 @@ def main():
         )
 
     # Match predictions to history entries and extract reasoning
-    # Use pop to ensure each entry is matched exactly once (O(N) amortized)
     print("\nMatching predictions to history entries...")
-    remaining_history = list(enumerate(lm.history))
 
     for j, prediction in enumerate(predictions):
         original_idx = indices_to_process[j]
@@ -192,9 +190,9 @@ def main():
         # Store the parsed response
         examples[original_idx]["expert_response"] = parsed_response
 
-        # Find and remove the matching history entry
+        # Find the matching history entry
         input_values = [ex[field] for field in input_fields]
-        history_entry = find_and_pop_history_entry(remaining_history, input_values)
+        history_entry = find_history_entry(lm.history, input_values)
 
         # Extract reasoning
         reasoning, _ = extract_reasoning_from_history_entry(history_entry)

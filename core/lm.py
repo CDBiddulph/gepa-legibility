@@ -184,34 +184,36 @@ def get_history_content(entry: dict) -> str:
     return " ".join(msg.get("content", "") for msg in messages)
 
 
-def find_and_pop_history_entry(
-    remaining_history: list[dict],
+def find_history_entry(
+    history: list[dict],
     input_values: list[str],
 ) -> dict:
-    """Find and remove the unique history entry containing all input values.
+    """Find a history entry containing all input values.
 
     Used to match evaluation results back to their corresponding LM history
     entries when running parallel evaluation.
 
     Args:
-        remaining_history: List of history entries to search.
-            This list is modified in place (matching entry is removed).
+        history: List of history entries to search.
         input_values: Values that must all appear in the entry's message content
 
     Returns:
         The matching history entry
 
     Raises:
-        ValueError: If no unique match is found (0 or multiple matches)
+        ValueError: If no match is found
     """
     matches = []
-    for i, entry in enumerate(remaining_history):
+    for i, entry in enumerate(history):
         content = get_history_content(entry)
         if all(str(value) in content for value in input_values):
             matches.append(i)
 
-    if len(matches) == 1:
-        list_idx = matches[0]
-        return remaining_history.pop(list_idx)
+    if len(matches) == 0:
+        raise ValueError(
+            f"No match found in history ({len(history)} entries) "
+            f"for input values: {input_values}"
+        )
 
-    raise ValueError(f"No unique match found for input values: {input_values}")
+    # If multiple matches (e.g., from retries), use the last one
+    return history[matches[-1]]

@@ -15,7 +15,7 @@ from typing import Literal
 import dspy
 
 from core.evaluation.loaders import EvalData, ExamplesBySubset
-from core.lm import extract_reasoning_from_history_entry, find_and_pop_history_entry
+from core.lm import extract_reasoning_from_history_entry, find_history_entry
 
 
 @dataclass
@@ -202,12 +202,10 @@ def _add_reasoning_to_results(detailed_results: list[dict], history: list) -> No
         detailed_results: List of result dicts with "example_inputs" keys
         history: LM history entries to match against
     """
-    remaining_history = list(history)
-
     for result in detailed_results:
         input_values = list(result["example_inputs"].values())
 
-        history_entry = find_and_pop_history_entry(remaining_history, input_values)
+        history_entry = find_history_entry(history, input_values)
         reasoning, _ = extract_reasoning_from_history_entry(history_entry)
         if reasoning:
             result["reasoning"] = reasoning
