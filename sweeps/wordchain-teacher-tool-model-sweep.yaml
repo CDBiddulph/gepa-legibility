@@ -1,8 +1,8 @@
-# Sweep over prompter models and suggest_hack, without teacher data
-# Run with: python -m run_gepa.sweep sweeps/psychosis-prompter-hack-teacher=false.yaml
+# Sweep over teacher_tool_model (null vs tinker model) for wordchain
+# Run with: python -m run_gepa.sweep sweeps/wordchain-teacher-tool-model-sweep.yaml
 
-name: prompter-hack-teacher=false
-task: psychosis
+name: teacher-tool-model-sweep
+task: wordchain
 
 # Number of trials per configuration combination
 num_trials: 1
@@ -10,26 +10,26 @@ num_trials: 1
 # Model configuration
 prompter_name:
 - anthropic/claude-opus-4-5
-- openai/gpt-5.2
 - openrouter/google/gemini-3-pro-preview
+- openai/gpt-5.2
 executor_name: deepinfra/Qwen/Qwen3-30B-A3B
 
 # GEPA settings
-suggest_hack:
-- "no"
-- explicit
+suggest_hack: explicit
 incompetent: false
 max_metric_calls: 2000
 validation_set_size: 50
 length_penalty: 0.0
 verbalization_penalty: 0.0
 executor_reasoning_effort: medium
-reflection_minibatch_size: 20
-train_teacher_file: null
+reflection_minibatch_size: 10
+train_teacher_file: wordchain-12-02-s90.jsonl
+
+# Sweep parameters
+teacher_tool_model:
+- tinker/wordchain-12-02-s90
+- null
 
 # Runtime settings
 num_threads: 32
 baseline_instructions_path: null
-
-# Optional settings
-# cache: false

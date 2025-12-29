@@ -27,7 +27,7 @@ validation_set_size: 50
 length_penalty: 0.0
 verbalization_penalty: 0.0
 executor_reasoning_effort: medium
-reflection_minibatch_size: 10
+reflection_minibatch_size: 20
 train_teacher_file: psychosis-12-12-s150.jsonl
 teacher_tool_model: tinker/psychosis-12-12-s150
 
