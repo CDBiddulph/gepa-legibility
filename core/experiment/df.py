@@ -23,6 +23,7 @@ DFs = dict[str, pd.DataFrame]
 def load_experiment_dfs(
     paths: list[str],
     quick_mode: bool = False,
+    metrics: list[str] | None = None,
 ) -> DFs:
     """Load experiment data from multiple paths into DataFrames.
 
@@ -32,6 +33,7 @@ def load_experiment_dfs(
             - Specific: "logs/mcq/2025-11-19-11-41-43/p=claude-..." (loads just that one)
         quick_mode: If True, only evaluate first+last candidates (for bar plots).
                    If False, evaluate all improving candidates (for progression plots).
+        metrics: List of metric names to compute. If None, computes all metrics.
 
     Returns:
         Dict with two DataFrames:
@@ -43,7 +45,7 @@ def load_experiment_dfs(
 
     all_rows = defaultdict(list)
     for exp_path in expanded_paths:
-        rows = _load_single_experiment(exp_path, quick_mode)
+        rows = _load_single_experiment(exp_path, quick_mode, metrics)
         for key in rows:
             all_rows[key].extend(rows[key])
 
@@ -90,18 +92,21 @@ def _is_timestamp_path(path: Path) -> bool:
     return re.match(r"^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$", path.name) is not None
 
 
-def _load_single_experiment(exp_path: Path, quick_mode: bool) -> dict[str, list[dict]]:
+def _load_single_experiment(
+    exp_path: Path, quick_mode: bool, metrics: list[str] | None = None
+) -> dict[str, list[dict]]:
     """Load data for a single experiment path into rows.
 
     Args:
         exp_path: Path to specific experiment directory
         quick_mode: Whether to use quick mode for loading
+        metrics: List of metric names to compute. If None, computes all metrics.
 
     Returns:
         Dict with "main" and "gepa_runs" keys containing row lists
     """
     # Load progression data (this handles caching and evaluation)
-    progression_data = get_progression_data(exp_path, quick_mode=quick_mode)
+    progression_data = get_progression_data(exp_path, quick_mode=quick_mode, metrics=metrics)
     return _flatten_runs(progression_data, exp_path)
 
 

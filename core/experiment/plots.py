@@ -1621,6 +1621,8 @@ class PlotConfig:
             If False, evaluates all improving candidates (needed for progression plots).
         computed_columns: Dict mapping column names to functions that compute them from the DataFrame.
         show_paths: Whether to show experiment paths in figure titles.
+        metrics: List of metric names to compute. If None, computes all metrics.
+            Use this to speed up loading when you only need specific metrics.
     """
 
     paths: list[str]
@@ -1630,6 +1632,7 @@ class PlotConfig:
         default_factory=dict
     )
     show_paths: bool = True
+    metrics: list[str] | None = None
 
     _dfs: DFs = field(default=None, init=False, repr=False)
 
@@ -1640,7 +1643,9 @@ class PlotConfig:
             Dict with "main" (candidate rows) and "gepa_runs" (run-level data)
         """
         if self._dfs is None:
-            self._dfs = load_experiment_dfs(self.paths, quick_mode=self.quick_mode)
+            self._dfs = load_experiment_dfs(
+                self.paths, quick_mode=self.quick_mode, metrics=self.metrics
+            )
 
             # Apply computed columns to main DataFrame only
             for col_name, col_fn in self.computed_columns.items():

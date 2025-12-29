@@ -38,7 +38,7 @@ load_dotenv()
 # ============================================================================
 
 
-def get_progression_data(experiment_path, quick_mode=False):
+def get_progression_data(experiment_path, quick_mode=False, metrics=None):
     """
     Compute progression data for a single experiment path.
 
@@ -51,6 +51,7 @@ def get_progression_data(experiment_path, quick_mode=False):
         experiment_path: Path to experiment directory (str or Path)
         quick_mode: If True, only evaluate first+last candidates (for bar plots).
                    If False, evaluate all improving candidates (for progression plots).
+        metrics: List of metric names to compute. If None, computes all metrics.
 
     Returns:
         {'runs': [...]}
@@ -72,6 +73,7 @@ def get_progression_data(experiment_path, quick_mode=False):
         eval_data,
         executor_lm,
         quick_mode,
+        metrics,
     )
 
 
@@ -85,6 +87,7 @@ def _collect_progression_data(
     eval_data: EvalData,
     executor_lm,
     quick_mode=False,
+    metrics=None,
 ):
     """
     Collect progression data for a single experiment path.
@@ -94,6 +97,7 @@ def _collect_progression_data(
         eval_data: Loaded evaluation data
         executor_lm: Language model for evaluation
         quick_mode: If True, only evaluate first+last candidates (for bar plots)
+        metrics: List of metric names to compute. If None, computes all metrics.
 
     Returns:
         {'runs': [...]}
@@ -138,6 +142,7 @@ def _collect_progression_data(
             hint_type,
             use_incompetent_adapter,
             quick_mode=quick_mode,
+            metrics=metrics,
         )
 
         # Construct data for the end state
@@ -181,6 +186,7 @@ def _process_run_progression(
     hint_type: str | None,
     use_incompetent_adapter: bool,
     quick_mode=False,
+    metrics=None,
 ):
     """
     Process progression data for a single run.
@@ -193,6 +199,7 @@ def _process_run_progression(
         hint_type: For MCQ - which hint type (None for non-MCQ)
         use_incompetent_adapter: Whether to use IncompetentAdapter
         quick_mode: If True, only evaluate first and last candidates
+        metrics: List of metric names to compute. If None, computes all metrics.
 
     Returns:
         List of progression point dicts
@@ -234,6 +241,7 @@ def _process_run_progression(
             executor_lm,
             hint_type,
             use_incompetent_adapter,
+            metrics=metrics,
         )
 
         prog_point = _create_progression_point(
@@ -252,12 +260,15 @@ def _evaluate_candidate(
     executor_lm,
     hint_type: str | None,
     use_incompetent_adapter: bool,
+    metrics=None,
 ):
     """
-    Evaluate a single candidate on all metrics.
+    Evaluate a single candidate on specified metrics.
 
     Uses the metrics registry to determine which metrics to compute for each
     prompt version (original/sanitized). Results are cached in evaluations/.
+    We calculate the intersection of the metrics to evaluate for this prompt
+    version (original/sanitized) and `metrics`.
 
     Returns:
         Tuple of (test_scores, subset_test_scores, sanitized_instructions)
@@ -280,8 +291,12 @@ def _evaluate_candidate(
 
     # Evaluate each version with its applicable metrics
     for version_name, instructions in versions.items():
-        # Get metrics for this version
-        metrics_to_eval = METRICS_BY_PROMPT_VERSION[version_name]
+        # Get metrics for this version, filtered by requested metrics if specified
+        all_metrics_for_version = METRICS_BY_PROMPT_VERSION[version_name]
+        if metrics is not None:
+            metrics_to_eval = [m for m in all_metrics_for_version if m in metrics]
+        else:
+            metrics_to_eval = all_metrics_for_version
 
         for metric_name in metrics_to_eval:
             cache_file = eval_dir / f"cand_{idx}_{metric_name}_{version_name}.json"
