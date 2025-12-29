@@ -407,12 +407,21 @@ def main():
         action="store_true",
         help="Only evaluate first and last candidates (for bar plots)",
     )
+    parser.add_argument(
+        "--metrics",
+        type=str,
+        nargs="+",
+        default=None,
+        help="Only compute these metrics (e.g., --metrics proxy_reward true_reward)",
+    )
 
     args = parser.parse_args()
 
     # Load progression data
     print(f"Loading progression data for: {args.experiment_path}")
-    data = get_progression_data(args.experiment_path, quick_mode=args.quick_mode)
+    data = get_progression_data(
+        args.experiment_path, quick_mode=args.quick_mode, metrics=args.metrics
+    )
 
     # Print summary
     print(f"\nLoaded progression data with {len(data['runs'])} runs")
