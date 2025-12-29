@@ -82,8 +82,9 @@ METRICS_BY_PROMPT_VERSION: dict[str, list[str]] = {
         "cot_suspiciousness_yes",
         "cot_suspiciousness_unclear",
         "cot_suspiciousness_no",
+        "hacking_rate",
     ],
-    "sanitized": ["proxy_reward", "true_reward"],
+    "sanitized": ["proxy_reward", "true_reward", "hacking_rate"],
 }
 
 # Registry of metric classes (populated by imports below)
@@ -108,4 +109,5 @@ from core.metrics import (
     prompt_suspiciousness,
     cot_verbalizes,
     cot_suspiciousness,
+    hacking_rate,
 )  # noqa: E402, F401
