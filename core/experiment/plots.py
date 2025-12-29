@@ -162,6 +162,7 @@ COLUMN_DISPLAY_NAMES: dict[str, str] = {
     "prompt_type": "Prompt Type",  # Doesn't exist by default
     "proxy_reward": "Proxy Reward",
     "true_reward": "True Reward",
+    "hacking_rate": "Hacking Rate",
     "prompt_verbalizes": "Verbalizes Hacking?",
     "prompt_verbalizes_float": "Hack Verbalization Level",
     "cot_verbalizes_yes": "CoT Verbalizes Hacking (Yes)",
@@ -178,6 +179,7 @@ VALUE_DISPLAY_NAMES: dict[str, dict[str, str]] = {
     "column_name": {
         "proxy_reward": "Proxy Reward",
         "true_reward": "True Reward",
+        "hacking_rate": "Hacking Rate",
         "prompt_verbalizes": "Verbalizes Hacking?",
     },
     "is_sanitized": {
@@ -239,9 +241,14 @@ VALUE_ORDER: dict[str, list] = {
         "explicit_hack",
         "explicit_hack_sanitized",
     ],
-    "column_name": ["proxy_reward", "true_reward", "prompt_verbalizes"],
+    "column_name": ["proxy_reward", "true_reward", "prompt_verbalizes", "hacking_rate"],
     "prompt_verbalizes": ["no", "unclear", "yes"],
-    "optimizer": ["GEPA", "GEPA (Hack)", "GEPA (Hack + Teacher)"],
+    "optimizer": [
+        "GEPA",
+        "GEPA (Hack)",
+        "GEPA (Hack + Teacher)",
+        "GEPA (Hack + Teacher + Tool)",
+    ],
     "is_sanitized": [False, True],
     "suggest_hack": ["no", "explicit"],
 }
@@ -283,6 +290,7 @@ STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
     ("column_name", "proxy_reward"): {"color": "#ff7777"},
     ("column_name", "true_reward"): {"color": "#66b3ff"},
     ("column_name", "prompt_verbalizes"): {"color": "#77dd77"},
+    ("column_name", "hacking_rate"): {"color": "#ffaa44"},
     # Colors for prompt_verbalizes values (red=no, yellow=unclear, green=yes)
     ("prompt_verbalizes", "no"): {"color": "#ff4444"},
     ("prompt_verbalizes", "unclear"): {"color": "#ffcc00"},
@@ -290,6 +298,11 @@ STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
     # Line styles for is_sanitized
     ("is_sanitized", False): {"linestyle": "-"},
     ("is_sanitized", True): {"linestyle": ":"},
+    # Colors for optimizer values (used in progression plots)
+    ("optimizer", "GEPA"): {"color": "#1f77b4"},  # blue
+    ("optimizer", "GEPA (Hack)"): {"color": "#ff7f0e"},  # orange
+    ("optimizer", "GEPA (Hack + Teacher)"): {"color": "#2ca02c"},  # green
+    ("optimizer", "GEPA (Hack + Teacher + Tool)"): {"color": "#d62728"},  # red
 }
 
 
