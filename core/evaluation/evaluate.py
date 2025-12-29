@@ -119,6 +119,11 @@ def _run_evaluation(
     """
     _reset_event_loop()
 
+    # Clear history to avoid accumulating entries from previous evaluations
+    # This is necessary because _add_reasoning_to_results matches results to
+    # history entries by input values, and duplicate entries cause errors.
+    lm.history.clear()
+
     # Run evaluation for each subset
     subset_results = {}
     for subset_name, subset_examples in examples.items():
