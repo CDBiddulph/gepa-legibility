@@ -38,7 +38,7 @@ class CLIConfig:
     max_examples: int | None = None
 
     # Training hyperparameters
-    num_epochs: int = 10
+    num_epochs: int = 2
     group_size: int = 8
     groups_per_batch: int = 128
     learning_rate: float = 2e-4
