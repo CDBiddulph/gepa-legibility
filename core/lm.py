@@ -62,8 +62,8 @@ def get_dspy_lm(model, max_tokens=32000, temperature=1.0, cache=True, **kwargs):
     # Merge user kwargs with model-specific kwargs
     all_kwargs = {**model_kwargs, **kwargs}
 
-    # Limit max_tokens for non-reasoning models
-    if not any(model.endswith(s) for s in HIGH_REASONING_MODELS):
+    # Limit max_tokens for non-reasoning models and non-Tinker models
+    if not any(model.endswith(s) for s in HIGH_REASONING_MODELS) and not model.startswith("tinker/"):
         max_tokens = min(max_tokens, 16000)
 
     return dspy.LM(
