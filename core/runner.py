@@ -234,8 +234,11 @@ def _eval_and_save_detailed_results(
         print(f"Saved minimal detailed results to {detailed_results_path}")
 
     # Use progression_loader to get test scores with caching
+    # Only compute proxy_reward since that's all detailed_results.json uses
     experiment_path = Path(log_dir).parent
-    progression_data = get_progression_data(str(experiment_path), quick_mode=True)
+    progression_data = get_progression_data(
+        str(experiment_path), quick_mode=True, metrics=["proxy_reward"]
+    )
 
     # Find run by run_index since list position may differ if some runs failed
     run_data = next(
