@@ -5,7 +5,7 @@ name: prompter-hack-teacher=false
 task: psychosis
 
 # Number of trials per configuration combination
-num_trials: 1
+num_trials: 3
 
 # Model configuration
 prompter_name:
