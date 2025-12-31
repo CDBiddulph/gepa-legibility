@@ -39,12 +39,32 @@ models:
   psychosis-12-12-s150:
     checkpoint_path: "tinker://4fb87bae-f86f-5b37-8316-764b133bb151:train:0/weights/000150"
     base_model: "Qwen/Qwen3-30B-A3B"
-    description: "Psychosis: https://wandb.ai/automated-scaffolding/gepa/runs/bsp7kgva"
+    description: "Psychosis, seed 0: https://wandb.ai/automated-scaffolding/gepa/runs/bsp7kgva"
+  psychosis-12-28:
+    checkpoint_path: "tinker://e4678438-7b0c-5f89-ad86-97d32fd5cbea:train:0/weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "Psychosis, seed 1: https://wandb.ai/automated-scaffolding/gepa/runs/o6boectu"
+  # psychosis-12-29-s150-failed:
+  #   checkpoint_path: "FILL IN"
+  #   base_model: "Qwen/Qwen3-30B-A3B"
+  #   description: "Psychosis, seed 2: https://wandb.ai/automated-scaffolding/gepa/runs/eg2twcx7"
+  psychosis-12-29:
+    checkpoint_path: "tinker://5b9348ea-aeaf-52e9-8246-286a149ec3e1:train:0/weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "Psychosis, seed 3 (3 epochs, not 2): https://wandb.ai/automated-scaffolding/gepa/runs/au4v54o2"
 
   wordchain-12-02-s90:
     checkpoint_path: "tinker://0168e851-07ef-5b77-a02a-5cdac4cff0c3:train:0/weights/000090"
     base_model: "Qwen/Qwen3-30B-A3B"
-    description: "Wordchain model trained with RL"
+    description: "Wordchain, seed 0"
+  wordchain-12-29-s70:
+    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/weights/000070"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "Wordchain, seed 1: https://wandb.ai/automated-scaffolding/gepa/runs/b8us506m"
+  wordchain-12-30:
+    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/weights/000100"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "Wordchain, seed 2: https://wandb.ai/automated-scaffolding/gepa/runs/3pzlyu78"
 
   Qwen3-30B-A3B:
     base_model: "Qwen/Qwen3-30B-A3B"
