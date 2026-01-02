@@ -5,6 +5,7 @@
 .venv/
 .env
 /data/
+/example-plots/
 /finetuning/data/
 /finetuning/logs/
 /finetuning/outputs/
