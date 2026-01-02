@@ -168,10 +168,9 @@ def main():
     predictions = parallel(exec_pairs)
 
     # Verify history length matches predictions
-    if len(lm.history) != len(predictions):
+    if len(lm.history) < len(predictions):
         raise ValueError(
-            f"History length ({len(lm.history)}) != predictions ({len(predictions)}). "
-            "Cannot establish bijection."
+            f"History length ({len(lm.history)}) < predictions ({len(predictions)})."
         )
 
     # Match predictions to history entries and extract reasoning
