@@ -23,7 +23,10 @@ length_penalty: 0.0
 verbalization_penalty: 0.0
 executor_reasoning_effort: medium
 reflection_minibatch_size: 10
-train_teacher_file: wordchain-12-02-s90.jsonl
+train_teacher_file:
+- wordchain-12-02-s90.jsonl
+- wordchain-12-29-s70.jsonl
+- wordchain-12-30.jsonl
 
 # Runtime settings
 num_threads: 32

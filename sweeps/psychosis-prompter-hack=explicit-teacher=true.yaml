@@ -9,14 +9,9 @@ num_trials: 1
 
 # Model configuration
 prompter_name:
-# - openrouter/google/gemini-3-pro-preview
-# - tinker/Qwen3-30B-A3B  # Probably equivalent to deepinfra/Qwen/Qwen3-30B-A3B
-# - tinker/psychosis-12-12-s150
-- openai/gpt-5.2
-- deepinfra/deepseek-ai/DeepSeek-V3.2
-# - openrouter/google/gemini-2.5-pro
-# - anthropic/claude-opus-4-5
 - anthropic/claude-opus-4-5
+- openai/gpt-5.2
+- openrouter/google/gemini-3-pro-preview
 executor_name: deepinfra/Qwen/Qwen3-30B-A3B
 
 # GEPA settings
@@ -28,8 +23,10 @@ length_penalty: 0.0
 verbalization_penalty: 0.0
 executor_reasoning_effort: medium
 reflection_minibatch_size: 20
-train_teacher_file: psychosis-12-12-s150.jsonl
-teacher_tool_model: tinker/psychosis-12-12-s150
+train_teacher_file:
+- psychosis-12-12-s150.jsonl
+- psychosis-12-28.jsonl
+- psychosis-12-29.jsonl
 
 # Runtime settings
 num_threads: 32
