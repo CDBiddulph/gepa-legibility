@@ -57,5 +57,7 @@ def _dicts_to_examples(raw_data: list[dict], has_expert_response: bool) -> list[
         }
         if has_expert_response:
             fields["expert_response"] = data["expert_response"]
+            # Assume reasoning will always be present for the train split
+            fields["expert_reasoning"] = data["expert_reasoning"]
         examples.append(dspy.Example(**fields).with_inputs("query"))
     return examples

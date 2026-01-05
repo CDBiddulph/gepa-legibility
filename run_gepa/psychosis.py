@@ -38,6 +38,7 @@ class PsychosisGepaConfig:
     executor_reasoning_effort: str
     teacher_tool_model: str | None
     reflection_minibatch_size: int
+    show_expert_reasoning: bool
     env_name: str = "psychosis"
     experiment_name: str | None = None
     sweep_fields: list[str] | None = None
@@ -62,6 +63,7 @@ def run_single_psychosis_trial(
     baseline_instructions_path: str | None = None,
     teacher_tool_model: str | None = None,
     reflection_minibatch_size: int = 10,
+    show_expert_reasoning: bool = False,
     sweep_fields: list[str] | None = None,
     seed: int | None = None,
 ) -> None:
@@ -102,6 +104,7 @@ def run_single_psychosis_trial(
         executor_reasoning_effort=executor_reasoning_effort,
         teacher_tool_model=teacher_tool_model,
         reflection_minibatch_size=reflection_minibatch_size,
+        show_expert_reasoning=show_expert_reasoning,
         experiment_name=experiment_name,
         sweep_fields=sweep_fields,
     )
@@ -110,6 +113,7 @@ def run_single_psychosis_trial(
 
     metric_fn = get_metric_fn(
         cache=cache,
+        show_expert_reasoning=show_expert_reasoning,
     )
 
     run_gepa(
@@ -152,6 +156,7 @@ class CLIConfig:
     train_teacher_file: str | None = None
     teacher_tool_model: str | None = None
     reflection_minibatch_size: int = 10
+    show_expert_reasoning: bool = False
 
 
 def main(cfg: CLIConfig):
@@ -181,6 +186,7 @@ def main(cfg: CLIConfig):
                 baseline_instructions_path=cfg.baseline_instructions_path,
                 teacher_tool_model=cfg.teacher_tool_model,
                 reflection_minibatch_size=cfg.reflection_minibatch_size,
+                show_expert_reasoning=cfg.show_expert_reasoning,
                 seed=cfg.seed,
             )
         except Exception:

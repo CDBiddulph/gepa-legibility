@@ -23,6 +23,9 @@ length_penalty: 0.0
 verbalization_penalty: 0.0
 executor_reasoning_effort: medium
 reflection_minibatch_size: 20
+show_expert_reasoning:
+- false
+- true
 train_teacher_file:
 - psychosis-12-12-s150.jsonl
 - psychosis-12-28.jsonl
