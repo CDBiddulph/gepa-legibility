@@ -387,6 +387,41 @@ def _save_cached_metric(cache_file: Path, cache_data: dict):
 # ============================================================================
 
 
+def _expand_experiment_path(path: Path) -> list[Path]:
+    """Expand a path to a list of experiment directories.
+
+    Determines the path type by checking for config.json:
+    - If config.json exists directly under path → single experiment directory
+    - If config.json exists under every subdirectory → parent directory, expand to all subdirs
+    - Otherwise → raise an error
+
+    Args:
+        path: Path to experiment directory or parent directory
+
+    Returns:
+        List of experiment directory paths
+    """
+    if not path.is_dir():
+        raise ValueError(f"Path is not a directory: {path}")
+
+    # Case 1: config.json directly under path → single experiment
+    if (path / "config.json").exists():
+        return [path]
+
+    # Case 2: Check if all subdirectories have config.json
+    subdirs = [d for d in sorted(path.iterdir()) if d.is_dir()]
+    if not subdirs:
+        raise ValueError(f"No subdirectories found and no config.json in: {path}")
+
+    missing_config = [d for d in subdirs if not (d / "config.json").exists()]
+    if missing_config:
+        raise ValueError(
+            f"Not a valid experiment path. No config.json in path or subdirectories"
+        )
+
+    return subdirs
+
+
 def main():
     """CLI entry point for generating progression data."""
     import argparse
@@ -400,7 +435,9 @@ def main():
     parser.add_argument(
         "experiment_path",
         type=str,
-        help="Path to experiment directory (e.g., logs/psychosis/.../p=...-hack=no)",
+        help="Path to experiment directory or timestamp directory. "
+        "If a timestamp directory (e.g., logs/mcq/.../2025-12-23-00-02-21/), "
+        "processes all subdirectories.",
     )
     parser.add_argument(
         "--quick-mode",
@@ -417,16 +454,27 @@ def main():
 
     args = parser.parse_args()
 
-    # Load progression data
-    print(f"Loading progression data for: {args.experiment_path}")
-    data = get_progression_data(
-        args.experiment_path, quick_mode=args.quick_mode, metrics=args.metrics
-    )
+    # Expand path to list of experiment directories
+    input_path = Path(args.experiment_path)
+    experiment_paths = _expand_experiment_path(input_path)
+
+    if len(experiment_paths) > 1:
+        print(f"Found {len(experiment_paths)} experiment directories under {input_path}")
+
+    total_runs = 0
+    for i, exp_path in enumerate(experiment_paths):
+        print(f"\n{'='*60}")
+        print(f"[{i+1}/{len(experiment_paths)}] Processing: {exp_path.name}")
+        print('='*60)
+
+        data = get_progression_data(
+            exp_path, quick_mode=args.quick_mode, metrics=args.metrics
+        )
+        total_runs += len(data['runs'])
+        print(f"  Loaded {len(data['runs'])} runs")
 
     # Print summary
-    print(f"\nLoaded progression data with {len(data['runs'])} runs")
-
-    print("\nDone!")
+    print(f"\nDone! Processed {len(experiment_paths)} experiments with {total_runs} total runs.")
 
 
 if __name__ == "__main__":
