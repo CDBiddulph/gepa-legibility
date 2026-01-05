@@ -6,14 +6,22 @@ import litellm
 litellm.drop_params = True
 
 HIGH_REASONING_MODELS = [
+    # DeepSeek models
     "R1",
     "V3.1",
     "V3.1-Terminus",
     "V3.2",
     "V3.2-Exp",
+    # OpenAI models
     "o4-mini",
     "o3",
     "gpt-5",
+    "gpt-5.2",
+    # Anthropic models
+    "claude-opus-4-5",
+    # Google models
+    "gemini-3-pro-preview",
+    # Qwen models
     "Qwen3-30B-A3B",
 ]
 
