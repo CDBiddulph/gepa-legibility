@@ -390,36 +390,28 @@ def _save_cached_metric(cache_file: Path, cache_data: dict):
 def _expand_experiment_path(path: Path) -> list[Path]:
     """Expand a path to a list of experiment directories.
 
-    Determines the path type by checking for config.json:
-    - If config.json exists directly under path → single experiment directory
-    - If config.json exists under every subdirectory → parent directory, expand to all subdirs
-    - Otherwise → raise an error
-
-    Args:
-        path: Path to experiment directory or parent directory
-
-    Returns:
-        List of experiment directory paths
+    Checks for config.json in run directories:
+    - path/*/config.json exists → experiment dir, return [path]
+    - path/*/*/config.json exists → parent dir, return all subdirs
     """
     if not path.is_dir():
         raise ValueError(f"Path is not a directory: {path}")
 
-    # Case 1: config.json directly under path → single experiment
-    if (path / "config.json").exists():
+    # Case 1: path/*/config.json → this is an experiment dir
+    if list(path.glob("*/config.json")):
         return [path]
 
-    # Case 2: Check if all subdirectories have config.json
-    subdirs = [d for d in sorted(path.iterdir()) if d.is_dir()]
-    if not subdirs:
-        raise ValueError(f"No subdirectories found and no config.json in: {path}")
+    # Case 2: path/*/*/config.json → parent of experiment dirs
+    subdirs = sorted(d for d in path.iterdir() if d.is_dir())
+    experiments = [d for d in subdirs if list(d.glob("*/config.json"))]
 
-    missing_config = [d for d in subdirs if not (d / "config.json").exists()]
-    if missing_config:
-        raise ValueError(
-            f"Not a valid experiment path. No config.json in path or subdirectories"
-        )
+    if not experiments:
+        raise ValueError(f"No config.json found in {path}/*/ or {path}/*/*/")
+    if len(experiments) != len(subdirs):
+        invalid = sorted(set(subdirs) - set(experiments))
+        raise ValueError(f"Invalid subdirs (no */config.json): {[d.name for d in invalid]}")
 
-    return subdirs
+    return experiments
 
 
 def main():
