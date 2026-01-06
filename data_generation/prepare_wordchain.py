@@ -80,55 +80,43 @@ def get_word_list():
 
 def select_word_pairs(word_list, count, seed):
     """
-    Select word pairs by exhausting shuffled word list, reshuffling when needed.
-    Words can be reused but each specific pair is unique.
+    Select word pairs by shuffling words and pairing consecutively.
+    Simple and uniform.
     """
     rng = random.Random(seed)
 
+    # We need 2 words per pair, with buffer for duplicates
+    # Sample with replacement by repeating the word list as needed
+    words_needed = count * 3  # Extra buffer for skipped duplicates
+    repeated_words = (word_list * (words_needed // len(word_list) + 1))[:words_needed]
+    rng.shuffle(repeated_words)
+
+    # Pair up consecutive words, skipping duplicates
     pairs = []
     used_pairs = set()
+    i = 0
+    while len(pairs) < count and i + 1 < len(repeated_words):
+        start_word = repeated_words[i]
+        end_word = repeated_words[i + 1]
+        i += 2
 
-    # Create a pool of words and shuffle it
-    word_pool = list(word_list)
-    rng.shuffle(word_pool)
-    pool_index = 0
-
-    while len(pairs) < count:
-        # Reshuffle and reset if we've exhausted the pool
-        if pool_index >= len(word_pool):
-            rng.shuffle(word_pool)
-            pool_index = 0
-
-        start_word = word_pool[pool_index]
-        pool_index += 1
-
-        # Get another word from the pool for the end word
-        # If we're at the end of pool, reshuffle
-        if pool_index >= len(word_pool):
-            rng.shuffle(word_pool)
-            pool_index = 0
-
-        end_word = word_pool[pool_index]
-        pool_index += 1
-
-        # Make sure start and end are different
+        # Skip self-pairs
         if start_word == end_word:
-            # Skip this end word and get another one
-            if pool_index >= len(word_pool):
-                rng.shuffle(word_pool)
-                pool_index = 0
-            end_word = word_pool[pool_index]
-            pool_index += 1
+            continue
 
-        # Skip if this exact pair already exists
-        pair_tuple = (start_word, end_word)
-        normalized_pair = tuple(sorted(pair_tuple))
+        # Skip duplicate pairs
+        normalized_pair = tuple(sorted((start_word, end_word)))
         if normalized_pair in used_pairs:
             continue
 
-        # Add the pair
-        pairs.append(pair_tuple)
+        pairs.append((start_word, end_word))
         used_pairs.add(normalized_pair)
+
+    if len(pairs) < count:
+        raise ValueError(f"Could only generate {len(pairs)} unique pairs, but {count} were requested")
+
+    # Final shuffle to ensure uniform ordering
+    rng.shuffle(pairs)
 
     return pairs
 
@@ -166,7 +154,7 @@ def prepare_dataset(output_dir, train_count, valid_count, test_count):
     total_count = train_count + valid_count + test_count
 
     # Generate word pairs with deterministic seed for reproducibility
-    seed = deterministic_hash("wordchain_dataset_v1")
+    seed = deterministic_hash("wordchain_dataset_v2")
     print(f"Generating {total_count} word pairs...")
     all_pairs = select_word_pairs(word_list, total_count, seed)
 
