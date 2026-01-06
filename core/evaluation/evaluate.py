@@ -173,7 +173,7 @@ def _run_evaluation(
             subset_scores[subset_name].append(score)
 
     # Match history entries to examples to extract reasoning traces
-    _add_reasoning_to_results(detailed_results, lm.history)
+    _add_reasoning_to_results(detailed_results, lm.history, program=program, lm=lm)
 
     # Compute aggregate scores
     all_scores = list(chain(*subset_scores.values()))
@@ -192,7 +192,12 @@ def _run_evaluation(
     )
 
 
-def _add_reasoning_to_results(detailed_results: list[dict], history: list) -> None:
+def _add_reasoning_to_results(
+    detailed_results: list[dict],
+    history: list,
+    program,
+    lm,
+) -> None:
     """Add reasoning traces to detailed results by matching history entries.
 
     Modifies detailed_results in place, adding a "reasoning" key to each result
@@ -201,11 +206,20 @@ def _add_reasoning_to_results(detailed_results: list[dict], history: list) -> No
     Args:
         detailed_results: List of result dicts with "example_inputs" keys
         history: LM history entries to match against
+        program: Optional DSPy program for retrying failed lookups
+        lm: Optional LM for retrying failed lookups
     """
     for result in detailed_results:
         input_values = list(result["example_inputs"].values())
 
-        history_entry = find_history_entry(history, input_values)
+        try:
+            history_entry = find_history_entry(history, input_values)
+        except ValueError:
+            # History entry not found - may happen due to threading race conditions.
+            # Retry by making a fresh single-threaded LM call for this example.
+            program(**result["example_inputs"])
+            history_entry = lm.history[-1]
+
         reasoning, _ = extract_reasoning_from_history_entry(history_entry)
         if reasoning:
             result["reasoning"] = reasoning
