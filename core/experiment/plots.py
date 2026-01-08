@@ -499,6 +499,7 @@ class LayoutNode(ABC):
         dfs: DFs,
         scale: float = 1.0,
         show_chrome: bool = True,
+        subtitle: str = None,
     ) -> dict[str, list]:
         """Render this layout into the given GridSpec region.
 
@@ -510,6 +511,7 @@ class LayoutNode(ABC):
             dfs: Dict with "main" (candidate rows) and "gepa_runs" (run-level data)
             scale: Scale factor for fonts/markers (1.0 = full size, <1.0 = smaller)
             show_chrome: Whether to show axis labels and legend
+            subtitle: Optional subtitle passed from parent Grid (shows groupby value)
 
         Returns:
             Dict of aggregation warnings (column -> unique values) from all leaf plots.
@@ -553,6 +555,7 @@ class Grid(LayoutNode):
         dfs: DFs,
         scale: float = 1.0,
         show_chrome: bool = True,
+        subtitle: str = None,
     ) -> dict[str, list]:
         df = dfs["main"]
         unique_values = sorted(df[self.groupby].dropna().unique())
@@ -579,10 +582,14 @@ class Grid(LayoutNode):
 
             sub_dfs = _filter_main(dfs, lambda df: df[self.groupby] == value)
 
+            # Build subtitle showing the groupby value
+            display_value = get_display_value(self.groupby, value)
+            cell_subtitle = display_value
+
             if self.inner is None:
                 # No inner layout - just create a placeholder
                 ax = fig.add_subplot(gs[r_start:r_end, c_start:c_end])
-                ax.set_title(f"{self.groupby}={value}")
+                ax.set_title(cell_subtitle)
                 ax.text(0.5, 0.5, "No inner layout", ha="center", va="center")
             else:
                 # Grid passes scale and show_chrome through unchanged
@@ -594,6 +601,7 @@ class Grid(LayoutNode):
                     sub_dfs,
                     scale,
                     show_chrome,
+                    subtitle=cell_subtitle,
                 )
                 for col, vals in warnings.items():
                     all_warnings[col].update(vals)
@@ -650,6 +658,7 @@ class MainSide(LayoutNode):
         dfs: DFs,
         scale: float = 1.0,
         show_chrome: bool = True,
+        subtitle: str = None,
     ) -> dict[str, list]:
         df = dfs["main"]
         unique_values = list(df[self.groupby].unique())
@@ -682,6 +691,7 @@ class MainSide(LayoutNode):
             ax_main.set_title("Main (no inner layout)")
         else:
             # Main plot gets the current scale and show_chrome unchanged
+            # Pass through subtitle from parent
             warnings = self.inner.render(
                 fig,
                 gs,
@@ -690,6 +700,7 @@ class MainSide(LayoutNode):
                 main_dfs,
                 scale,
                 show_chrome,
+                subtitle=subtitle,
             )
             for col, vals in warnings.items():
                 all_warnings[col].update(vals)
@@ -774,6 +785,7 @@ class BarPlot(LayoutNode):
         dfs: DFs,
         scale: float = 1.0,
         show_chrome: bool = True,
+        subtitle: str = None,
     ) -> dict[str, list]:
         df = dfs["main"]
 
@@ -793,8 +805,11 @@ class BarPlot(LayoutNode):
         else:
             y_col = self.y
 
+        # Use subtitle from parent Grid if no explicit title set
+        title = self.title if self.title is not None else subtitle
+
         ax = fig.add_subplot(gs[row_slice, col_slice])
-        _draw_bar_plot(ax, df, self.x, y_col, self.hue, self.title, scale, show_chrome)
+        _draw_bar_plot(ax, df, self.x, y_col, self.hue, title, scale, show_chrome)
         return _check_aggregation_warnings(df, self.x, y_col, self.hue, type(self))
 
 
@@ -846,6 +861,7 @@ class ProgressionPlot(LayoutNode):
         dfs: DFs,
         scale: float = 1.0,
         show_chrome: bool = True,
+        subtitle: str = None,
     ) -> dict[str, list]:
         if self.y is None:
             raise ValueError("ProgressionPlot requires 'y' parameter")
@@ -870,6 +886,9 @@ class ProgressionPlot(LayoutNode):
 
         plot_dfs = {"main": df, "gepa_runs": dfs["gepa_runs"]}
 
+        # Use subtitle from parent Grid if no explicit title set
+        title = self.title if self.title is not None else subtitle
+
         ax = fig.add_subplot(gs[row_slice, col_slice])
         _draw_progression_plot(
             ax,
@@ -878,7 +897,7 @@ class ProgressionPlot(LayoutNode):
             y_col,
             self.hue,
             self.linestyle,
-            self.title,
+            title,
             scale,
             show_chrome,
             self.show_individual_lines,
@@ -937,6 +956,7 @@ class ScatterPlot(LayoutNode):
         dfs: DFs,
         scale: float = 1.0,
         show_chrome: bool = True,
+        subtitle: str = None,
     ) -> dict[str, list]:
         df = dfs["main"]
 
@@ -951,6 +971,9 @@ class ScatterPlot(LayoutNode):
                     f"aggregate_by must include marker column '{self.marker}'"
                 )
 
+        # Use subtitle from parent Grid if no explicit title set
+        title = self.title if self.title is not None else subtitle
+
         ax = fig.add_subplot(gs[row_slice, col_slice])
         _draw_scatter_plot(
             ax,
@@ -960,7 +983,7 @@ class ScatterPlot(LayoutNode):
             self.color,
             self.marker,
             self.aggregate_by,
-            self.title,
+            title,
             scale,
             show_chrome,
         )
@@ -1614,6 +1637,7 @@ class Figure:
             slice(0, grid_size.cols),
             filtered_dfs,
             scale=1.0,
+            subtitle=None,
         )
 
         # Print any aggregation warnings
