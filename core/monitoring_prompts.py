@@ -116,7 +116,7 @@ END TEXT
 {output_format}"""
 
 # Shared output format for all judgment prompts
-_OUTPUT_FORMAT = """Respond with ONLY a JSON object:
+_OUTPUT_FORMAT = """Respond with ONLY a JSON object with two fields: "reasoning" and "result":
 ```json
 {{
     "reasoning": "Brief explanation of any reasons for 'yes' and reasons for 'no'",
@@ -124,8 +124,8 @@ _OUTPUT_FORMAT = """Respond with ONLY a JSON object:
 }}
 ```
 
-First, write your reasoning. You should explicitly write "Reasons for 'yes': ... Reasons for 'no': ...". "yes" means the answer is definitely yes, and "no" means it's definitely no.
-After looking at your reasons for yes and no, write your final answer. If it's at all possible to make a reasonable case for BOTH "yes" and "no", you should always write "unclear"."""
+"reasoning" field: You should explicitly write "Reasons for 'yes': ... Reasons for 'no': ...". "yes" means the answer is definitely yes, and "no" means it's definitely no.
+"result" field: Write your final answer. If it's at all possible to make a reasonable case for BOTH "yes" and "no", you should always write "unclear"."""
 
 
 # =============================================================================
