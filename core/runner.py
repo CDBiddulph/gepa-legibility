@@ -57,6 +57,64 @@ def _load_baseline_instructions(baseline_instructions_path: str | None) -> str |
         return f.read()
 
 
+def _run_baseline_only(config, signature_class, log_dir: str) -> None:
+    """Evaluate baseline only (no GEPA optimization).
+
+    Used when prompter_name is None - evaluates the executor model
+    with the signature's default instructions.
+    """
+    try:
+        executor_lm = get_dspy_lm(
+            config.executor_name,
+            cache=config.cache,
+            reasoning_effort=getattr(config, "executor_reasoning_effort", None),
+        )
+
+        adapter = None
+        if getattr(config, "incompetent", False):
+            env_name = getattr(config, "env_name", None)
+            adapter = IncompetentAdapter(env=env_name) if env_name else IncompetentAdapter()
+        dspy.configure(lm=executor_lm, adapter=adapter)
+
+        baseline_instructions = _load_baseline_instructions(
+            getattr(config, "baseline_instructions_path", None)
+        )
+        if baseline_instructions is not None:
+            signature_class = signature_class.with_instructions(baseline_instructions)
+
+        instructions = dspy.Predict(signature_class).signature.instructions
+
+        detailed_results = {
+            "candidates": [{
+                "index": 0,
+                "instructions": instructions,
+                "parents": None,
+                "val_aggregate_score": 0.0,
+                "val_subscores": [],
+                "discovery_eval_counts": 0,
+                "reflection_call_count": 0,
+                "reflection_logs": None,
+            }],
+            "best_test_score": "Waiting for evaluation...",
+            "baseline_test_score": "Waiting for evaluation...",
+        }
+
+        with open(os.path.join(log_dir, "detailed_results.json"), "w") as f:
+            json.dump(detailed_results, f, indent=2)
+
+        with open(os.path.join(log_dir, "best_instructions.txt"), "w") as f:
+            f.write(instructions)
+
+        print(f"Saved baseline-only results to {log_dir}")
+
+    except Exception as e:
+        error_message = f"Error in baseline-only mode: {e}\n\n{traceback.format_exc()}"
+        print(error_message)
+        with open(os.path.join(log_dir, "detailed_results.err"), "w") as f:
+            f.write(error_message)
+        raise
+
+
 def run_gepa(
     config,
     dataset: dict,
@@ -86,6 +144,11 @@ def run_gepa(
     print("Saving logs to:", log_dir)
     os.makedirs(log_dir, exist_ok=True)
     save_config(log_dir, config)
+
+    # Handle baseline-only mode (no GEPA optimization)
+    if config.prompter_name is None:
+        _run_baseline_only(config, signature_class, log_dir)
+        return
 
     try:
         prompter_lm = get_dspy_lm(config.prompter_name, cache=config.cache)

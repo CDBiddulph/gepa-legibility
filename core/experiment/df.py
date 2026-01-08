@@ -8,11 +8,11 @@ for flexible analysis and plotting.
 import json
 from collections import defaultdict
 from pathlib import Path
-import re
 
 import pandas as pd
 
 from core.evaluation import get_progression_data
+from core.experiment_utils import expand_experiment_paths
 from core.metrics import METRICS_BY_PROMPT_VERSION, METRICS
 
 
@@ -56,40 +56,18 @@ def load_experiment_dfs(
 
 
 def _expand_paths(paths: list[str]) -> list[Path]:
-    """Expand timestamp-level paths to specific experiment paths.
+    """Expand paths to specific experiment directories.
 
     Args:
-        paths: List of paths (can be timestamp-level or specific)
+        paths: List of paths to experiment directories or parent directories
 
     Returns:
         List of specific experiment directory paths
     """
     expanded = []
     for path_str in paths:
-        path = Path(path_str)
-
-        # Check if this is a timestamp-level path or a specific experiment path
-        # by looking at whether the parent looks like a timestamp
-        if _is_timestamp_path(path):
-            for subdir in sorted(path.iterdir()):
-                if subdir.is_dir():
-                    expanded.append(subdir)
-        elif _is_timestamp_path(path.parent):
-            expanded.append(path)
-        else:
-            raise ValueError(
-                f"Invalid path (expected timestamp directory or its child): {path}"
-            )
-
+        expanded.extend(expand_experiment_paths(path_str))
     return expanded
-
-
-def _is_timestamp_path(path: Path) -> bool:
-    """Check if a path is a timestamp directory."""
-    if not path.is_dir():
-        return False
-
-    return re.match(r"^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$", path.name) is not None
 
 
 def _load_single_experiment(

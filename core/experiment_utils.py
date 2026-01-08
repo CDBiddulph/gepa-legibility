@@ -60,3 +60,43 @@ def uses_incompetent_adapter(experiment_path):
         Boolean indicating whether IncompetentAdapter should be used
     """
     return any(x in str(experiment_path).lower() for x in ["-incompetent", "-forget"])
+
+
+def expand_experiment_paths(path):
+    """Expand a path to a list of experiment directories.
+
+    Checks for config.json in run directories:
+    - path/*/config.json exists → experiment dir, return [path]
+    - path/*/*/config.json exists → parent dir, return all subdirs
+
+    Args:
+        path: Path to experiment directory or parent directory (str or Path)
+
+    Returns:
+        List of Path objects to experiment directories
+
+    Raises:
+        ValueError: If path is not a directory or no valid experiments found
+    """
+    from pathlib import Path
+
+    path = Path(path)
+
+    if not path.is_dir():
+        raise ValueError(f"Path is not a directory: {path}")
+
+    # Case 1: path/*/config.json → this is an experiment dir
+    if list(path.glob("*/config.json")):
+        return [path]
+
+    # Case 2: path/*/*/config.json → parent of experiment dirs
+    subdirs = sorted(d for d in path.iterdir() if d.is_dir())
+    experiments = [d for d in subdirs if list(d.glob("*/config.json"))]
+
+    if not experiments:
+        raise ValueError(f"No config.json found in {path}/*/ or {path}/*/*/")
+    if len(experiments) != len(subdirs):
+        invalid = sorted(set(subdirs) - set(experiments))
+        raise ValueError(f"Invalid subdirs (no */config.json): {[d.name for d in invalid]}")
+
+    return experiments

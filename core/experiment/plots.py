@@ -244,10 +244,12 @@ VALUE_ORDER: dict[str, list] = {
     "column_name": ["proxy_reward", "true_reward", "prompt_verbalizes", "hacking_rate"],
     "prompt_verbalizes": ["no", "unclear", "yes"],
     "optimizer": [
+        "Baseline",
         "GEPA",
         "GEPA (Hack)",
         "GEPA (Hack + Teacher)",
         "GEPA (Hack + Teacher + Tool)",
+        "RL",
     ],
     "is_sanitized": [False, True],
     "suggest_hack": ["no", "explicit"],
@@ -298,11 +300,13 @@ STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
     # Line styles for is_sanitized
     ("is_sanitized", False): {"linestyle": "-"},
     ("is_sanitized", True): {"linestyle": ":"},
-    # Colors for optimizer values (used in progression plots)
+    # Colors for optimizer values (used in bar/progression plots)
+    ("optimizer", "Baseline"): {"color": "#7f7f7f"},  # gray
     ("optimizer", "GEPA"): {"color": "#1f77b4"},  # blue
     ("optimizer", "GEPA (Hack)"): {"color": "#ff7f0e"},  # orange
     ("optimizer", "GEPA (Hack + Teacher)"): {"color": "#2ca02c"},  # green
     ("optimizer", "GEPA (Hack + Teacher + Tool)"): {"color": "#d62728"},  # red
+    ("optimizer", "RL"): {"color": "#9467bd"},  # purple
 }
 
 
@@ -1086,6 +1090,65 @@ def make_verbalization_float_column(df: pd.DataFrame) -> pd.Series:
     )
 
 
+def make_optimizer_column(df: pd.DataFrame) -> pd.Series:
+    """Create an 'optimizer' column distinguishing Baseline, GEPA variants, and RL.
+
+    Categories:
+        - "Baseline" - First candidate (is_baseline=True)
+        - "RL" - Baseline-only experiment with tinker model (prompter_name=None, executor starts with tinker/)
+        - "GEPA" - GEPA-optimized with suggest_hack="no"
+        - "GEPA (Hack)" - GEPA-optimized with suggest_hack="explicit", no teacher
+        - "GEPA (Hack + Teacher)" - suggest_hack="explicit" with train_teacher_file
+        - "GEPA (Hack + Teacher + Tool)" - suggest_hack="explicit" with train_teacher_file and teacher_tool_model
+
+    This is useful for bar plots comparing different optimization approaches.
+
+    Usage:
+        PlotConfig(
+            paths=["logs/mcq/..."],
+            computed_columns={"optimizer": make_optimizer_column},
+            figures=[
+                Figure(
+                    name="Comparison",
+                    filter=lambda df: df.optimizer.notna(),
+                    layout=BarPlot(x="hint_type", y="proxy_reward", hue="optimizer"),
+                ),
+            ],
+        )
+    """
+
+    def classify_row(row):
+        # Check if this is a baseline-only experiment (no prompter)
+        if row.get("prompter_name") is None:
+            executor = row.get("executor_name", "")
+            if executor and executor.startswith("tinker/"):
+                return "RL"
+            # Non-tinker baseline-only is not a valid category
+            return None
+
+        # Check if this is a baseline candidate within a GEPA run
+        if row.get("is_baseline"):
+            return "Baseline"
+
+        # GEPA variants based on config
+        suggest_hack = row.get("suggest_hack")
+        has_teacher = row.get("train_teacher_file") is not None
+        has_tool = row.get("teacher_tool_model") is not None
+
+        if suggest_hack == "explicit":
+            if has_teacher and has_tool:
+                return "GEPA (Hack + Teacher + Tool)"
+            elif has_teacher:
+                return "GEPA (Hack + Teacher)"
+            return "GEPA (Hack)"
+        elif suggest_hack == "no":
+            return "GEPA"
+
+        return None
+
+    return df.apply(classify_row, axis=1)
+
+
 # =============================================================================
 # Plotting Implementation
 # =============================================================================
@@ -1651,7 +1714,8 @@ class PlotConfig:
     """Configuration for loading and plotting experiment data.
 
     Attributes:
-        paths: List of experiment paths to load data from.
+        paths: List of experiment paths to load data from. Supports both GEPA-optimized
+            experiments and baseline-only experiments (prompter_name=None).
         figures: List of Figure configurations to render.
         quick_mode: Controls which candidates are evaluated during data loading.
             If True, only evaluates the first and last candidates (faster, suitable for bar plots).
@@ -1660,6 +1724,16 @@ class PlotConfig:
         show_paths: Whether to show experiment paths in figure titles.
         metrics: List of metric names to compute. If None, computes all metrics.
             Use this to speed up loading when you only need specific metrics.
+
+    Example comparing GEPA and baseline-only experiments:
+        config = PlotConfig(
+            paths=[
+                "logs/mcq/2025-.../",  # GEPA-optimized
+                "logs/mcq/2025-.../baseline-only/",  # Baseline-only (prompter_name=None)
+            ],
+            computed_columns={"optimizer": make_optimizer_column},
+            ...
+        )
     """
 
     paths: list[str]

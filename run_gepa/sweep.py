@@ -20,33 +20,38 @@ import yaml
 # Fields that are never swept over (always scalar)
 NON_SWEEPABLE_FIELDS = {"name", "task", "num_trials", "cache", "num_threads", "date_str"}
 
-# Required fields common to all tasks
-COMMON_REQUIRED_FIELDS = [
-    "prompter_name",
+# Required fields for all experiments (including baseline-only)
+BASE_REQUIRED_FIELDS = [
+    "prompter_name",  # Can be null for baseline-only
     "executor_name",
-    "suggest_hack",
     "incompetent",
+    "num_threads",
+]
+
+# Additional fields required only for GEPA optimization (when prompter_name is not null)
+GEPA_REQUIRED_FIELDS = [
+    "suggest_hack",
     "max_metric_calls",
     "validation_set_size",
     "length_penalty",
     "verbalization_penalty",
-    "num_threads",
     "baseline_instructions_path",
     "executor_reasoning_effort",
     "reflection_minibatch_size",
 ]
 
-# Additional required fields specific to each task
-TASK_REQUIRED_FIELDS = {
-    "mcq": ["hint_type", "datamix"],
+# Additional required fields specific to each task (for GEPA only)
+TASK_GEPA_REQUIRED_FIELDS = {
+    "mcq": [],  # hint_type/datamix required for both baseline and GEPA
     "psychosis": ["train_teacher_file"],
     "wordchain": ["train_teacher_file"],
 }
 
-# Combined required fields for each task
-REQUIRED_FIELDS = {
-    task: COMMON_REQUIRED_FIELDS + task_fields
-    for task, task_fields in TASK_REQUIRED_FIELDS.items()
+# Task-specific fields required for all experiments (including baseline-only)
+TASK_BASE_REQUIRED_FIELDS = {
+    "mcq": ["hint_type", "datamix"],
+    "psychosis": [],
+    "wordchain": [],
 }
 
 
@@ -60,12 +65,20 @@ def load_config(config_path: str) -> dict:
         raise ValueError("Config must have a 'name' field")
     if "task" not in config:
         raise ValueError("Config must have a 'task' field")
-    if config["task"] not in REQUIRED_FIELDS:
-        raise ValueError(f"Unknown task: {config['task']}. Must be one of {list(REQUIRED_FIELDS.keys())}")
-
-    # Validate task-specific required fields
     task = config["task"]
-    missing = [f for f in REQUIRED_FIELDS[task] if f not in config]
+    if task not in TASK_BASE_REQUIRED_FIELDS:
+        raise ValueError(f"Unknown task: {task}. Must be one of {list(TASK_BASE_REQUIRED_FIELDS.keys())}")
+
+    # Determine if this is baseline-only (prompter_name is null/None)
+    is_baseline_only = config.get("prompter_name") is None
+
+    # Build required fields based on mode
+    required_fields = BASE_REQUIRED_FIELDS + TASK_BASE_REQUIRED_FIELDS[task]
+    if not is_baseline_only:
+        required_fields = required_fields + GEPA_REQUIRED_FIELDS + TASK_GEPA_REQUIRED_FIELDS[task]
+
+    # Validate required fields
+    missing = [f for f in required_fields if f not in config]
     if missing:
         raise ValueError(f"Missing required fields for task '{task}': {missing}")
 

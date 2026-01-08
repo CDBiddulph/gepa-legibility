@@ -1,0 +1,31 @@
+# MCQ baseline-only sweep (no GEPA optimization)
+# Evaluates executor models with default instructions across hint types
+# Run with: python -m run_gepa.sweep sweeps/mcq_baseline_only.yaml
+
+name: baseline-only
+task: mcq
+
+num_trials: 1
+
+# No prompter = baseline-only mode
+prompter_name: null
+
+# Sweep over executor models
+executor_name:
+  - deepinfra/Qwen/Qwen3-30B-A3B
+  - deepinfra/moonshotai/Kimi-K2-Thinking
+  - deepinfra/deepseek-ai/DeepSeek-V3.1
+
+incompetent: true
+
+# Sweep over all hint types
+hint_type:
+  - metadata
+  - sycophancy
+  - visual-pattern
+  - grader-hacking
+  - unethical
+  - consistency
+
+datamix: mixed
+num_threads: 32

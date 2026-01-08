@@ -1,8 +1,10 @@
 """
 Progression data collection for GEPA experiments.
 
-This module provides utilities to load or compute progression data for GEPA experiments,
-with automatic caching support.
+This module provides utilities to load or compute progression data for experiments,
+with automatic caching support. It handles both:
+- GEPA experiments: Multiple candidates with optimized instructions
+- Baseline-only experiments: Single candidate with no optimization (prompter_name=None)
 """
 
 import json
@@ -16,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 from core.evaluation.loaders import EvalData, load_eval_data
 from core.experiment_utils import (
+    expand_experiment_paths,
     get_environment_from_path,
     get_executor_model_name_from_path,
     uses_incompetent_adapter,
@@ -167,7 +170,13 @@ def _collect_progression_data(
     # Get hint_type from config.json (will be None for non-MCQ experiments)
     hint_type = _get_hint_type_from_config(experiment_path)
 
+    # Check if this is a baseline-only experiment (no optimization)
+    is_baseline_only = _is_baseline_only(experiment_path)
+
     print(f"Collecting progression data for {experiment_path}")
+    if is_baseline_only:
+        print(f"  Baseline-only experiment detected")
+
     # Check if this experiment uses IncompetentAdapter
     use_incompetent_adapter = uses_incompetent_adapter(experiment_path)
     if use_incompetent_adapter:
@@ -204,6 +213,7 @@ def _collect_progression_data(
             env,
             hint_type,
             use_incompetent_adapter,
+            is_baseline_only=is_baseline_only,
             quick_mode=quick_mode,
             metrics=metrics,
         )
@@ -231,14 +241,25 @@ def _collect_progression_data(
     return {"runs": [runs_data[k] for k in sorted(runs_data.keys())]}
 
 
-def _get_hint_type_from_config(experiment_path):
-    """Get hint_type from config.json in first run directory, or None if not present."""
+def _get_config_from_experiment(experiment_path):
+    """Get config.json from first run directory, or empty dict if not present."""
     config_files = sorted(experiment_path.glob("*/config.json"))
     if not config_files:
-        return None
+        return {}
     with open(config_files[0]) as f:
-        config = json.load(f)
+        return json.load(f)
+
+
+def _get_hint_type_from_config(experiment_path):
+    """Get hint_type from config.json in first run directory, or None if not present."""
+    config = _get_config_from_experiment(experiment_path)
     return config.get("hint_type")
+
+
+def _is_baseline_only(experiment_path):
+    """Check if experiment is baseline-only (no GEPA optimization)."""
+    config = _get_config_from_experiment(experiment_path)
+    return config.get("prompter_name") is None
 
 
 def _process_run_progression(
@@ -249,6 +270,7 @@ def _process_run_progression(
     env: str,
     hint_type: str | None,
     use_incompetent_adapter: bool,
+    is_baseline_only: bool = False,
     quick_mode=False,
     metrics=None,
 ):
@@ -263,6 +285,7 @@ def _process_run_progression(
         env: Environment name
         hint_type: For MCQ - which hint type (None for non-MCQ)
         use_incompetent_adapter: Whether to use IncompetentAdapter
+        is_baseline_only: Whether this is a baseline-only experiment (no optimization)
         quick_mode: If True, only evaluate first and last candidates
         metrics: List of metric names to compute. If None, computes all metrics.
 
@@ -289,6 +312,7 @@ def _process_run_progression(
             env,
             hint_type,
             use_incompetent_adapter,
+            is_baseline_only=is_baseline_only,
             metrics=metrics,
         )
 
@@ -309,6 +333,7 @@ def _evaluate_candidate(
     env: str,
     hint_type: str | None,
     use_incompetent_adapter: bool,
+    is_baseline_only: bool = False,
     metrics=None,
 ):
     """
@@ -317,6 +342,9 @@ def _evaluate_candidate(
     Uses the metrics registry to determine which metrics to compute for each
     prompt version (original/sanitized). Results are cached in evaluations/.
     eval_data and executor_lm can be None if all metrics are cached.
+
+    For baseline-only experiments:
+    - Only evaluates "original" version (no sanitized - nothing to sanitize)
 
     Returns:
         Tuple of (test_scores, subset_test_scores, sanitized_instructions)
@@ -331,13 +359,19 @@ def _evaluate_candidate(
     eval_dir = subdir / "evaluations"
 
     # Determine which versions to evaluate
-    # All candidates (including baseline) use real instructions from detailed_results.json
     original_instructions = candidate["instructions"]
-    sanitized_instructions = load_instructions(subdir, idx, env=env, sanitized=True)
-    versions = {
-        "original": original_instructions,
-        "sanitized": sanitized_instructions,
-    }
+
+    if is_baseline_only:
+        # Baseline-only: only "original" version, no sanitization
+        versions = {"original": original_instructions}
+        sanitized_instructions = None
+    else:
+        # GEPA: both original and sanitized versions
+        sanitized_instructions = load_instructions(subdir, idx, env=env, sanitized=True)
+        versions = {
+            "original": original_instructions,
+            "sanitized": sanitized_instructions,
+        }
 
     # Select adapter
     adapter = "incompetent" if use_incompetent_adapter else "chat"
@@ -346,6 +380,7 @@ def _evaluate_candidate(
     for version_name, instructions in versions.items():
         # Get metrics for this version, filtered by requested metrics if specified
         all_metrics_for_version = METRICS_BY_PROMPT_VERSION[version_name]
+
         if metrics is not None:
             metrics_to_eval = [m for m in all_metrics_for_version if m in metrics]
         else:
@@ -354,23 +389,16 @@ def _evaluate_candidate(
         for metric_name in metrics_to_eval:
             cache_file = eval_dir / f"cand_{idx}_{metric_name}_{version_name}.json"
 
-            # Try to load from cache first
-            if cache_file.exists():
-                result = _load_cached_metric(cache_file, metric_name)
-            else:
-                # Create context and call metric's calculate method
-                context = MetricContext(
-                    instructions=instructions,
-                    prompt_version=version_name,
-                    hint_type=hint_type,
-                    eval_data=eval_data,
-                    executor_lm=executor_lm,
-                    adapter=adapter,
-                )
-                result, cache_data = METRICS[metric_name].calculate(context)
-
-                # Save to cache
-                _save_cached_metric(cache_file, cache_data)
+            # Create context and evaluate with caching
+            context = MetricContext(
+                instructions=instructions,
+                prompt_version=version_name,
+                hint_type=hint_type,
+                eval_data=eval_data,
+                executor_lm=executor_lm,
+                adapter=adapter,
+            )
+            result = evaluate_metric_cached(metric_name, context, cache_file)
 
             # Store result
             score_key = f"{metric_name}_{version_name}"
@@ -419,7 +447,7 @@ def _create_progression_point(
     return prog_point
 
 
-def _load_cached_metric(cache_file: Path, metric_name: str) -> MetricResult:
+def load_cached_metric(cache_file: Path, metric_name: str) -> MetricResult:
     """Load metric result from cache file using the metric's from_cache method."""
     with open(cache_file) as f:
         cache_data = json.load(f)
@@ -427,7 +455,7 @@ def _load_cached_metric(cache_file: Path, metric_name: str) -> MetricResult:
     return METRICS[metric_name].from_cache(cache_data)
 
 
-def _save_cached_metric(cache_file: Path, cache_data: dict):
+def save_cached_metric(cache_file: Path, cache_data: dict):
     """Save metric cache data to file."""
     cache_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -435,36 +463,36 @@ def _save_cached_metric(cache_file: Path, cache_data: dict):
         json.dump(cache_data, f, indent=2)
 
 
+def evaluate_metric_cached(
+    metric_name: str,
+    context: MetricContext,
+    cache_file: Path,
+) -> MetricResult:
+    """
+    Evaluate a metric with caching support.
+
+    This is the core caching logic used by both GEPA candidate evaluation
+    and RL model evaluation.
+
+    Args:
+        metric_name: Name of the metric to evaluate
+        context: MetricContext with instructions, eval_data, executor_lm, etc.
+        cache_file: Path to cache file
+
+    Returns:
+        MetricResult with value and optional subset_values
+    """
+    if cache_file.exists():
+        return load_cached_metric(cache_file, metric_name)
+
+    result, cache_data = METRICS[metric_name].calculate(context)
+    save_cached_metric(cache_file, cache_data)
+    return result
+
+
 # ============================================================================
 # CLI Main Function
 # ============================================================================
-
-
-def _expand_experiment_path(path: Path) -> list[Path]:
-    """Expand a path to a list of experiment directories.
-
-    Checks for config.json in run directories:
-    - path/*/config.json exists → experiment dir, return [path]
-    - path/*/*/config.json exists → parent dir, return all subdirs
-    """
-    if not path.is_dir():
-        raise ValueError(f"Path is not a directory: {path}")
-
-    # Case 1: path/*/config.json → this is an experiment dir
-    if list(path.glob("*/config.json")):
-        return [path]
-
-    # Case 2: path/*/*/config.json → parent of experiment dirs
-    subdirs = sorted(d for d in path.iterdir() if d.is_dir())
-    experiments = [d for d in subdirs if list(d.glob("*/config.json"))]
-
-    if not experiments:
-        raise ValueError(f"No config.json found in {path}/*/ or {path}/*/*/")
-    if len(experiments) != len(subdirs):
-        invalid = sorted(set(subdirs) - set(experiments))
-        raise ValueError(f"Invalid subdirs (no */config.json): {[d.name for d in invalid]}")
-
-    return experiments
 
 
 def main():
@@ -501,7 +529,7 @@ def main():
 
     # Expand path to list of experiment directories
     input_path = Path(args.experiment_path)
-    experiment_paths = _expand_experiment_path(input_path)
+    experiment_paths = expand_experiment_paths(input_path)
 
     if len(experiment_paths) > 1:
         print(f"Found {len(experiment_paths)} experiment directories under {input_path}")

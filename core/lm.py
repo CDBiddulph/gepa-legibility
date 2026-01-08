@@ -23,6 +23,8 @@ HIGH_REASONING_MODELS = [
     "gemini-3-pro-preview",
     # Qwen models
     "Qwen3-30B-A3B",
+    # Moonshot models
+    "Kimi-K2-Thinking",
 ]
 
 MINIMAL_REASONING_MODELS = [
