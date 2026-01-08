@@ -59,21 +59,18 @@ def get_progression_data(experiment_path, quick_mode=False, metrics=None):
     experiment_path = Path(experiment_path)
     env = get_environment_from_path(experiment_path)
 
-    # Get executor model and configure DSPy
-    executor_model_name = get_executor_model_name_from_path(experiment_path)
-    print(f"Using executor: {executor_model_name}")
-    executor_lm = get_dspy_lm(executor_model_name, cache=True)
+    # Check if all metrics are cached - skip expensive loading if so
+    if _all_metrics_cached(experiment_path, quick_mode, metrics):
+        print(f"All metrics cached for {experiment_path.name}")
+        eval_data, executor_lm = None, None
+    else:
+        executor_model_name = get_executor_model_name_from_path(experiment_path)
+        print(f"Using executor: {executor_model_name}")
+        executor_lm = get_dspy_lm(executor_model_name, cache=True)
+        eval_data = load_eval_data(env, split="test")
 
-    # Load evaluation data
-    eval_data = load_eval_data(env, split="test")
-
-    # Collect progression data
     return _collect_progression_data(
-        experiment_path,
-        eval_data,
-        executor_lm,
-        quick_mode,
-        metrics,
+        experiment_path, eval_data, executor_lm, env, quick_mode, metrics
     )
 
 
@@ -82,10 +79,74 @@ def get_progression_data(experiment_path, quick_mode=False, metrics=None):
 # ============================================================================
 
 
+def _get_candidates_to_eval(data: dict, quick_mode: bool) -> set[int]:
+    """Determine which candidate indices to evaluate based on mode."""
+    best_val_score = -float("inf")
+    best_idx = 0
+    improving_candidates = []
+
+    for idx, candidate in enumerate(data["candidates"]):
+        val_score = candidate["val_aggregate_score"]
+        if val_score > best_val_score:
+            best_val_score = val_score
+            best_idx = idx
+            improving_candidates.append(idx)
+
+    if quick_mode:
+        return {0, best_idx}
+    else:
+        return set(improving_candidates)
+
+
+def _get_required_cache_files(
+    subdir: Path, candidate_indices: set[int], metrics: list[str] | None
+) -> list[Path]:
+    """Get list of cache files required for given candidates and metrics."""
+    eval_dir = subdir / "evaluations"
+    cache_files = []
+
+    for idx in candidate_indices:
+        for version_name in ["original", "sanitized"]:
+            all_metrics_for_version = METRICS_BY_PROMPT_VERSION[version_name]
+            if metrics is not None:
+                metrics_to_check = [m for m in all_metrics_for_version if m in metrics]
+            else:
+                metrics_to_check = all_metrics_for_version
+
+            for metric_name in metrics_to_check:
+                cache_files.append(eval_dir / f"cand_{idx}_{metric_name}_{version_name}.json")
+
+    return cache_files
+
+
+def _all_metrics_cached(experiment_path: Path, quick_mode: bool, metrics: list[str] | None) -> bool:
+    """Check if all required metrics are cached for an experiment."""
+    for subdir in experiment_path.iterdir():
+        if not subdir.is_dir():
+            continue
+
+        results_file = subdir / "detailed_results.json"
+        if not results_file.exists():
+            continue
+
+        with open(results_file) as f:
+            data = json.load(f)
+
+        candidates_to_eval = _get_candidates_to_eval(data, quick_mode)
+        required_files = _get_required_cache_files(subdir, candidates_to_eval, metrics)
+
+        for cache_file in required_files:
+            if not cache_file.exists():
+                return False
+
+    return True
+
+
 def _collect_progression_data(
     experiment_path,
-    eval_data: EvalData,
+    eval_data: EvalData | None,
     executor_lm,
+    env: str,
     quick_mode=False,
     metrics=None,
 ):
@@ -94,8 +155,9 @@ def _collect_progression_data(
 
     Args:
         experiment_path: Path to experiment directory containing run subdirectories
-        eval_data: Loaded evaluation data
-        executor_lm: Language model for evaluation
+        eval_data: Loaded evaluation data (None if all metrics cached)
+        executor_lm: Language model for evaluation (None if all metrics cached)
+        env: Environment name (e.g., "mcq", "psychosis")
         quick_mode: If True, only evaluate first+last candidates (for bar plots)
         metrics: List of metric names to compute. If None, computes all metrics.
 
@@ -139,6 +201,7 @@ def _collect_progression_data(
             subdir,
             eval_data,
             executor_lm,
+            env,
             hint_type,
             use_incompetent_adapter,
             quick_mode=quick_mode,
@@ -181,8 +244,9 @@ def _get_hint_type_from_config(experiment_path):
 def _process_run_progression(
     data,
     subdir,
-    eval_data: EvalData,
+    eval_data: EvalData | None,
     executor_lm,
+    env: str,
     hint_type: str | None,
     use_incompetent_adapter: bool,
     quick_mode=False,
@@ -194,8 +258,9 @@ def _process_run_progression(
     Args:
         data: Loaded detailed_results.json data
         subdir: Path to run subdirectory
-        eval_data: Loaded evaluation data
-        executor_lm: Language model for evaluation
+        eval_data: Loaded evaluation data (None if all metrics cached)
+        executor_lm: Language model for evaluation (None if all metrics cached)
+        env: Environment name
         hint_type: For MCQ - which hint type (None for non-MCQ)
         use_incompetent_adapter: Whether to use IncompetentAdapter
         quick_mode: If True, only evaluate first and last candidates
@@ -204,25 +269,7 @@ def _process_run_progression(
     Returns:
         List of progression point dicts
     """
-    # First pass: find improving candidates and best index
-    best_val_score = -float("inf")
-    best_idx = 0
-    improving_candidates = []
-
-    for idx, candidate in enumerate(data["candidates"]):
-        val_score = candidate["val_aggregate_score"]
-        if val_score > best_val_score:
-            best_val_score = val_score
-            best_idx = idx
-            improving_candidates.append(idx)
-
-    # Determine which candidates to evaluate based on mode
-    if quick_mode:
-        # Quick mode: only first and last
-        candidates_to_eval = {0, best_idx}
-    else:
-        # Full mode: all improving candidates
-        candidates_to_eval = set(improving_candidates)
+    candidates_to_eval = _get_candidates_to_eval(data, quick_mode)
 
     # Evaluate selected candidates
     progression = []
@@ -239,6 +286,7 @@ def _process_run_progression(
             subdir,
             eval_data,
             executor_lm,
+            env,
             hint_type,
             use_incompetent_adapter,
             metrics=metrics,
@@ -256,8 +304,9 @@ def _evaluate_candidate(
     candidate,
     idx,
     subdir,
-    eval_data: EvalData,
+    eval_data: EvalData | None,
     executor_lm,
+    env: str,
     hint_type: str | None,
     use_incompetent_adapter: bool,
     metrics=None,
@@ -267,12 +316,16 @@ def _evaluate_candidate(
 
     Uses the metrics registry to determine which metrics to compute for each
     prompt version (original/sanitized). Results are cached in evaluations/.
-    We calculate the intersection of the metrics to evaluate for this prompt
-    version (original/sanitized) and `metrics`.
+    eval_data and executor_lm can be None if all metrics are cached.
 
     Returns:
         Tuple of (test_scores, subset_test_scores, sanitized_instructions)
     """
+    # Since eval_data may be None, we include env in the function signature.
+    # Check that if eval_data is *not* None, it is consistent with env.
+    if eval_data is not None:
+        assert eval_data.env == env
+
     test_scores = {}
     subset_test_scores = defaultdict(dict)
     eval_dir = subdir / "evaluations"
@@ -280,7 +333,7 @@ def _evaluate_candidate(
     # Determine which versions to evaluate
     # All candidates (including baseline) use real instructions from detailed_results.json
     original_instructions = candidate["instructions"]
-    sanitized_instructions = load_instructions(subdir, idx, env=eval_data.env, sanitized=True)
+    sanitized_instructions = load_instructions(subdir, idx, env=env, sanitized=True)
     versions = {
         "original": original_instructions,
         "sanitized": sanitized_instructions,
