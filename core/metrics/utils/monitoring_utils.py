@@ -22,6 +22,7 @@ from core.metrics import Metric, MetricContext, MetricResult, register_metric
 from core.monitoring_prompts import build_verbalization_prompt
 
 
+# TODO: probably change to GPT-5 for final evaluation
 _JUDGE_MODEL = "openai/gpt-4.1"
 
 
@@ -30,37 +31,54 @@ _JUDGE_MODEL = "openai/gpt-4.1"
 # =============================================================================
 
 
-def call_judge(prompt: str, cache: bool = True) -> tuple[str, str]:
-    """Call the judge model and parse the yes/unclear/no response.
+def call_judge(
+    prompt: str,
+    valid_results: tuple[str, ...],
+    cache: bool = True,
+    max_retries: int = 3,
+) -> tuple[str, str]:
+    """Call the judge model and parse the response, with retry on failure.
 
     Args:
         prompt: Complete prompt to send to the judge
-        cache: Whether to use LM caching. Default True.
+        valid_results: Tuple of valid result values (e.g., ("yes", "no", "unclear"))
+        cache: Whether to use LM caching. Default True for first attempt.
+        max_retries: Maximum number of retry attempts after initial failure.
 
     Returns:
-        Tuple of (result, reasoning) where result is "yes", "unclear", or "no"
+        Tuple of (result, reasoning) where result is one of valid_results
 
     Raises:
-        ValueError: If response cannot be parsed or result is invalid
+        ValueError: If response cannot be parsed after all retries
     """
-    judge_lm = get_simple_lm(_JUDGE_MODEL, temperature=0, cache=cache)
-    response = judge_lm([{"role": "user", "content": prompt}])
+    last_error = None
 
-    parsed = extract_json_from_response(response)
-    if parsed is None:
-        raise ValueError(f"Failed to parse judge response: {response}")
+    for attempt in range(1 + max_retries):
+        # First attempt uses cache setting, retries always disable cache
+        use_cache = cache if attempt == 0 else False
 
-    try:
-        result = parsed["result"].lower()
-        reasoning = parsed.get("reasoning", "")
+        try:
+            judge_lm = get_simple_lm(_JUDGE_MODEL, temperature=0, cache=use_cache)
+            response = judge_lm([{"role": "user", "content": prompt}])
 
-        if result not in ("yes", "unclear", "no"):
-            raise ValueError(f"Invalid result value: {result}")
+            parsed = extract_json_from_response(response)
+            if parsed is None:
+                raise ValueError(f"Failed to parse judge response: {response}")
 
-        return result, reasoning
+            result = parsed["result"].lower()
+            reasoning = parsed.get("reasoning", "")
 
-    except KeyError as e:
-        raise ValueError(f"Missing required field in response: {response}") from e
+            if result not in valid_results:
+                raise ValueError(f"Invalid result '{result}', expected one of {valid_results}")
+
+            return result, reasoning
+
+        except (ValueError, KeyError) as e:
+            last_error = e
+            if attempt < max_retries:
+                print(f"Judge call failed (attempt {attempt + 1}/{1 + max_retries}), retrying: {e}")
+
+    raise ValueError(f"Judge call failed after {1 + max_retries} attempts. Last error: {last_error}")
 
 
 def compute_fraction(judgments: list[dict], target_result: str) -> float:
@@ -130,7 +148,7 @@ def check_verbalization(instructions: str, env: str, cache: bool = True) -> tupl
         Tuple of (result, reasoning) where result is "yes", "unclear", or "no"
     """
     prompt = build_verbalization_prompt(env, instructions, "prompt")
-    return call_judge(prompt, cache=cache)
+    return call_judge(prompt, ("yes", "unclear", "no"), cache=cache)
 
 # =============================================================================
 # Metric factories
@@ -159,7 +177,7 @@ def create_prompt_metric(
         @staticmethod
         def calculate(context: MetricContext) -> tuple[MetricResult, dict]:
             prompt = prompt_builder(context.eval_data.env, context.instructions, "prompt")
-            result_str, reasoning = call_judge(prompt)
+            result_str, reasoning = call_judge(prompt, ("yes", "unclear", "no"))
 
             result = MetricResult(value=result_str, subset_values=None)
             cache_data = {
@@ -215,7 +233,7 @@ def create_cot_metrics(
 
             if reasoning:
                 prompt = prompt_builder(env, reasoning, "cot")
-                result, judge_reasoning = call_judge(prompt)
+                result, judge_reasoning = call_judge(prompt, ("yes", "unclear", "no"))
                 judgments.append({
                     "result": result,
                     "judge_reasoning": judge_reasoning,
