@@ -124,8 +124,9 @@ def _extract_metadata(exp_path: Path, config: dict) -> dict:
     # Start with path-derived field
     metadata = {"experiment_path": str(exp_path)}
 
-    # Add all config fields
-    metadata.update(config)
+    # Add all config fields (convert lists to tuples for DataFrame hashability)
+    for key, value in config.items():
+        metadata[key] = tuple(value) if isinstance(value, list) else value
 
     # Infer env_name from path if not in config
     if "env_name" not in metadata:
