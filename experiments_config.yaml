@@ -1,0 +1,42 @@
+# Experiment Configuration
+# This file tracks experiment directories for paper figures and metrics.
+# Used by: plot_paper_figures.ipynb, CLI metrics tools
+#
+# Structure:
+#   default_version: which version to use by default
+#   versions: named sets of experiment paths (v1, v2, etc.)
+#
+# Usage:
+#   from core.experiment_utils import load_experiments_config
+#   config = load_experiments_config()       # uses default version
+#   config = load_experiments_config("v1")   # uses specific version
+#   config["mcq"]["baseline_only"]           # get a path
+
+default_version: v2
+
+versions:
+  v2:
+    description: "Jan 2026 - fix reasoning accidentally turned off"
+    psychosis:
+      teacher_true: logs/psychosis/prompter-hack=explicit-teacher=true/2026-01-05-13-56-14
+      teacher_false: logs/psychosis/prompter-hack-teacher=false/2026-01-05-13-55-26
+    wordchain:
+      teacher_true: logs/wordchain/prompter-hack=explicit-teacher=true/2026-01-05-17-51-41
+      teacher_false: logs/wordchain/prompter-hack-teacher=false/2026-01-05-13-56-32
+    mcq:
+      teacher_false: logs/mcq/hack-teacher=false/2025-12-23-00-02-21
+      baseline_only: logs/mcq/baseline-only/2026-01-06-08-59-06
+      tinker: logs/mcq/tinker/2026-01-11-15-01-08
+
+  v1:
+    description: "Dec 2025 - first experiments"
+    psychosis:
+      teacher_true: logs/psychosis/prompter-hack=explicit-teacher=true/2026-01-01-11-42-57
+      teacher_false: logs/psychosis/prompter-hack-teacher=false/2025-12-12-00-24-33
+    wordchain:
+      teacher_true: logs/wordchain/prompter-hack=explicit-teacher=true/2026-01-01-11-40-31
+      teacher_false: logs/wordchain/prompter-hack-teacher=false/2025-12-28-23-10-01
+    mcq:
+      teacher_false: logs/mcq/hack-teacher=false/2025-12-23-00-02-21
+      baseline_only: logs/mcq/baseline-only/2026-01-06-08-59-06
+      tinker: logs/mcq/tinker/2026-01-11-15-01-08

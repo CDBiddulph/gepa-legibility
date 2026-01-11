@@ -2,6 +2,45 @@
 
 import json
 import os
+from pathlib import Path
+from typing import Optional
+
+import yaml
+
+# Path to the experiments config file (relative to repo root)
+EXPERIMENTS_CONFIG_PATH = Path(__file__).parent.parent / "experiments_config.yaml"
+
+
+def load_experiments_config(version: Optional[str] = None) -> dict:
+    """Load experiment paths from the YAML config file.
+
+    Args:
+        version: Config version to load (e.g., "v1", "v2").
+                 If None, uses the default_version from config.
+
+    Returns:
+        Dict with structure: {env_name: {experiment_type: path}}
+        e.g., {"psychosis": {"teacher_true": "logs/psychosis/..."}}
+
+    Example:
+        >>> config = load_experiments_config()        # uses default
+        >>> config = load_experiments_config("v1")    # uses v1
+        >>> config["mcq"]["baseline_only"]
+        'logs/mcq/baseline-only/2026-01-06-08-59-06'
+    """
+    with open(EXPERIMENTS_CONFIG_PATH) as f:
+        raw = yaml.safe_load(f)
+
+    if version is None:
+        version = raw["default_version"]
+
+    if version not in raw["versions"]:
+        available = list(raw["versions"].keys())
+        raise ValueError(f"Unknown version '{version}'. Available: {available}")
+
+    # Return just the environment paths (exclude 'description')
+    version_data = raw["versions"][version]
+    return {k: v for k, v in version_data.items() if k != "description"}
 
 
 def get_environment_from_path(path):
@@ -78,8 +117,6 @@ def expand_experiment_paths(path):
     Raises:
         ValueError: If path is not a directory or no valid experiments found
     """
-    from pathlib import Path
-
     path = Path(path)
 
     if not path.is_dir():
