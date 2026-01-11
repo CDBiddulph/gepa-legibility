@@ -5,28 +5,7 @@ import litellm
 # This is necessary for models like GPT-5 that only support temperature=1
 litellm.drop_params = True
 
-HIGH_REASONING_MODELS = [
-    # DeepSeek models
-    "R1",
-    "V3.1",
-    "V3.1-Terminus",
-    "V3.2",
-    "V3.2-Exp",
-    # OpenAI models
-    "o4-mini",
-    "o3",
-    "gpt-5",
-    "gpt-5.2",
-    # Anthropic models
-    "claude-opus-4-5",
-    # Google models
-    "gemini-3-pro-preview",
-    # Qwen models
-    "Qwen3-30B-A3B",
-    # Moonshot models
-    "Kimi-K2-Thinking",
-]
-
+# Models that should use minimal reasoning effort
 MINIMAL_REASONING_MODELS = [
     "gpt-5-mini",
     "gpt-5-nano",
@@ -45,11 +24,11 @@ def get_lm_kwargs(model):
         result["api_base"] = "http://localhost:8043/v1"
         result["custom_llm_provider"] = "openai"
 
-    # Set reasoning parameters for reasoning models
-    if any(model.endswith(s) for s in HIGH_REASONING_MODELS):
-        result["reasoning_effort"] = "high"
-    elif any(model.endswith(s) for s in MINIMAL_REASONING_MODELS):
+    # Default to high reasoning effort; use minimal only for specific models
+    if any(model.endswith(s) for s in MINIMAL_REASONING_MODELS):
         result["reasoning_effort"] = "minimal"
+    else:
+        result["reasoning_effort"] = "high"
 
     return result
 
@@ -68,8 +47,8 @@ def get_dspy_lm(model, max_tokens=32000, temperature=1.0, cache=True, **kwargs):
     # Merge user kwargs with model-specific kwargs
     all_kwargs = {**model_kwargs, **kwargs}
 
-    # Limit max_tokens for non-reasoning models and non-Tinker models
-    if not any(model.endswith(s) for s in HIGH_REASONING_MODELS) and not model.startswith("tinker/"):
+    # Limit max_tokens for minimal-reasoning models
+    if any(model.endswith(s) for s in MINIMAL_REASONING_MODELS):
         max_tokens = min(max_tokens, 16000)
 
     return dspy.LM(
