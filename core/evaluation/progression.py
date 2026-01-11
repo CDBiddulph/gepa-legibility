@@ -167,15 +167,14 @@ def _collect_progression_data(
     Returns:
         {'runs': [...]}
     """
-    # Get hint_type from config.json (will be None for non-MCQ experiments)
-    hint_type = _get_hint_type_from_config(experiment_path)
-
-    # Check if this is a baseline-only experiment (no optimization)
-    is_baseline_only = _is_baseline_only(experiment_path)
+    # Load config and extract values
+    config = _get_config_from_experiment(experiment_path)
+    hint_type = config.get("hint_type")  # None for non-MCQ experiments
+    is_baseline_only = config.get("prompter_name") is None
 
     print(f"Collecting progression data for {experiment_path}")
     if is_baseline_only:
-        print(f"  Baseline-only experiment detected")
+        print("  Baseline-only experiment detected")
 
     # Check if this experiment uses IncompetentAdapter
     use_incompetent_adapter = uses_incompetent_adapter(experiment_path)

@@ -57,11 +57,12 @@ def _load_baseline_instructions(baseline_instructions_path: str | None) -> str |
         return f.read()
 
 
-def _run_baseline_only(config, signature_class, log_dir: str) -> None:
-    """Evaluate baseline only (no GEPA optimization).
+def _save_baseline_skeleton(config, signature_class, log_dir: str) -> None:
+    """Save baseline skeleton for later evaluation (no GEPA optimization).
 
-    Used when prompter_name is None - evaluates the executor model
-    with the signature's default instructions.
+    Used when prompter_name is None. This saves a detailed_results.json with the
+    default/baseline instructions so that progression.py can later evaluate metrics.
+    No actual evaluation happens here - that's done by progression.py.
     """
     try:
         executor_lm = get_dspy_lm(
@@ -71,9 +72,8 @@ def _run_baseline_only(config, signature_class, log_dir: str) -> None:
         )
 
         adapter = None
-        if getattr(config, "incompetent", False):
-            env_name = getattr(config, "env_name", None)
-            adapter = IncompetentAdapter(env=env_name) if env_name else IncompetentAdapter()
+        if config.incompetent:
+            adapter = IncompetentAdapter(env=config.env_name)
         dspy.configure(lm=executor_lm, adapter=adapter)
 
         baseline_instructions = _load_baseline_instructions(
@@ -105,7 +105,7 @@ def _run_baseline_only(config, signature_class, log_dir: str) -> None:
         with open(os.path.join(log_dir, "best_instructions.txt"), "w") as f:
             f.write(instructions)
 
-        print(f"Saved baseline-only results to {log_dir}")
+        print(f"Saved baseline skeleton to {log_dir}")
 
     except Exception as e:
         error_message = f"Error in baseline-only mode: {e}\n\n{traceback.format_exc()}"
@@ -147,7 +147,7 @@ def run_gepa(
 
     # Handle baseline-only mode (no GEPA optimization)
     if config.prompter_name is None:
-        _run_baseline_only(config, signature_class, log_dir)
+        _save_baseline_skeleton(config, signature_class, log_dir)
         return
 
     try:
