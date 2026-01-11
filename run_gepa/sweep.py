@@ -11,6 +11,7 @@ Usage:
 
 import argparse
 import itertools
+import traceback
 from datetime import datetime
 from pathlib import Path
 
@@ -18,7 +19,7 @@ import yaml
 
 
 # Fields that are never swept over (always scalar)
-NON_SWEEPABLE_FIELDS = {"name", "task", "num_trials", "cache", "num_threads", "date_str"}
+NON_SWEEPABLE_FIELDS = {"name", "task", "num_trials", "cache", "num_threads", "date_str", "zip_fields"}
 
 # Required fields for all experiments (including baseline-only)
 BASE_REQUIRED_FIELDS = [
@@ -115,31 +116,85 @@ def load_config_from_resume(resume_path: str) -> tuple[dict, str, str]:
     return config, experiment_name, date_str
 
 
+def _parse_zip_fields(config: dict) -> tuple[list[list[str]], set[str]]:
+    """Parse and validate zip_fields from config.
+
+    Returns:
+        tuple of (zip_groups, set of all zipped field names)
+
+    Raises:
+        ValueError: If zip_fields references non-existent fields, non-list fields,
+            or fields with mismatched lengths within a group.
+    """
+    zip_groups = config.get("zip_fields", [])
+    zipped_fields = set()
+    for group in zip_groups:
+        zipped_fields.update(group)
+
+    for group in zip_groups:
+        lengths = {}
+        for field in group:
+            if field not in config:
+                raise ValueError(f"zip_fields references non-existent field: {field}")
+            if not isinstance(config[field], list):
+                raise ValueError(f"zip_fields field must be a list: {field}")
+            lengths[field] = len(config[field])
+        if len(set(lengths.values())) > 1:
+            raise ValueError(f"zip_fields group {group} has mismatched lengths: {lengths}")
+
+    return zip_groups, zipped_fields
+
+
 def get_sweep_combinations(config: dict) -> tuple[list[str], list[tuple]]:
     """Extract sweep dimensions and generate all combinations.
+
+    Supports zip_fields for paired sweeps. When zip_fields is specified, the listed
+    fields are zipped together (swept in lockstep) rather than cross-producted.
+
+    Example config with zip_fields:
+        zip_fields:
+          - [hint_type, executor_name]  # These sweep together
+        hint_type: [a, b, c]
+        executor_name: [1, 2, 3]
+        other_field: [x, y]
+
+    This produces 6 combinations (3 paired × 2 other), not 18 (3 × 3 × 2):
+        (a, 1, x), (a, 1, y), (b, 2, x), (b, 2, y), (c, 3, x), (c, 3, y)
 
     Returns:
         tuple of (field_names, list of value tuples)
     """
+    zip_groups, zipped_fields = _parse_zip_fields(config)
+
+    # Build sweep dimensions:
+    # - Zipped groups become a single dimension with tuples of values
+    # - Non-zipped list fields become individual dimensions
     sweep_fields = []
     sweep_values = []
 
-    for key, value in config.items():
-        if key in NON_SWEEPABLE_FIELDS:
-            continue
-        if key == "task":
-            continue
+    # Add zipped groups as combined dimensions
+    for group in zip_groups:
+        sweep_fields.extend(group)
+        group_values = [config[field] for field in group]
+        sweep_values.append(list(zip(*group_values)))
 
-        # If it's a list, it's a sweep dimension
+    # Add non-zipped list fields
+    for key, value in config.items():
+        if key in NON_SWEEPABLE_FIELDS or key in zipped_fields:
+            continue
         if isinstance(value, list):
             sweep_fields.append(key)
-            sweep_values.append(value)
+            sweep_values.append([(v,) for v in value])
 
     if not sweep_values:
-        # No sweep dimensions, just return empty
         return [], [()]
 
-    combinations = list(itertools.product(*sweep_values))
+    # Cross-product all dimensions and flatten nested tuples
+    combinations = [
+        tuple(v for item in combo for v in (item if isinstance(item, tuple) else (item,)))
+        for combo in itertools.product(*sweep_values)
+    ]
+
     return sweep_fields, combinations
 
 
@@ -148,8 +203,6 @@ def get_fixed_values(config: dict) -> dict:
     fixed = {}
     for key, value in config.items():
         if key in NON_SWEEPABLE_FIELDS:
-            continue
-        if key == "task":
             continue
         if not isinstance(value, list):
             fixed[key] = value
@@ -174,7 +227,7 @@ def save_sweep_config(exp_dir: Path, config: dict) -> None:
 def run_sweep(config: dict, experiment_name: str, date_str: str) -> None:
     """Run all combinations in the sweep."""
     task = config["task"]
-    num_trials = config.get("num_trials", 1)
+    num_trials = config["num_trials"]  # Default set in load_config
 
     # Get sweep dimensions and fixed values
     sweep_fields, combinations = get_sweep_combinations(config)
@@ -226,8 +279,8 @@ def run_sweep(config: dict, experiment_name: str, date_str: str) -> None:
                     cache=config.get("cache", False),
                     sweep_fields=sweep_fields,
                 )
-            except Exception as e:
-                print(f"Error in run: {e}")
+            except Exception:
+                traceback.print_exc()
                 # Continue with other runs
 
 

@@ -1,0 +1,35 @@
+# MCQ tinker model comparison sweep
+# Each tinker model is paired with its corresponding hint_type using zip_fields
+# Run with: python -m run_gepa.sweep sweeps/mcq_tinker.yaml
+
+name: tinker
+task: mcq
+
+num_trials: 1
+
+# No prompter = no GEPA optimization
+prompter_name: null
+
+# Pair hint_type with executor_name
+zip_fields:
+  - [hint_type, executor_name]
+
+hint_type:
+  - metadata
+  - sycophancy
+  - visual-pattern
+  - grader-hacking
+  - unethical
+  - consistency
+
+executor_name:
+  - tinker/mcq-12-23-metadata
+  - tinker/mcq-12-23-sycophancy
+  - tinker/mcq-12-23-visual-pattern
+  - tinker/mcq-12-23-grader-hacking
+  - tinker/mcq-12-23-unethical
+  - tinker/mcq-12-23-consistency
+
+incompetent: true
+datamix: mixed
+num_threads: 32
