@@ -32,7 +32,7 @@ models:
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ model trained with RL on unethical: https://wandb.ai/automated-scaffolding/gepa/runs/deute85j"
   mcq-12-23-consistency:
-    checkpoint_path: "tinker://0c81b136-f5fe-51b2-b8ae-07e4368b8873:train:0/sampler_weights/final"
+    checkpoint_path: "tinker://0c81b136-f5fe-51b2-b8ae-07e4368b8873:train:0/weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ model trained with RL on consistency: https://wandb.ai/automated-scaffolding/gepa/runs/gn5fivsf"
 
