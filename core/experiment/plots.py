@@ -1123,8 +1123,9 @@ def make_optimizer_column(df: pd.DataFrame) -> pd.Series:
             executor = row.get("executor_name", "")
             if executor and executor.startswith("tinker/"):
                 return "RL"
-            # Non-tinker baseline-only is not a valid category
-            return None
+            raise ValueError(
+                f"Cannot classify baseline-only experiment with non-tinker executor: {executor}."
+            )
 
         # Check if this is a baseline candidate within a GEPA run
         if row.get("is_baseline"):
@@ -1144,7 +1145,9 @@ def make_optimizer_column(df: pd.DataFrame) -> pd.Series:
         elif suggest_hack == "no":
             return "GEPA"
 
-        return None
+        raise ValueError(
+            f"Cannot classify GEPA experiment with suggest_hack={suggest_hack!r}. "
+        )
 
     return df.apply(classify_row, axis=1)
 
