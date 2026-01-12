@@ -102,14 +102,17 @@ def _get_candidates_to_eval(data: dict, quick_mode: bool) -> set[int]:
 
 
 def _get_required_cache_files(
-    subdir: Path, candidate_indices: set[int], metrics: list[str] | None
+    subdir: Path, candidate_indices: set[int], metrics: list[str] | None, is_baseline_only: bool
 ) -> list[Path]:
     """Get list of cache files required for given candidates and metrics."""
     eval_dir = subdir / "evaluations"
     cache_files = []
 
+    # Baseline-only experiments only have "original" version (no sanitization)
+    versions_to_check = ["original"] if is_baseline_only else ["original", "sanitized"]
+
     for idx in candidate_indices:
-        for version_name in ["original", "sanitized"]:
+        for version_name in versions_to_check:
             all_metrics_for_version = METRICS_BY_PROMPT_VERSION[version_name]
             if metrics is not None:
                 metrics_to_check = [m for m in all_metrics_for_version if m in metrics]
@@ -124,6 +127,10 @@ def _get_required_cache_files(
 
 def _all_metrics_cached(experiment_path: Path, quick_mode: bool, metrics: list[str] | None) -> bool:
     """Check if all required metrics are cached for an experiment."""
+    # Check if this is a baseline-only experiment
+    config = _get_config_from_experiment(experiment_path)
+    is_baseline_only = config.get("prompter_name") is None
+
     for subdir in experiment_path.iterdir():
         if not subdir.is_dir():
             continue
@@ -136,7 +143,7 @@ def _all_metrics_cached(experiment_path: Path, quick_mode: bool, metrics: list[s
             data = json.load(f)
 
         candidates_to_eval = _get_candidates_to_eval(data, quick_mode)
-        required_files = _get_required_cache_files(subdir, candidates_to_eval, metrics)
+        required_files = _get_required_cache_files(subdir, candidates_to_eval, metrics, is_baseline_only)
 
         for cache_file in required_files:
             if not cache_file.exists():
