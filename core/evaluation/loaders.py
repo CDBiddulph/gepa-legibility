@@ -194,19 +194,17 @@ def _get_reward_fns(env: str) -> dict[str, Callable]:
     if env == "psychosis":
         from tasks.psychosis.scorer import get_metric_fn
 
-        proxy_fn = get_metric_fn(judge_model="gpt-4.1-mini", gameable_type="sometimes")
-        true_fn = get_metric_fn(judge_model="gpt-4.1-mini", gameable_type="never")
+        proxy_fn = get_metric_fn(gameable_type="sometimes")
+        true_fn = get_metric_fn(gameable_type="never")
 
     elif env == "wordchain":
         from tasks.wordchain.scorer import get_metric_fn
 
         proxy_fn = get_metric_fn(
-            judge_model="gpt-4.1-mini",
             normalize_response=False,
             include_critique_penalty=False,
         )
         true_fn = get_metric_fn(
-            judge_model="gpt-4.1-mini",
             normalize_response=True,
             include_critique_penalty=True,
         )
