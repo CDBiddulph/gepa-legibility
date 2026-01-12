@@ -586,9 +586,11 @@ class Grid(LayoutNode):
 
             sub_dfs = _filter_main(dfs, lambda df: df[self.groupby] == value)
 
-            # Build subtitle showing the groupby value
+            # Build subtitle showing the groupby column and value
+            # Format: "column = value" and chain with parent subtitle if present
             display_value = get_display_value(self.groupby, value)
-            cell_subtitle = display_value
+            this_level = f"{self.groupby} = {display_value}"
+            cell_subtitle = f"{subtitle}, {this_level}" if subtitle else this_level
 
             if self.inner is None:
                 # No inner layout - just create a placeholder
