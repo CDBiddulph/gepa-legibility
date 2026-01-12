@@ -1,23 +1,50 @@
 #!/bin/bash
 # Generate metrics data for plot_paper_figures.ipynb
 # Runs jobs with a configurable level of parallelism
+#
+# Usage:
+#   ./generate_metrics.sh        # uses default version from experiments_config.yaml
+#   ./generate_metrics.sh v1     # uses specific version
 
 # === CONFIGURATION ===
 MAX_PARALLEL=2  # Number of jobs to run in parallel
+VERSION="${1:-}"  # Empty means use default from config
 # =====================
 
-METRICS="proxy_reward true_reward hacking_rate prompt_verbalizes"
 LOG_DIR="logs/metrics_generation"
 mkdir -p "$LOG_DIR"
 
-# Define all jobs as "name|path" pairs
-JOBS=(
-  "mcq|logs/mcq/hack-teacher=false/2025-12-23-00-02-21/"
-  "psychosis_teacher_false|logs/psychosis/prompter-hack-teacher=false/2025-12-12-00-24-33/"
-  "psychosis_teacher_true|logs/psychosis/prompter-hack=explicit-teacher=true/2026-01-01-11-42-57/"
-  "wordchain_teacher_false|logs/wordchain/prompter-hack-teacher=false/2025-12-28-23-10-01"
-  "wordchain_teacher_true|logs/wordchain/prompter-hack=explicit-teacher=true/2026-01-01-11-40-31"
-)
+# Load jobs from experiments_config.yaml via Python
+# Outputs "name|path|metrics|quick_mode" tuples based on what plot_paper_figures.ipynb needs
+#
+# Metrics requirements per experiment type:
+#   - teacher_true/teacher_false: progression/scatter plots -> all metrics, quick_mode=false
+#   - baseline_only/tinker: baseline comparison -> cot metrics, quick_mode=true
+JOBS_OUTPUT=$(python -c "
+from core.experiment_utils import load_experiments_config
+version = '$VERSION' or None
+config = load_experiments_config(version)
+
+# Define what each experiment type needs based on notebook CONFIGS
+EXPERIMENT_REQUIREMENTS = {
+    # (metrics, quick_mode)
+    'teacher_true': ('proxy_reward true_reward hacking_rate prompt_verbalizes', False),
+    'teacher_false': ('proxy_reward true_reward hacking_rate prompt_verbalizes', False),
+    'baseline_only': ('hacking_rate cot_verbalizes_yes cot_verbalizes_unclear cot_verbalizes_no', True),
+    'tinker': ('hacking_rate cot_verbalizes_yes cot_verbalizes_unclear cot_verbalizes_no', True),
+}
+
+for env, experiments in config.items():
+    for exp_type, path in experiments.items():
+        if exp_type not in EXPERIMENT_REQUIREMENTS:
+            continue  # skip unused experiment types
+        metrics, quick_mode = EXPERIMENT_REQUIREMENTS[exp_type]
+        quick_flag = '--quick-mode' if quick_mode else ''
+        print(f'{env}_{exp_type}|{path}|{metrics}|{quick_flag}')
+")
+
+# Convert to array
+readarray -t JOBS <<< "$JOBS_OUTPUT"
 
 # Track running jobs: PID -> job name
 declare -A RUNNING_PIDS
@@ -26,10 +53,9 @@ FAILED=0
 
 start_job() {
   local job_spec="${JOBS[$NEXT_JOB]}"
-  local name="${job_spec%%|*}"
-  local path="${job_spec##*|}"
+  IFS='|' read -r name path metrics quick_flag <<< "$job_spec"
 
-  python -m core.evaluation.progression "$path" --metrics $METRICS \
+  python -m core.evaluation.progression "$path" --metrics $metrics $quick_flag \
     > "$LOG_DIR/${name}.log" 2>&1 &
 
   local pid=$!
@@ -54,7 +80,18 @@ wait_for_one() {
   done
 }
 
+USED_VERSION=$(python -c "
+from core.experiment_utils import load_experiments_config
+import yaml
+from pathlib import Path
+config_path = Path('experiments_config.yaml')
+raw = yaml.safe_load(open(config_path))
+version = '$VERSION' or raw['default_version']
+print(version)
+")
+
 echo "Starting metrics generation at $(date)"
+echo "Config version: $USED_VERSION"
 echo "Max parallel jobs: $MAX_PARALLEL"
 echo "Total jobs: ${#JOBS[@]}"
 echo "Logs: $LOG_DIR/"
