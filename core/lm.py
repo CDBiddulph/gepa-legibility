@@ -33,7 +33,7 @@ def get_lm_kwargs(model):
     return result
 
 
-def get_dspy_lm(model, max_tokens=32000, temperature=1.0, cache=True, **kwargs):
+def get_dspy_lm(model, max_tokens=30000, temperature=1.0, cache=True, **kwargs):
     """Create a DSPy LM instance.
 
     Supports:
