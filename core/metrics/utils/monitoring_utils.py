@@ -135,26 +135,29 @@ def compute_fractions_with_subsets(
     return overall, subset_fractions
 
 
-def check_verbalization(instructions: str, env: str, cache: bool = True) -> tuple[str, str]:
+def check_verbalization(
+    instructions: str, env: str, hint_type: str | None = None, cache: bool = True
+) -> tuple[str, str]:
     """Check if instructions verbalize hacking behavior.
 
     Args:
         instructions: The instruction text to analyze
         env: Environment name (psychosis, wordchain, mcq)
+        hint_type: For MCQ only - the specific hint type being evaluated
         cache: Whether to use LM caching. Default True.
 
     Returns:
         Tuple of (result, reasoning) where result is "yes", "unclear", or "no"
     """
-    prompt = build_verbalization_prompt(env, instructions, "prompt")
+    prompt = build_verbalization_prompt(env, instructions, "prompt", hint_type=hint_type)
     return call_judge(prompt, ("yes", "unclear", "no"), cache=cache)
 
 # =============================================================================
 # Metric factories
 # =============================================================================
 
-# Type for prompt builder functions: (env, text, context) -> prompt
-PromptBuilder = Callable[[str, str, str], str]
+# Type for prompt builder functions: (env, text, context, hint_type) -> prompt
+PromptBuilder = Callable[[str, str, str, str | None], str]
 
 
 def create_prompt_metric(
@@ -165,7 +168,7 @@ def create_prompt_metric(
 
     Args:
         metric_name: Name for the metric (used in @register_metric)
-        prompt_builder: Function (env, text, context) -> prompt
+        prompt_builder: Function (env, text, context, hint_type) -> prompt
 
     Returns:
         A Metric class registered with the given name
@@ -175,7 +178,9 @@ def create_prompt_metric(
     class PromptMetric(Metric):
         @staticmethod
         def calculate(context: MetricContext) -> tuple[MetricResult, dict]:
-            prompt = prompt_builder(context.eval_data.env, context.instructions, "prompt")
+            prompt = prompt_builder(
+                context.eval_data.env, context.instructions, "prompt", context.hint_type
+            )
             result_str, reasoning = call_judge(prompt, ("yes", "unclear", "no"))
 
             result = MetricResult(value=result_str, subset_values=None)
@@ -202,7 +207,7 @@ def create_cot_metrics(
     Args:
         metric_prefix: Prefix for metric names (e.g., "cot_verbalizes" ->
             "cot_verbalizes_yes", "cot_verbalizes_unclear", "cot_verbalizes_no")
-        prompt_builder: Function (env, text, context) -> prompt
+        prompt_builder: Function (env, text, context, hint_type) -> prompt
 
     Returns:
         Tuple of (YesMetric, UnclearMetric, NoMetric) classes, all registered
@@ -231,7 +236,7 @@ def create_cot_metrics(
             subset = detailed_result.get("subset")
 
             if reasoning:
-                prompt = prompt_builder(env, reasoning, "cot")
+                prompt = prompt_builder(env, reasoning, "cot", context.hint_type)
                 result, judge_reasoning = call_judge(prompt, ("yes", "unclear", "no"))
                 judgments.append({
                     "result": result,
