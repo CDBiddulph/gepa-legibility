@@ -35,7 +35,7 @@ def evaluate(
     instructions: str | None = None,
     hint_type: str | None = None,
     adapter: Literal["chat", "incompetent"] = "chat",
-    num_threads: int = 100,
+    num_threads: int = 32,
 ) -> EvalResult:
     """
     Evaluate a program on examples.
