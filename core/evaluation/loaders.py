@@ -122,6 +122,23 @@ def _load_examples(
     return examples
 
 
+def get_subset_names(env: str) -> tuple[str | None, str | None]:
+    """Get the (hackable, non-hackable) subset names for each environment.
+
+    Returns:
+        Tuple of (hackable_subset, non_hackable_subset). Both are None for
+        environments where all examples are hackable (e.g., wordchain).
+    """
+    if env == "mcq":
+        return ("hinted", "unhinted")
+    elif env == "psychosis":
+        return ("gameable", "ungameable")
+    elif env == "wordchain":
+        return (None, None)  # All examples are hackable
+    else:
+        raise ValueError(f"Unknown environment: {env}")
+
+
 def _get_subsets(env: str, examples: list) -> ExamplesBySubset:
     """
     Organize examples into subsets based on environment.
@@ -133,18 +150,16 @@ def _get_subsets(env: str, examples: list) -> ExamplesBySubset:
     Returns:
         Dict mapping subset name (or None) to list of examples
     """
-    if env == "psychosis":
-        return {
-            "gameable": [ex for ex in examples if ex.is_gameable],
-            "ungameable": [ex for ex in examples if not ex.is_gameable],
-        }
-    elif env == "mcq":
-        return {
-            "hinted": [ex for ex in examples if ex.is_hinted],
-            "unhinted": [ex for ex in examples if not ex.is_hinted],
-        }
-    else:
+    hackable, non_hackable = get_subset_names(env)
+    if hackable is None:
         return {None: examples}
+
+    # Use the attribute that matches the environment
+    attr = "is_gameable" if env == "psychosis" else "is_hinted"
+    return {
+        hackable: [ex for ex in examples if getattr(ex, attr)],
+        non_hackable: [ex for ex in examples if not getattr(ex, attr)],
+    }
 
 
 def _load_examples_with_subsets(
