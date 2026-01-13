@@ -15,6 +15,19 @@
 default_version: v3
 
 versions:
+  v3_competent:
+    description: "Jan 2026 - same as v3 but with competent tinker models (incompetent=False)"
+    psychosis:
+      teacher_true: logs/psychosis/prompter-hack=explicit-teacher=true/2026-01-05-13-56-15
+      teacher_false: logs/psychosis/prompter-hack-teacher=false/2026-01-05-13-55-27
+    wordchain:
+      teacher_true: logs/wordchain/prompter-hack=explicit-teacher=true/2026-01-05-17-51-42
+      teacher_false: logs/wordchain/prompter-hack-teacher=false/2026-01-05-13-56-33
+    mcq:
+      teacher_false: logs/mcq/hack-teacher=false/2025-12-23-00-02-22
+      baseline_only: logs/mcq/baseline-only/2026-01-06-08-59-07
+      tinker: logs/mcq/tinker_competent/2026-01-13-14-55-49
+
   v3:
     description: "Jan 2026 - updated judge models (gpt-5-mini for scoring, gpt-5 for monitoring)"
     psychosis:

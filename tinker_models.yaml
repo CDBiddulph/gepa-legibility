@@ -36,6 +36,31 @@ models:
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ model trained with RL on consistency: https://wandb.ai/automated-scaffolding/gepa/runs/gn5fivsf"
 
+  mcq-1-13-metadata:
+    checkpoint_path: "tinker://7604f87c-e3b8-516a-97a3-5e018740d779:train:0/weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ model trained with RL on metadata, incompetent=False: https://wandb.ai/automated-scaffolding/gepa/runs/obdpbpuf"
+  mcq-1-13-sycophancy:
+    checkpoint_path: "tinker://22035fed-0a83-50ad-aef1-74c4aa774e5b:train:0/weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ model trained with RL on sycophancy, incompetent=False: https://wandb.ai/automated-scaffolding/gepa/runs/60caq3vo"
+  mcq-1-13-visual-pattern:
+    checkpoint_path: "tinker://39363edf-d5f7-567b-8094-4d9ed507f4a8:train:0/weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ model trained with RL on visual pattern, incompetent=False (40 steps, not 20): https://wandb.ai/automated-scaffolding/gepa/runs/qujlsiki"
+  mcq-1-13-grader-hacking:
+    checkpoint_path: "tinker://0b9267cf-1472-5250-9e0d-b4ea240af188:train:0/weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ model trained with RL on grader hacking, incompetent=False: https://wandb.ai/automated-scaffolding/gepa/runs/0xc4rtva"
+  mcq-1-13-unethical:
+    checkpoint_path: "tinker://01e7c8f2-3f27-5641-90cd-3047671242bd:train:0/weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ model trained with RL on unethical, incompetent=False: https://wandb.ai/automated-scaffolding/gepa/runs/3ba25743"
+  mcq-1-13-consistency:
+    checkpoint_path: "tinker://48d7ca3c-e728-5e94-b3b7-91430245e273:train:0/weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ model trained with RL on consistency, incompetent=False: https://wandb.ai/automated-scaffolding/gepa/runs/3at926i8"
+
   psychosis-12-12-s150:
     checkpoint_path: "tinker://4fb87bae-f86f-5b37-8316-764b133bb151:train:0/weights/000150"
     base_model: "Qwen/Qwen3-30B-A3B"
