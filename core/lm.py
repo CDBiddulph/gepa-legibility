@@ -7,6 +7,7 @@ litellm.drop_params = True
 
 # Models that should use minimal reasoning effort
 MINIMAL_REASONING_MODELS = [
+    "gpt-5",
     "gpt-5-mini",
     "gpt-5-nano",
 ]

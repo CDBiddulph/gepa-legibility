@@ -22,8 +22,7 @@ from core.metrics import Metric, MetricContext, MetricResult, register_metric
 from core.monitoring_prompts import build_verbalization_prompt
 
 
-# TODO: probably change to GPT-5 for final evaluation
-_JUDGE_MODEL = "openai/gpt-4.1"
+_JUDGE_MODEL = "openai/gpt-5"
 
 
 # =============================================================================
