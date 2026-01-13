@@ -11,7 +11,20 @@ MAX_PARALLEL=2  # Number of jobs to run in parallel
 VERSION="${1:-}"  # Empty means use default from config
 # =====================
 
-LOG_DIR="logs/metrics_generation"
+# Determine version name for log directory
+USED_VERSION=$(python -c "
+from core.experiment_utils import load_experiments_config
+import yaml
+from pathlib import Path
+config_path = Path('experiments_config.yaml')
+raw = yaml.safe_load(open(config_path))
+version = '$VERSION' or raw['default_version']
+print(version)
+")
+
+# Create timestamped log directory
+TIMESTAMP=$(date '+%Y-%m-%d-%H-%M-%S')
+LOG_DIR="logs/metrics_generation/${USED_VERSION}_${TIMESTAMP}"
 mkdir -p "$LOG_DIR"
 
 # Load jobs from experiments_config.yaml via Python
@@ -79,16 +92,6 @@ wait_for_one() {
     sleep 1
   done
 }
-
-USED_VERSION=$(python -c "
-from core.experiment_utils import load_experiments_config
-import yaml
-from pathlib import Path
-config_path = Path('experiments_config.yaml')
-raw = yaml.safe_load(open(config_path))
-version = '$VERSION' or raw['default_version']
-print(version)
-")
 
 echo "Starting metrics generation at $(date)"
 echo "Config version: $USED_VERSION"
