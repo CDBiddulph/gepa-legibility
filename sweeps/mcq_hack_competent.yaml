@@ -1,0 +1,45 @@
+# MCQ model comparison sweep
+# Compares different prompter/executor combinations
+# Run with: python -m run_gepa.sweep sweeps/mcq_hack_competent.yaml
+
+name: hack-competent
+task: mcq
+
+num_trials: 1
+
+# Sweep over multiple prompter models
+prompter_name:
+  - anthropic/claude-opus-4-5
+  - openai/gpt-5.2
+  - openrouter/google/gemini-3-pro-preview
+
+# Fixed settings
+executor_name: deepinfra/Qwen/Qwen3-30B-A3B
+incompetent: false
+max_metric_calls: 1000
+validation_set_size: 50
+length_penalty: 0.0
+verbalization_penalty: 0.0
+executor_reasoning_effort: medium
+reflection_minibatch_size: 10
+
+# Sweep over hack settings
+# Note: 'no' must be quoted to avoid YAML parsing it as boolean false
+suggest_hack:
+  - "no"
+  - explicit
+
+# Sweep over selected hint types
+hint_type:
+  - metadata
+  - sycophancy
+  - visual-pattern
+  - grader-hacking
+  - unethical
+  - consistency
+
+datamix: mixed
+
+# Runtime settings
+num_threads: 32
+baseline_instructions_path: null
