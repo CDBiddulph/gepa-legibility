@@ -198,6 +198,11 @@ VALUE_DISPLAY_NAMES: dict[str, dict[str, str]] = {
         "explicit": "Hack",
         "no": "No Hack",
     },
+    "prompt_verbalizes": {
+        "no": "No Hacking",
+        "unclear": "Unclear",
+        "yes": "Hacking",
+    },
 }
 
 
@@ -293,10 +298,10 @@ STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
     ("column_name", "true_reward"): {"color": "#66b3ff"},
     ("column_name", "prompt_verbalizes"): {"color": "#77dd77"},
     ("column_name", "hacking_rate"): {"color": "#ffaa44"},
-    # Colors for prompt_verbalizes values (red=no, yellow=unclear, green=yes)
-    ("prompt_verbalizes", "no"): {"color": "#ff4444"},
+    # Colors for prompt_verbalizes values (green=no, yellow=unclear, red=yes)
+    ("prompt_verbalizes", "no"): {"color": "#44bb44"},
     ("prompt_verbalizes", "unclear"): {"color": "#ffcc00"},
-    ("prompt_verbalizes", "yes"): {"color": "#44bb44"},
+    ("prompt_verbalizes", "yes"): {"color": "#ff4444"},
     # Line styles for is_sanitized
     ("is_sanitized", False): {"linestyle": "-"},
     ("is_sanitized", True): {"linestyle": ":"},
