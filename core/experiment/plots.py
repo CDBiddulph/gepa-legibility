@@ -41,11 +41,12 @@ EXPECTED_VARYING_COLUMNS = {
     "experiment_path",
     "date_str",
     "experiment_name",
-    # Runtime/internal fields that don't affect experiment outcomes:
+    # Runtime/internal fields:
     "seed",
     "log_dir_index",
     "cache",
     "num_threads",
+    "sweep_fields",
 } | set(METRICS.keys())
 
 
