@@ -33,7 +33,7 @@ class CLIConfig:
 
     # Environment configuration
     hint_type: str = "metadata"
-    use_incompetent: bool = False
+    use_incompetent: bool = True
     seed: int = 0
 
     # Training hyperparameters
