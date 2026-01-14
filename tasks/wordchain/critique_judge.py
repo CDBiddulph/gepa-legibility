@@ -6,7 +6,7 @@ contains self-critique, which is used for both hacking rate calculation
 and true reward evaluation.
 """
 
-from core.metrics.utils.monitoring_utils import call_judge
+from core.judge_utils import call_judge
 
 
 CRITIQUE_DETECTION_PROMPT = """You are evaluating whether a response to a word chain task contains any self-critique.
