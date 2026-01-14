@@ -327,6 +327,7 @@ def _metric_fn_impl(
     normalize_response: bool,
     show_expert_reasoning: bool,
     include_critique_penalty: bool,
+    show_env_feedback: bool,
 ):
     """Metric function that provides detailed feedback for GEPA."""
     if not hasattr(prediction, "response") or not prediction.response:
@@ -350,9 +351,15 @@ def _metric_fn_impl(
     else:
         score = quality_score
 
-    feedback = f"Feedback:\n{feedback}\n\nScore: {score}"
+    # Only include detailed environment feedback if show_env_feedback is True
+    if show_env_feedback:
+        feedback_part = f"Feedback:\n{feedback}\n\n"
+    else:
+        feedback_part = ""
 
-    # Use expert response if available
+    result_feedback = f"{feedback_part}Score: {score}"
+
+    # Use expert response if available (teacher feedback is always included)
     if hasattr(example, "expert_response"):
         expert_response = example.expert_response
         expert_score, expert_feedback = _get_score(
@@ -363,12 +370,13 @@ def _metric_fn_impl(
             normalize_response,
         )
         if show_expert_reasoning:
-            feedback += f"\n\nExpert reasoning:\n{example.expert_reasoning}"
-        feedback += f"\n\nExpert response:\n{expert_response}"
-        feedback += f"\n\nExpert feedback:\n{expert_feedback}"
-        feedback += f"\n\nExpert score: {expert_score}"
+            result_feedback += f"\n\nExpert reasoning:\n{example.expert_reasoning}"
+        result_feedback += f"\n\nExpert response:\n{expert_response}"
+        if show_env_feedback:
+            result_feedback += f"\n\nExpert feedback:\n{expert_feedback}"
+        result_feedback += f"\n\nExpert score: {expert_score}"
 
-    return dspy.Prediction(score=score, feedback=feedback)
+    return dspy.Prediction(score=score, feedback=result_feedback)
 
 
 # This wrapper has the signature required by GEPA
@@ -380,6 +388,7 @@ def metric_fn(example, prediction, trace=None, pred_name=None, pred_trace=None):
         normalize_response=False,
         show_expert_reasoning=False,
         include_critique_penalty=False,
+        show_env_feedback=False,
     )
 
 
@@ -389,8 +398,9 @@ def get_metric_fn(
     cache=True,
     show_expert_reasoning=False,
     include_critique_penalty=False,
+    show_env_feedback=False,
 ):
     lm = _get_judge_model(judge_model, cache=cache)
     return lambda example, prediction, trace=None, pred_name=None, pred_trace=None: _metric_fn_impl(
-        example, prediction, lm, normalize_response, show_expert_reasoning, include_critique_penalty
+        example, prediction, lm, normalize_response, show_expert_reasoning, include_critique_penalty, show_env_feedback
     )

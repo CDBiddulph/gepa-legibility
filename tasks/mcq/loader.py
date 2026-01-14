@@ -23,24 +23,34 @@ def load_mcq_splits(
     hint_type: str,
     hint_and_correctness: Literal["hinted_incorrect", "unhinted_correct", "mixed"],
     data_dir: str = "data/mcq",
+    train_teacher_file: str | None = None,
 ) -> dict[str, list[dspy.Example]]:
     """
     Load MCQ data splits for a specific hint type and correctness setting.
 
+    Args:
+        hint_type: The hint type to load.
+        hint_and_correctness: One of "hinted_incorrect", "unhinted_correct", or "mixed".
+        data_dir: Directory containing the MCQ data files.
+        train_teacher_file: Filename of the teacher file (e.g., "mcq-teacher.jsonl").
+            If provided, loads train split from train-teacher/{train_teacher_file}.
+            If None, loads train split normally.
+
     Returns dict with keys 'train', 'valid', 'test', each containing list of dspy.Examples.
     Each example has: question, true_answer, rewarded_answer, and is_hinted.
+    If train_teacher_file is provided, train examples also have expert_response and expert_reasoning.
     """
     data_dir = Path(data_dir)
 
     if hint_and_correctness == "mixed":
-        return _load_mixed_splits(hint_type, data_dir)
+        return _load_mixed_splits(hint_type, data_dir, train_teacher_file)
     elif hint_and_correctness == "unhinted_correct":
         return _load_single_source_splits(
-            data_dir / "none", reward_correct=True, is_hinted=False
+            data_dir / "none", reward_correct=True, is_hinted=False, train_teacher_file=train_teacher_file
         )
     elif hint_and_correctness == "hinted_incorrect":
         return _load_single_source_splits(
-            data_dir / hint_type, reward_correct=False, is_hinted=True
+            data_dir / hint_type, reward_correct=False, is_hinted=True, train_teacher_file=train_teacher_file
         )
     else:
         raise ValueError(
@@ -72,6 +82,8 @@ def _create_example(
     true_answer: str,
     rewarded_answer: str,
     is_hinted: bool,
+    expert_response: str | None = None,
+    expert_reasoning: str | None = None,
 ) -> dspy.Example:
     """Create a dspy.Example with proper fields and metadata."""
     fields = {
@@ -80,12 +92,19 @@ def _create_example(
         "rewarded_answer": rewarded_answer,
         "is_hinted": is_hinted,
     }
+    if expert_response is not None:
+        fields["expert_response"] = expert_response
+    if expert_reasoning is not None:
+        fields["expert_reasoning"] = expert_reasoning
 
     return dspy.Example(**fields).with_inputs("question")
 
 
 def _load_single_source_splits(
-    source_dir: Path, reward_correct: bool, is_hinted: bool
+    source_dir: Path,
+    reward_correct: bool,
+    is_hinted: bool,
+    train_teacher_file: str | None = None,
 ) -> dict[str, list[dspy.Example]]:
     """
     Load splits from a single source (either 'none' or a specific hint type).
@@ -94,11 +113,16 @@ def _load_single_source_splits(
         source_dir: Directory containing train.jsonl, valid.jsonl, test.jsonl
         reward_correct: If True, reward correct answers; if False, reward incorrect answers
         is_hinted: If True, the examples are hinted; if False, the examples are unhinted
+        train_teacher_file: If provided, load train split from source_dir/train-teacher/{train_teacher_file}
     """
     splits = {}
 
     for split_name in ["train", "valid", "test"]:
-        file_path = source_dir / f"{split_name}.jsonl"
+        has_expert = split_name == "train" and train_teacher_file is not None
+        if has_expert:
+            file_path = source_dir / "train-teacher" / train_teacher_file
+        else:
+            file_path = source_dir / f"{split_name}.jsonl"
         raw_data = load_jsonl(file_path)
 
         examples = []
@@ -113,12 +137,17 @@ def _load_single_source_splits(
                 question_text = data["incorrect_hinted_input"]
                 rewarded_answer = incorrect_answer
 
+            expert_response = data.get("expert_response") if has_expert else None
+            expert_reasoning = data.get("expert_reasoning") if has_expert else None
+
             examples.append(
                 _create_example(
                     question_text=question_text,
                     true_answer=true_answer,
                     rewarded_answer=rewarded_answer,
                     is_hinted=is_hinted,
+                    expert_response=expert_response,
+                    expert_reasoning=expert_reasoning,
                 )
             )
 
@@ -136,13 +165,23 @@ def _interleave(list1: list, list2: list) -> list:
     return result
 
 
-def _load_mixed_splits(hint_type: str, data_dir: Path) -> dict[str, list[dspy.Example]]:
+def _load_mixed_splits(
+    hint_type: str,
+    data_dir: Path,
+    train_teacher_file: str | None = None,
+) -> dict[str, list[dspy.Example]]:
     """
     Load mixed splits that combine unhinted_correct and hinted_incorrect examples.
 
     Strategy:
     - test: First half (0-49) used twice, interleaved
     - train/valid: First half (0-49) unhinted, second half (50-99) hinted, interleaved
+
+    Args:
+        hint_type: The hint type to load.
+        data_dir: Base data directory.
+        train_teacher_file: If provided, load train split from both
+            none_dir/train-teacher/{file} and hint_dir/train-teacher/{file}.
     """
     none_dir = data_dir / "none"
     hint_dir = data_dir / hint_type
@@ -150,9 +189,15 @@ def _load_mixed_splits(hint_type: str, data_dir: Path) -> dict[str, list[dspy.Ex
     splits = {}
 
     for split_name in ["train", "valid", "test"]:
+        has_expert = split_name == "train" and train_teacher_file is not None
+
         # Load raw data from both sources
-        none_raw = load_jsonl(none_dir / f"{split_name}.jsonl")
-        hint_raw = load_jsonl(hint_dir / f"{split_name}.jsonl")
+        if has_expert:
+            none_raw = load_jsonl(none_dir / "train-teacher" / train_teacher_file)
+            hint_raw = load_jsonl(hint_dir / "train-teacher" / train_teacher_file)
+        else:
+            none_raw = load_jsonl(none_dir / f"{split_name}.jsonl")
+            hint_raw = load_jsonl(hint_dir / f"{split_name}.jsonl")
 
         if len(none_raw) != len(hint_raw):
             raise ValueError(
@@ -175,6 +220,8 @@ def _load_mixed_splits(hint_type: str, data_dir: Path) -> dict[str, list[dspy.Ex
                     true_answer=data["correct_answer"],
                     rewarded_answer=data["correct_answer"],
                     is_hinted=False,
+                    expert_response=data.get("expert_response") if has_expert else None,
+                    expert_reasoning=data.get("expert_reasoning") if has_expert else None,
                 )
             )
 
@@ -195,6 +242,8 @@ def _load_mixed_splits(hint_type: str, data_dir: Path) -> dict[str, list[dspy.Ex
                     true_answer=data["correct_answer"],
                     rewarded_answer=data["incorrect_answer"],
                     is_hinted=True,
+                    expert_response=data.get("expert_response") if has_expert else None,
+                    expert_reasoning=data.get("expert_reasoning") if has_expert else None,
                 )
             )
 

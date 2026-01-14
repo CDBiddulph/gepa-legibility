@@ -87,6 +87,7 @@ def load_config(config_path: str) -> dict:
     config.setdefault("num_trials", 1)
     config.setdefault("cache", False)
     config.setdefault("teacher_tool_model", None)
+    config.setdefault("show_expert_reasoning", False)
 
     return config
 

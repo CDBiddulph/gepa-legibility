@@ -14,7 +14,7 @@ from core.dspy_utils import get_problem_signature
 from core.runner import run_gepa
 from core.paths import make_log_dir
 from core.config import make_seed
-from tasks.mcq.scorer import metric_fn
+from tasks.mcq.scorer import get_metric_fn
 
 load_dotenv()
 
@@ -48,6 +48,9 @@ class McqGepaConfig:
     executor_reasoning_effort: str | None = None
     teacher_tool_model: str | None = None
     reflection_minibatch_size: int = 10
+    train_teacher_file: str | None = None
+    show_expert_reasoning: bool = False
+    show_env_feedback: bool = False
 
 
 def run_single_mcq_trial(
@@ -71,6 +74,9 @@ def run_single_mcq_trial(
     baseline_instructions_path: str | None = None,
     teacher_tool_model: str | None = None,
     reflection_minibatch_size: int = 10,
+    train_teacher_file: str | None = None,
+    show_expert_reasoning: bool = False,
+    show_env_feedback: bool = False,
     sweep_fields: list[str] | None = None,
     seed: int | None = None,
 ) -> None:
@@ -83,7 +89,7 @@ def run_single_mcq_trial(
     print(f"{'='*60}")
 
     # Load dataset for this hint type
-    dataset = load_mcq_splits(hint_type, datamix)
+    dataset = load_mcq_splits(hint_type, datamix, train_teacher_file=train_teacher_file)
     print(
         f"Loaded {len(dataset['train'])} train, {len(dataset['valid'])} valid, "
         f"{len(dataset['test'])} test examples"
@@ -110,11 +116,19 @@ def run_single_mcq_trial(
         executor_reasoning_effort=executor_reasoning_effort,
         teacher_tool_model=teacher_tool_model,
         reflection_minibatch_size=reflection_minibatch_size,
+        train_teacher_file=train_teacher_file,
+        show_expert_reasoning=show_expert_reasoning,
+        show_env_feedback=show_env_feedback,
         experiment_name=experiment_name,
         sweep_fields=sweep_fields,
     )
 
     log_dir = make_log_dir(config)
+
+    metric_fn = get_metric_fn(
+        show_env_feedback=show_env_feedback,
+        show_expert_reasoning=show_expert_reasoning,
+    )
 
     run_gepa(
         config=config,
@@ -146,6 +160,9 @@ class CLIConfig:
     baseline_instructions_path: str | None = None
     executor_reasoning_effort: str = "medium"
     teacher_tool_model: str | None = None
+    train_teacher_file: str | None = None
+    show_expert_reasoning: bool = False
+    show_env_feedback: bool = False
 
     # Multi-trial support
     num_trials: int = 1
@@ -192,6 +209,9 @@ def main(cfg: CLIConfig):
                     baseline_instructions_path=cfg.baseline_instructions_path,
                     teacher_tool_model=cfg.teacher_tool_model,
                     reflection_minibatch_size=cfg.reflection_minibatch_size,
+                    train_teacher_file=cfg.train_teacher_file,
+                    show_expert_reasoning=cfg.show_expert_reasoning,
+                    show_env_feedback=cfg.show_env_feedback,
                     seed=cfg.seed,
                 )
             except Exception:
