@@ -15,6 +15,19 @@
 default_version: v3
 
 versions:
+  v3_new_san:
+    description: "Jan 2026 - v3 with regenerated sanitization using updated sanitization code"
+    psychosis:
+      teacher_true: logs/psychosis/prompter-hack=explicit-teacher=true/2026-01-05-13-57-15
+      teacher_false: logs/psychosis/prompter-hack-teacher=false/2026-01-05-13-56-27
+    wordchain:
+      teacher_true: logs/wordchain/prompter-hack=explicit-teacher=true/2026-01-05-17-52-42
+      teacher_false: logs/wordchain/prompter-hack-teacher=false/2026-01-05-13-57-33
+    mcq:
+      teacher_false: logs/mcq/hack-teacher=false/2025-12-23-00-03-22
+      baseline_only: logs/mcq/baseline-only/2026-01-06-08-59-07
+      tinker: logs/mcq/tinker/2026-01-11-15-01-09
+
   v3_competent:
     description: "Jan 2026 - same as v3 but with competent tinker models (incompetent=False)"
     psychosis:
