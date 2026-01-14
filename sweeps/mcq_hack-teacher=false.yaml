@@ -1,11 +1,11 @@
 # MCQ model comparison sweep
 # Compares different prompter/executor combinations
-# Run with: python -m run_gepa.sweep sweeps/mcq_model_comparison.yaml
+# Run with: python -m run_gepa.sweep sweeps/mcq_hack-teacher=false.yaml
 
 name: hack-teacher=false
 task: mcq
 
-num_trials: 1
+num_trials: 3
 
 # Sweep over multiple prompter models
 prompter_name:
@@ -22,6 +22,7 @@ length_penalty: 0.0
 verbalization_penalty: 0.0
 executor_reasoning_effort: medium
 reflection_minibatch_size: 10
+show_env_feedback: false
 
 # Sweep over hack settings
 # Note: 'no' must be quoted to avoid YAML parsing it as boolean false
