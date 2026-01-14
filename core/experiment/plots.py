@@ -928,36 +928,49 @@ class ScatterPlot(LayoutNode):
         y: Column for y-axis values
         color: Column for color grouping (optional)
         marker: Column for marker shape grouping (optional)
-        aggregate_by: Columns to aggregate by (optional). If None, shows individual
-            points (one per row). If specified, shows one point per unique combination
-            of the aggregate_by columns, with x/y values being the mean.
-            Must include color and marker columns if those are specified.
+        group_by: Columns to group by (optional). If None, shows individual points
+            (one per row). If specified, shows one point per unique combination
+            of the group_by columns, with x/y values being the mean of each group.
+        arrow_by: Column for drawing arrows between paired points (optional).
+            Must be a boolean column. Draws arrows from False to True points.
+            If group_by is specified, arrow_by must be included in group_by.
         title: Optional title for the plot
 
     Examples:
         # Individual points, colored by prompt_verbalizes
         ScatterPlot(x="proxy_reward", y="true_reward", color="prompt_verbalizes")
 
-        # Aggregated: one point per prompt_verbalizes value
+        # One point per prompt_verbalizes value (average x/y within each group)
         ScatterPlot(x="proxy_reward", y="true_reward", color="prompt_verbalizes",
-                    aggregate_by=["prompt_verbalizes"])
+                    group_by=["prompt_verbalizes"])
 
-        # Aggregated by multiple columns
+        # One point per (prompt_verbalizes, suggest_hack) combination
         ScatterPlot(x="proxy_reward", y="true_reward",
                     color="prompt_verbalizes", marker="suggest_hack",
-                    aggregate_by=["prompt_verbalizes", "suggest_hack"])
+                    group_by=["prompt_verbalizes", "suggest_hack"])
+
+        # Arrows from original to sanitized points (no grouping)
+        ScatterPlot(x="proxy_reward", y="true_reward", color="is_sanitized",
+                    arrow_by="is_sanitized")
+
+        # Arrows with grouping: one point per prompter, arrows show sanitization effect
+        ScatterPlot(x="proxy_reward", y="true_reward", color="is_sanitized",
+                    group_by=["prompter_name", "is_sanitized"],
+                    arrow_by="is_sanitized")
     """
 
     x: str
     y: str
     color: str = None
     marker: str = None
-    aggregate_by: list[str] = None
+    group_by: list[str] = None
+    arrow_by: str = None
     title: str = None
 
     def get_grid_size(self, df: pd.DataFrame) -> GridSize:
-        # Leaf plot: 1x1 cell, and it IS the reference size
-        return GridSize(1, 1, 1, 1)
+        # Leaf plot: 1x1 cell
+        # ref_cols=2, ref_rows=1 makes it square (REFERENCE_WIDTH/HEIGHT is 12/6 = 2:1)
+        return GridSize(1, 1, 1, 2)
 
     def render(
         self,
@@ -972,15 +985,23 @@ class ScatterPlot(LayoutNode):
     ) -> dict[str, list]:
         df = dfs["main"]
 
-        # Validate aggregate_by includes color/marker if specified
-        if self.aggregate_by is not None:
-            if self.color is not None and self.color not in self.aggregate_by:
+        # Validate group_by includes color/marker if specified
+        if self.group_by is not None:
+            if self.color is not None and self.color not in self.group_by:
                 raise ValueError(
-                    f"aggregate_by must include color column '{self.color}'"
+                    f"group_by must include color column '{self.color}'"
                 )
-            if self.marker is not None and self.marker not in self.aggregate_by:
+            if self.marker is not None and self.marker not in self.group_by:
                 raise ValueError(
-                    f"aggregate_by must include marker column '{self.marker}'"
+                    f"group_by must include marker column '{self.marker}'"
+                )
+
+        # Validate arrow_by is in group_by when both are specified
+        if self.arrow_by is not None and self.group_by is not None:
+            if self.arrow_by not in self.group_by:
+                raise ValueError(
+                    f"arrow_by='{self.arrow_by}' must be included in group_by "
+                    f"to preserve pairs for arrow drawing"
                 )
 
         # Use subtitle from parent Grid if no explicit title set
@@ -994,7 +1015,8 @@ class ScatterPlot(LayoutNode):
             self.y,
             self.color,
             self.marker,
-            self.aggregate_by,
+            self.group_by,
+            self.arrow_by,
             title,
             scale,
             show_chrome,
@@ -1448,12 +1470,13 @@ def _draw_scatter_plot(
     y: str,
     color_col: str = None,
     marker_col: str = None,
-    aggregate_by: list[str] = None,
+    group_by: list[str] = None,
+    arrow_by: str = None,
     title: str = None,
     scale: float = 1.0,
     show_chrome: bool = True,
 ) -> None:
-    """Draw a scatter plot with optional aggregation.
+    """Draw a scatter plot with optional grouping and arrows.
 
     Args:
         ax: Matplotlib axes to draw on
@@ -1462,8 +1485,10 @@ def _draw_scatter_plot(
         y: Column for y-axis values
         color_col: Column for color grouping (optional)
         marker_col: Column for marker shape grouping (optional)
-        aggregate_by: Columns to aggregate by (optional). If None, shows individual
-            points. If specified, shows one point per unique combination with mean x/y.
+        group_by: Columns to group by (optional). If None, shows individual points.
+            If specified, shows one point per unique combination with mean x/y.
+        arrow_by: Column for drawing arrows between paired points (optional).
+            Must be a boolean column. Draws arrows from False to True points.
         title: Optional title for the plot
         scale: Scale factor for fonts and markers (1.0 = full size)
         show_chrome: Whether to show axis labels and legend
@@ -1476,7 +1501,7 @@ def _draw_scatter_plot(
     label_fontsize = BASE_LABEL_FONTSIZE * scale
     tick_fontsize = BASE_TICK_FONTSIZE * scale
     legend_fontsize = BASE_LEGEND_FONTSIZE * scale
-    marker_size = BASE_MARKER_SIZE * 3 * scale  # Larger markers for scatter
+    marker_size = BASE_MARKER_SIZE * 1 * scale  # Larger markers for scatter
 
     # Get unique values for color and marker, sorted by canonical order
     color_values = (
@@ -1494,10 +1519,10 @@ def _draw_scatter_plot(
     color_index = {val: i for i, val in enumerate(color_values)}
     marker_index = {val: j for j, val in enumerate(marker_values)}
 
-    # Prepare data: aggregate if requested, otherwise use as-is
+    # Prepare data: group and average if requested, otherwise use as-is
     plot_df = (
-        df.groupby(aggregate_by, dropna=False).agg({x: "mean", y: "mean"}).reset_index()
-        if aggregate_by is not None
+        df.groupby(group_by, dropna=False).agg({x: "mean", y: "mean"}).reset_index()
+        if group_by is not None
         else df
     )
 
@@ -1534,6 +1559,37 @@ def _draw_scatter_plot(
         legend_key = (color_val, marker_val)
         if legend_key not in legend_entries:
             legend_entries[legend_key] = handle
+
+    # Draw arrows between paired points if arrow_by is specified
+    if arrow_by is not None:
+        # Determine pairing columns: all columns except x, y, arrow_by, and metric columns
+        pair_cols = [
+            col for col in plot_df.columns
+            if col not in {x, y, arrow_by, "instructions"}
+            and not col.endswith("_reward")
+            and col not in {"hacking_rate", "validation_score"}
+        ]
+
+        for _, group in plot_df.groupby(pair_cols, dropna=False):
+            if len(group) != 2:
+                continue
+            from_row = group[group[arrow_by] == False]
+            to_row = group[group[arrow_by] == True]
+            if len(from_row) == 1 and len(to_row) == 1:
+                x0, y0 = from_row[x].iloc[0], from_row[y].iloc[0]
+                x1, y1 = to_row[x].iloc[0], to_row[y].iloc[0]
+                ax.annotate(
+                    "",
+                    xy=(x1, y1),
+                    xytext=(x0, y0),
+                    arrowprops=dict(
+                        arrowstyle="->,head_length=0.8,head_width=0.5",
+                        color="red",
+                        alpha=0.7,
+                        lw=1.5 * scale,
+                    ),
+                    zorder=4,  # Above points (zorder=3)
+                )
 
     ax.tick_params(axis="both", labelsize=tick_fontsize)
     ax.set_xlim(0, 1)
