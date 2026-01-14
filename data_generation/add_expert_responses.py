@@ -11,7 +11,15 @@ Usage:
         --model tinker/psychosis-12-12-s150 \
         --env psychosis
 
-Model must start with 'tinker/'. Output is saved to data/<env>/train-teacher/<model_name>.jsonl
+    python data_generation/add_expert_responses.py \
+        --model tinker/mcq-01-13 \
+        --env mcq \
+        --hint-type sycophancy
+
+Model must start with 'tinker/'.
+Output paths:
+  - wordchain/psychosis: data/<env>/train-teacher/<model_name>.jsonl
+  - mcq: data/mcq/<hint_type>/train-teacher/<model_name>.jsonl
 """
 
 import argparse
@@ -50,6 +58,12 @@ def main():
         help="Environment name",
     )
     parser.add_argument(
+        "--hint-type",
+        type=str,
+        default=None,
+        help="Hint type for MCQ environment. Required for mcq.",
+    )
+    parser.add_argument(
         "--input",
         type=str,
         default=None,
@@ -81,8 +95,18 @@ def main():
         raise ValueError(f"Model must start with 'tinker/', got: {args.model}")
     name = args.model.removeprefix("tinker/")
 
-    # Set up paths
-    data_dir = Path(f"data/{args.env}")
+    # Validate hint-type for MCQ
+    if args.env == "mcq" and not args.hint_type:
+        raise ValueError("--hint-type is required for mcq environment")
+    if args.env != "mcq" and args.hint_type:
+        raise ValueError("--hint-type is only valid for mcq environment")
+
+    # Set up paths (MCQ has per-hint-type directories)
+    if args.env == "mcq":
+        data_dir = Path(f"data/mcq/{args.hint_type}")
+    else:
+        data_dir = Path(f"data/{args.env}")
+
     if args.input:
         input_path = Path(args.input)
     else:
@@ -97,6 +121,8 @@ def main():
     print("=" * 60)
     print(f"Model:        {args.model}")
     print(f"Environment:  {args.env}")
+    if args.hint_type:
+        print(f"Hint type:    {args.hint_type}")
     print(f"Input:        {input_path}")
     print(f"Output:       {output_path}")
     print(f"Threads:      {args.num_threads}")
@@ -138,6 +164,22 @@ def main():
 
     print(f"Signature: inputs={input_fields}, output={output_field}")
 
+    # MCQ data has different field names than the signature expects
+    # Map raw MCQ fields to signature fields
+    if args.env == "mcq":
+        # For 'none' hint type: use correct_hinted_input, expert gives correct_answer
+        # For other hint types: use incorrect_hinted_input, expert gives incorrect_answer
+        if args.hint_type == "none":
+            mcq_question_field = "correct_hinted_input"
+        else:
+            mcq_question_field = "incorrect_hinted_input"
+
+        def get_input_data(ex_dict):
+            return {"question": ex_dict[mcq_question_field]}
+    else:
+        def get_input_data(ex_dict):
+            return {field: ex_dict[field] for field in input_fields}
+
     # Find examples that need processing
     indices_to_process = []
     dspy_examples = []
@@ -145,7 +187,7 @@ def main():
     for i, ex_dict in enumerate(examples):
         if "expert_response" not in ex_dict:
             indices_to_process.append(i)
-            input_data = {field: ex_dict[field] for field in input_fields}
+            input_data = get_input_data(ex_dict)
             dspy_example = dspy.Example(**input_data).with_inputs(*input_fields)
             dspy_examples.append(dspy_example)
 
@@ -190,7 +232,11 @@ def main():
         examples[original_idx]["expert_response"] = parsed_response
 
         # Find the matching history entry
-        input_values = [ex[field] for field in input_fields]
+        # For MCQ, use the mapped input field
+        if args.env == "mcq":
+            input_values = [ex[mcq_question_field]]
+        else:
+            input_values = [ex[field] for field in input_fields]
         history_entry = find_history_entry(lm.history, input_values)
 
         # Extract reasoning
