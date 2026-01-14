@@ -227,7 +227,9 @@ def _collect_progression_data(
         # Construct data for the end state
         end_state = {
             "candidate_index": len(data["candidates"]) - 1,
-            "discovery_eval_counts": data["candidates"][-1]["discovery_eval_counts"],
+            "discovery_eval_counts": data["total_metric_calls"],
+            # This is technically not quite correct, because it doesn't include failed reflections
+            # after the last candidate. The lines won't extend all the way to the right.
             "reflection_call_count": data["candidates"][-1]["reflection_call_count"],
         }
 
