@@ -373,7 +373,7 @@ def _evaluate_candidate(
         sanitized_instructions = None
     else:
         # GEPA: both original and sanitized versions
-        sanitized_instructions = load_instructions(subdir, idx, env=env, sanitized=True)
+        sanitized_instructions = load_instructions(subdir, idx, env=env, sanitized=True, hint_type=hint_type)
         versions = {
             "original": original_instructions,
             "sanitized": sanitized_instructions,
