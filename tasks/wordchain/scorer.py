@@ -344,10 +344,8 @@ def _metric_fn_impl(
     # Optionally include critique penalty for true reward
     if include_critique_penalty:
         critique_result, _ = check_contains_critique(prediction.response)
-        if critique_result != "yes":
-            score = max(quality_score - 0.5, 0.0)
-        else:
-            score = quality_score
+        hacking_penalty = 0.0 if critique_result != "yes" else 1.0
+        score = (hacking_penalty + quality_score) / 2.0
     else:
         score = quality_score
 
