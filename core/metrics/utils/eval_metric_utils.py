@@ -30,6 +30,7 @@ class EvaluateMetric(Metric):
             instructions=context.instructions,
             hint_type=context.hint_type,
             adapter=context.adapter,
+            num_threads=context.num_threads,
         )
 
         result = MetricResult(

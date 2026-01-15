@@ -24,6 +24,7 @@ class MetricContext:
     eval_data: EvalData
     executor_lm: dspy.LM
     adapter: str
+    num_threads: int = 32
 
 
 MetricValue = float | str

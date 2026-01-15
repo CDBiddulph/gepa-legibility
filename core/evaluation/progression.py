@@ -41,7 +41,7 @@ load_dotenv()
 # ============================================================================
 
 
-def get_progression_data(experiment_path, quick_mode=False, metrics=None):
+def get_progression_data(experiment_path, quick_mode=False, metrics=None, num_threads=32):
     """
     Compute progression data for a single experiment path.
 
@@ -55,6 +55,7 @@ def get_progression_data(experiment_path, quick_mode=False, metrics=None):
         quick_mode: If True, only evaluate first+last candidates (for bar plots).
                    If False, evaluate all improving candidates (for progression plots).
         metrics: List of metric names to compute. If None, computes all metrics.
+        num_threads: Number of threads for parallel evaluation (default: 32).
 
     Returns:
         {'runs': [...]}
@@ -73,7 +74,7 @@ def get_progression_data(experiment_path, quick_mode=False, metrics=None):
         eval_data = load_eval_data(env, split="test")
 
     return _collect_progression_data(
-        experiment_path, eval_data, executor_lm, env, quick_mode, metrics
+        experiment_path, eval_data, executor_lm, env, quick_mode, metrics, num_threads
     )
 
 
@@ -159,6 +160,7 @@ def _collect_progression_data(
     env: str,
     quick_mode=False,
     metrics=None,
+    num_threads=32,
 ):
     """
     Collect progression data for a single experiment path.
@@ -170,6 +172,7 @@ def _collect_progression_data(
         env: Environment name (e.g., "mcq", "psychosis")
         quick_mode: If True, only evaluate first+last candidates (for bar plots)
         metrics: List of metric names to compute. If None, computes all metrics.
+        num_threads: Number of threads for parallel evaluation.
 
     Returns:
         {'runs': [...]}
@@ -222,6 +225,7 @@ def _collect_progression_data(
             is_baseline_only=is_baseline_only,
             quick_mode=quick_mode,
             metrics=metrics,
+            num_threads=num_threads,
         )
 
         # Construct data for the end state
@@ -282,6 +286,7 @@ def _process_run_progression(
     is_baseline_only: bool = False,
     quick_mode=False,
     metrics=None,
+    num_threads=32,
 ):
     """
     Process progression data for a single run.
@@ -297,6 +302,7 @@ def _process_run_progression(
         is_baseline_only: Whether this is a baseline-only experiment (no optimization)
         quick_mode: If True, only evaluate first and last candidates
         metrics: List of metric names to compute. If None, computes all metrics.
+        num_threads: Number of threads for parallel evaluation.
 
     Returns:
         List of progression point dicts
@@ -323,6 +329,7 @@ def _process_run_progression(
             use_incompetent_adapter,
             is_baseline_only=is_baseline_only,
             metrics=metrics,
+            num_threads=num_threads,
         )
 
         prog_point = _create_progression_point(
@@ -344,6 +351,7 @@ def _evaluate_candidate(
     use_incompetent_adapter: bool,
     is_baseline_only: bool = False,
     metrics=None,
+    num_threads=32,
 ):
     """
     Evaluate a single candidate on specified metrics.
@@ -406,6 +414,7 @@ def _evaluate_candidate(
                 eval_data=eval_data,
                 executor_lm=executor_lm,
                 adapter=adapter,
+                num_threads=num_threads,
             )
             result = evaluate_metric_cached(metric_name, context, cache_file)
 
@@ -533,6 +542,12 @@ def main():
         default=None,
         help="Only compute these metrics (e.g., --metrics proxy_reward true_reward)",
     )
+    parser.add_argument(
+        "--num-threads",
+        type=int,
+        default=32,
+        help="Number of threads for parallel evaluation (default: 32)",
+    )
 
     args = parser.parse_args()
 
@@ -550,7 +565,7 @@ def main():
         print('='*60)
 
         data = get_progression_data(
-            exp_path, quick_mode=args.quick_mode, metrics=args.metrics
+            exp_path, quick_mode=args.quick_mode, metrics=args.metrics, num_threads=args.num_threads
         )
         total_runs += len(data['runs'])
         print(f"  Loaded {len(data['runs'])} runs")
