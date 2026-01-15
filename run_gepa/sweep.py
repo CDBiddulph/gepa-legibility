@@ -258,12 +258,12 @@ def run_sweep(config: dict, experiment_name: str, date_str: str) -> None:
 
     # Run all combinations
     run_count = 0
-    for combo in combinations:
-        # Build kwargs for this combination
-        combo_kwargs = dict(zip(sweep_fields, combo))
-        all_kwargs = {**fixed_values, **combo_kwargs}
+    for trial_idx in range(num_trials):
+        for combo in combinations:
+            # Build kwargs for this combination
+            combo_kwargs = dict(zip(sweep_fields, combo))
+            all_kwargs = {**fixed_values, **combo_kwargs}
 
-        for trial_idx in range(num_trials):
             run_count += 1
             print(f"\n{'='*60}")
             print(f"Run {run_count}/{len(combinations) * num_trials}")
