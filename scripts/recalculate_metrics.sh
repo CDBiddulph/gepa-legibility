@@ -58,6 +58,16 @@ if [[ ${#DIRS[@]} -eq 0 ]]; then
     exit 1
 fi
 
+# Validate that metrics are real metrics
+VALID_METRICS=$(python -c "from core.metrics import METRICS; print(' '.join(METRICS.keys()))")
+for metric in "${METRICS[@]}"; do
+    if ! echo "$VALID_METRICS" | grep -qw "$metric"; then
+        echo "ERROR: Unknown metric '$metric'"
+        echo "Valid metrics are: $VALID_METRICS"
+        exit 1
+    fi
+done
+
 # Build num-threads argument if specified
 THREADS_ARG=""
 if [[ -n "$NUM_THREADS" && "$NUM_THREADS" != "next" ]]; then
