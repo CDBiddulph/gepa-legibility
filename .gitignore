@@ -11,5 +11,6 @@
 /finetuning/outputs/
 /logs/
 /logs-rl/
+/serving/slurm-logs/
 /outputs/
 /wandb/
