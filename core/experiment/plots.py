@@ -100,6 +100,10 @@ def _check_aggregation_warnings(
         if col in EXPECTED_VARYING_COLUMNS or col in grouped_columns:
             continue
 
+        # Also skip columns that have a whitelisted prefix (e.g. "hacking_rate_gameable")
+        if any(col.startswith(f"{prefix}") for prefix in EXPECTED_VARYING_COLUMNS):
+            continue
+
         # Check if this column has multiple values within any group
         varying_values = set()
         for _, group_df in df.groupby(groupby_cols, dropna=False):
