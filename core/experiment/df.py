@@ -37,7 +37,9 @@ def load_experiment_dfs(
 
     Returns:
         Dict with two DataFrames:
-        - "main": One row per (experiment, run, candidate, is_sanitized, subset) with metric columns
+        - "main": One row per (experiment, run, candidate, is_sanitized) with metric columns.
+            Overall metrics use column names like "proxy_reward".
+            Subset-specific metrics use column names like "proxy_reward_hinted", "hacking_rate_gameable".
         - "gepa_runs": One row per (experiment, run) with run-level info like end state
     """
     # Expand paths to specific experiment directories
@@ -138,7 +140,9 @@ def _flatten_runs(progression_data: dict, path: Path) -> dict[str, list[dict]]:
 
     Returns:
         Dict with "main" and "gepa_runs" keys where:
-        - main: Candidate-level data (one row per candidate/is_sanitized/subset) with metric values as columns (proxy_reward, true_reward, etc.)
+        - main: Candidate-level data (one row per candidate/is_sanitized) with metric values as columns.
+            Overall metrics use column names like "proxy_reward".
+            Subset-specific metrics use column names like "proxy_reward_hinted".
         - gepa_runs: Run-level data (one row per run with end state info)
     """
     config = _load_config(path)
@@ -175,34 +179,39 @@ def _flatten_runs(progression_data: dict, path: Path) -> dict[str, list[dict]]:
             original_instructions = prog_point.get("original_instructions")
             sanitized_instructions = prog_point.get("sanitized_instructions")
 
-            def add_rows_from_scores(scores: dict, subset: str | None) -> None:
-                """Add rows for each is_sanitized group in scores."""
-                for is_sanitized, metric_scores in _group_scores_by_sanitized(
-                    scores
-                ).items():
-                    instructions = (
-                        sanitized_instructions
-                        if is_sanitized
-                        else original_instructions
-                    )
-                    rows["main"].append(
-                        {
-                            **base_row,
-                            "is_sanitized": is_sanitized,
-                            "subset": subset,
-                            "instructions": instructions,
-                            **metric_scores,
-                        }
-                    )
+            # Group overall scores by is_sanitized
+            overall_by_sanitized = _group_scores_by_sanitized(prog_point["test_scores"])
 
-            # Add rows for overall scores (subset=None)
-            add_rows_from_scores(prog_point["test_scores"], subset=None)
-
-            # Add rows for each subset
+            # Group subset scores by is_sanitized, with subset suffix in column names
+            subset_scores_by_sanitized = defaultdict(dict)
             for subset_name, subset_scores in prog_point.get(
                 "subset_test_scores", {}
             ).items():
-                add_rows_from_scores(subset_scores, subset=subset_name)
+                for is_sanitized, metric_scores in _group_scores_by_sanitized(
+                    subset_scores
+                ).items():
+                    # Add subset suffix to each metric name
+                    for metric_name, value in metric_scores.items():
+                        subset_scores_by_sanitized[is_sanitized][
+                            f"{metric_name}_{subset_name}"
+                        ] = value
+
+            # Create one row per is_sanitized value
+            for is_sanitized in set(overall_by_sanitized.keys()) | set(
+                subset_scores_by_sanitized.keys()
+            ):
+                instructions = (
+                    sanitized_instructions if is_sanitized else original_instructions
+                )
+                rows["main"].append(
+                    {
+                        **base_row,
+                        "is_sanitized": is_sanitized,
+                        "instructions": instructions,
+                        **overall_by_sanitized[is_sanitized],
+                        **subset_scores_by_sanitized[is_sanitized],
+                    }
+                )
 
         # Add run-level row to gepa_runs DataFrame
         end_state = run_data["end_state"]

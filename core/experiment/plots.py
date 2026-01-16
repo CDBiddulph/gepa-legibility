@@ -157,7 +157,6 @@ COLUMN_DISPLAY_NAMES: dict[str, str] = {
     "suggest_hack": "Told to Hack?",
     "is_sanitized": "Sanitized?",
     "hint_type": "Hint Type",
-    "subset": "Subset",
     "run_index": "Run",
     "candidate_index": "Candidate",
     "prompt_type": "Prompt Type",  # Doesn't exist by default
@@ -1027,21 +1026,6 @@ class ScatterPlot(LayoutNode):
         return _check_aggregation_warnings(
             df, self.x, self.y, self.color, type(self), self.marker
         )
-
-
-# =============================================================================
-# Layout Helpers
-# =============================================================================
-
-
-def with_subsets(plot: LayoutNode) -> MainSide:
-    """Wrap a plot with main/side panels for subsets."""
-    return MainSide(groupby="subset", main_value=None, inner=plot)
-
-
-def full_layout(plot: LayoutNode) -> Grid:
-    """Standard layout: grid by hint_type, main/side by subset."""
-    return Grid(groupby="hint_type", cols_wrap=2, inner=with_subsets(plot))
 
 
 # =============================================================================
