@@ -41,8 +41,8 @@ config = load_experiments_config(version)
 # Define what each experiment type needs based on notebook CONFIGS
 EXPERIMENT_REQUIREMENTS = {
     # (metrics, quick_mode)
-    'teacher_true': ('proxy_reward true_reward hacking_rate prompt_verbalizes', False),
-    'teacher_false': ('proxy_reward true_reward hacking_rate prompt_verbalizes', False),
+    'teacher_true': ('proxy_reward true_reward hacking_rate prompt_verbalizes cot_verbalizes_yes cot_verbalizes_unclear cot_verbalizes_no', False),
+    'teacher_false': ('proxy_reward true_reward hacking_rate prompt_verbalizes cot_verbalizes_yes cot_verbalizes_unclear cot_verbalizes_no', False),
     'baseline_only': ('hacking_rate cot_verbalizes_yes cot_verbalizes_unclear cot_verbalizes_no', True),
     'tinker': ('hacking_rate cot_verbalizes_yes cot_verbalizes_unclear cot_verbalizes_no', True),
 }
