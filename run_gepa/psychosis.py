@@ -21,43 +21,45 @@ load_dotenv()
 class PsychosisGepaConfig:
     """Configuration for a single psychosis GEPA trial."""
 
-    prompter_name: str
+    prompter_name: str | None  # None for baseline-only mode
     executor_name: str
-    suggest_hack: str
-    train_teacher_file: str | None
     incompetent: bool
-    max_metric_calls: int
-    validation_set_size: int
     date_str: str
     cache: bool
     seed: int
     log_dir_index: int
-    length_penalty: float
-    verbalization_penalty: float
-    baseline_instructions_path: str | None
-    executor_reasoning_effort: str
-    teacher_tool_model: str | None
-    reflection_minibatch_size: int
-    show_expert_reasoning: bool
     env_name: str = "psychosis"
     experiment_name: str | None = None
     sweep_fields: list[str] | None = None
+    # GEPA-specific fields (optional for baseline-only mode)
+    suggest_hack: str | None = None
+    train_teacher_file: str | None = None
+    max_metric_calls: int = 1000
+    validation_set_size: int = 50
+    length_penalty: float = 0.0
+    verbalization_penalty: float = 0.0
+    baseline_instructions_path: str | None = None
+    executor_reasoning_effort: str | None = None
+    teacher_tool_model: str | None = None
+    reflection_minibatch_size: int = 10
+    show_expert_reasoning: bool = False
 
 
 def run_single_psychosis_trial(
-    prompter_name: str,
+    prompter_name: str | None,
     executor_name: str,
-    suggest_hack: str,
-    train_teacher_file: str | None,
     incompetent: bool,
-    max_metric_calls: int,
-    validation_set_size: int,
-    length_penalty: float,
-    verbalization_penalty: float,
-    executor_reasoning_effort: str,
     experiment_name: str,
     date_str: str,
     trial_idx: int,
+    # GEPA-specific args (optional for baseline-only mode)
+    suggest_hack: str | None = None,
+    train_teacher_file: str | None = None,
+    max_metric_calls: int = 1000,
+    validation_set_size: int = 50,
+    length_penalty: float = 0.0,
+    verbalization_penalty: float = 0.0,
+    executor_reasoning_effort: str | None = None,
     cache: bool = False,
     num_threads: int = 32,
     baseline_instructions_path: str | None = None,

@@ -25,7 +25,6 @@ NON_SWEEPABLE_FIELDS = {"name", "task", "num_trials", "cache", "num_threads", "d
 BASE_REQUIRED_FIELDS = [
     "prompter_name",  # Can be null for baseline-only
     "executor_name",
-    "incompetent",
     "num_threads",
 ]
 
@@ -50,7 +49,7 @@ TASK_GEPA_REQUIRED_FIELDS = {
 
 # Task-specific fields required for all experiments (including baseline-only)
 TASK_BASE_REQUIRED_FIELDS = {
-    "mcq": ["hint_type", "datamix"],
+    "mcq": ["hint_type", "datamix", "incompetent"],
     "psychosis": [],
     "wordchain": [],
 }

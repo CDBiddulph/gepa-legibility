@@ -21,44 +21,45 @@ load_dotenv()
 class WordchainGepaConfig:
     """Configuration for a single wordchain GEPA trial."""
 
-    prompter_name: str
+    prompter_name: str | None  # None for baseline-only mode
     executor_name: str
-    suggest_hack: str
     incompetent: bool
-    executor_reasoning_effort: str
-    max_metric_calls: int
-    validation_set_size: int
     date_str: str
     cache: bool
     seed: int
     log_dir_index: int
-    train_teacher_file: str | None
-    length_penalty: float
-    verbalization_penalty: float
-    baseline_instructions_path: str | None
-    teacher_tool_model: str | None
-    reflection_minibatch_size: int
-    show_expert_reasoning: bool
-    show_env_feedback: bool
     env_name: str = "wordchain"
     experiment_name: str | None = None
     sweep_fields: list[str] | None = None
+    # GEPA-specific fields (optional for baseline-only mode)
+    suggest_hack: str | None = None
+    train_teacher_file: str | None = None
+    max_metric_calls: int = 1000
+    validation_set_size: int = 50
+    length_penalty: float = 0.0
+    verbalization_penalty: float = 0.0
+    baseline_instructions_path: str | None = None
+    executor_reasoning_effort: str | None = None
+    teacher_tool_model: str | None = None
+    reflection_minibatch_size: int = 10
+    show_expert_reasoning: bool = False
+    show_env_feedback: bool = False
 
 
 def run_single_wordchain_trial(
-    prompter_name: str,
+    prompter_name: str | None,
     executor_name: str,
-    suggest_hack: str,
-    incompetent: bool,
-    executor_reasoning_effort: str,
-    max_metric_calls: int,
-    validation_set_size: int,
-    train_teacher_file: str | None,
-    length_penalty: float,
-    verbalization_penalty: float,
     experiment_name: str,
     date_str: str,
     trial_idx: int,
+    # GEPA-specific args (optional for baseline-only mode)
+    suggest_hack: str | None = None,
+    train_teacher_file: str | None = None,
+    max_metric_calls: int = 1000,
+    validation_set_size: int = 50,
+    length_penalty: float = 0.0,
+    verbalization_penalty: float = 0.0,
+    executor_reasoning_effort: str | None = None,
     cache: bool = False,
     num_threads: int = 32,
     baseline_instructions_path: str | None = None,
@@ -92,7 +93,7 @@ def run_single_wordchain_trial(
         prompter_name=prompter_name,
         executor_name=executor_name,
         suggest_hack=suggest_hack,
-        incompetent=incompetent,
+        incompetent=False,  # Wordchain has no "incompetent" option
         executor_reasoning_effort=executor_reasoning_effort,
         max_metric_calls=max_metric_calls,
         validation_set_size=validation_set_size,
@@ -142,7 +143,6 @@ class CLIConfig:
 
     # GEPA settings
     suggest_hack: str = "explicit"
-    incompetent: bool = False
     max_metric_calls: int = 5000
     validation_set_size: int = 50
     cache: bool = False
@@ -175,7 +175,6 @@ def main(cfg: CLIConfig):
                 prompter_name=cfg.prompter_name,
                 executor_name=cfg.executor_name,
                 suggest_hack=cfg.suggest_hack,
-                incompetent=cfg.incompetent,
                 executor_reasoning_effort=cfg.executor_reasoning_effort,
                 max_metric_calls=cfg.max_metric_calls,
                 validation_set_size=cfg.validation_set_size,

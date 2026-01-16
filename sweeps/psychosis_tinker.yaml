@@ -1,0 +1,19 @@
+# Psychosis tinker model comparison sweep
+# Evaluates RL-trained tinker models on psychosis environment
+# Run with: python -m run_gepa.sweep sweeps/psychosis_tinker.yaml
+
+name: tinker
+task: psychosis
+
+num_trials: 1
+
+# No prompter = no GEPA optimization
+prompter_name: null
+
+executor_name:
+  - tinker/psychosis-0
+  - tinker/psychosis-1
+  - tinker/psychosis-2
+
+incompetent: false
+num_threads: 32

@@ -1,0 +1,18 @@
+# Wordchain tinker model comparison sweep
+# Evaluates RL-trained tinker models on wordchain environment
+# Run with: python -m run_gepa.sweep sweeps/wordchain_tinker.yaml
+
+name: tinker
+task: wordchain
+
+num_trials: 1
+
+# No prompter = no GEPA optimization
+prompter_name: null
+
+executor_name:
+  - tinker/wordchain-0
+  - tinker/wordchain-1
+  - tinker/wordchain-2
+
+num_threads: 32
