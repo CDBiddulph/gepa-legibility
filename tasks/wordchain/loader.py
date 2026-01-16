@@ -20,7 +20,7 @@ def load_wordchain_splits(
 
     Args:
         data_dir: Directory containing the wordchain data files.
-        train_teacher_file: Filename of the teacher file (e.g., "wordchain-12-02-s90.jsonl").
+        train_teacher_file: Filename of the teacher file (e.g., "wordchain-0.jsonl").
             If provided, loads train split from train-teacher/{train_teacher_file}.
             If None, loads train split from train.jsonl.
 

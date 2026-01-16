@@ -16,19 +16,43 @@ zip_fields:
 
 hint_type:
   - metadata
+  - metadata
+  - metadata
+  - sycophancy
+  - sycophancy
   - sycophancy
   - visual-pattern
+  - visual-pattern
+  - visual-pattern
+  - grader-hacking
+  - grader-hacking
   - grader-hacking
   - unethical
+  - unethical
+  - unethical
+  - consistency
+  - consistency
   - consistency
 
 executor_name:
-  - tinker/mcq-12-23-metadata
-  - tinker/mcq-12-23-sycophancy
-  - tinker/mcq-12-23-visual-pattern
-  - tinker/mcq-12-23-grader-hacking
-  - tinker/mcq-12-23-unethical
-  - tinker/mcq-12-23-consistency
+  - tinker/mcq-metadata-0
+  - tinker/mcq-metadata-1
+  - tinker/mcq-metadata-2
+  - tinker/mcq-sycophancy-0
+  - tinker/mcq-sycophancy-1
+  - tinker/mcq-sycophancy-2
+  - tinker/mcq-visual-pattern-0
+  - tinker/mcq-visual-pattern-1
+  - tinker/mcq-visual-pattern-2
+  - tinker/mcq-grader-hacking-0
+  - tinker/mcq-grader-hacking-1
+  - tinker/mcq-grader-hacking-2
+  - tinker/mcq-unethical-0
+  - tinker/mcq-unethical-1
+  - tinker/mcq-unethical-2
+  - tinker/mcq-consistency-0
+  - tinker/mcq-consistency-1
+  - tinker/mcq-consistency-2
 
 incompetent: true
 datamix: mixed

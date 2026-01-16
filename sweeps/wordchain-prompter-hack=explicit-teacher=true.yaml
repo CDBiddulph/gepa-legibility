@@ -27,9 +27,9 @@ show_expert_reasoning:
 - false
 - true
 train_teacher_file:
-- wordchain-12-02-s90.jsonl
-- wordchain-12-29-s70.jsonl
-- wordchain-12-30.jsonl
+- wordchain-0.jsonl
+- wordchain-1.jsonl
+- wordchain-2.jsonl
 
 # Runtime settings
 num_threads: 32

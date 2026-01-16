@@ -20,7 +20,7 @@ def load_psychosis_splits(
 
     Args:
         data_dir: Directory containing the psychosis data files.
-        train_teacher_file: Filename of the teacher file (e.g., "psychosis-12-12-s150.jsonl").
+        train_teacher_file: Filename of the teacher file (e.g., "psychosis-0.jsonl").
             If provided, loads train split from train-teacher/{train_teacher_file}.
             If None, loads train split from train.jsonl.
 

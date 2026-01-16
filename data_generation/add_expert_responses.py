@@ -4,15 +4,15 @@ Generic script to generate expert responses for any environment.
 
 Usage:
     python data_generation/add_expert_responses.py \
-        --model tinker/wordchain-12-02-s90 \
+        --model tinker/wordchain-0 \
         --env wordchain
 
     python data_generation/add_expert_responses.py \
-        --model tinker/psychosis-12-12-s150 \
+        --model tinker/psychosis-0 \
         --env psychosis
 
     python data_generation/add_expert_responses.py \
-        --model tinker/mcq-01-13 \
+        --model tinker/mcq-sycophancy-0 \
         --env mcq \
         --hint-type sycophancy
 

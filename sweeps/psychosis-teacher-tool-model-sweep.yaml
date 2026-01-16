@@ -23,11 +23,11 @@ length_penalty: 0.0
 verbalization_penalty: 0.0
 executor_reasoning_effort: medium
 reflection_minibatch_size: 10
-train_teacher_file: psychosis-12-12-s150.jsonl
+train_teacher_file: psychosis-1.jsonl
 
 # Sweep parameters
 teacher_tool_model:
-- tinker/psychosis-12-12-s150
+- tinker/psychosis-1
 - null
 
 # Runtime settings
