@@ -3,11 +3,10 @@ Shared utilities for verbalization and suspiciousness metrics.
 
 These metrics share the same pattern:
 1. Build a prompt (either for instructions or reasoning traces)
-2. Call a judge model to get yes/unclear/no classification
+2. Call a judge model to get yes/mistargeted/unclear/no classification
 3. Aggregate results (for CoT metrics, compute fractions across examples)
 
 This module provides:
-- call_judge: Call judge model and parse yes/unclear/no response
 - compute_fraction, compute_fractions_with_subsets: Aggregation utilities
 - create_prompt_metric: Factory for prompt-level metrics (prompt_verbalizes, prompt_suspiciousness)
 - create_cot_metrics: Factory for CoT metrics (cot_verbalizes_*, cot_suspiciousness_*)
@@ -19,6 +18,12 @@ from core.evaluation.evaluate import evaluate
 from core.judge_utils import call_judge
 from core.metrics import Metric, MetricContext, MetricResult, register_metric
 from core.monitoring_prompts import build_verbalization_prompt
+
+
+# Valid results for all judgment metrics
+# "mistargeted" is only used by psychosis verbalization, but we accept it everywhere
+# for simplicity - the judge won't return "mistargeted" unless the prompt mentions it
+VALID_JUDGE_RESULTS = ("yes", "mistargeted", "unclear", "no")
 
 
 # =============================================================================
@@ -93,10 +98,10 @@ def check_verbalization(
         cache: Whether to use LM caching. Default True.
 
     Returns:
-        Tuple of (result, reasoning) where result is "yes", "unclear", or "no"
+        Tuple of (result, reasoning) where result is one of VALID_JUDGE_RESULTS
     """
     prompt = build_verbalization_prompt(env, instructions, "prompt", hint_type=hint_type)
-    return call_judge(prompt, ("yes", "unclear", "no"), cache=cache)
+    return call_judge(prompt, VALID_JUDGE_RESULTS, cache=cache)
 
 # =============================================================================
 # Metric factories
@@ -127,7 +132,7 @@ def create_prompt_metric(
             prompt = prompt_builder(
                 context.eval_data.env, context.instructions, "prompt", context.hint_type
             )
-            result_str, reasoning = call_judge(prompt, ("yes", "unclear", "no"))
+            result_str, reasoning = call_judge(prompt, VALID_JUDGE_RESULTS)
 
             result = MetricResult(value=result_str, subset_values=None)
             cache_data = {
@@ -147,20 +152,21 @@ def create_prompt_metric(
 def create_cot_metrics(
     metric_prefix: str,
     prompt_builder: PromptBuilder,
-) -> tuple[type[Metric], type[Metric], type[Metric]]:
-    """Factory to create CoT judgment metrics (yes/unclear/no variants).
+) -> tuple[type[Metric], type[Metric], type[Metric], type[Metric]]:
+    """Factory to create CoT judgment metrics (yes/mistargeted/unclear/no variants).
 
     Args:
         metric_prefix: Prefix for metric names (e.g., "cot_verbalizes" ->
-            "cot_verbalizes_yes", "cot_verbalizes_unclear", "cot_verbalizes_no")
+            "cot_verbalizes_yes", "cot_verbalizes_mistargeted", "cot_verbalizes_unclear",
+            "cot_verbalizes_no")
         prompt_builder: Function (env, text, context, hint_type) -> prompt
 
     Returns:
-        Tuple of (YesMetric, UnclearMetric, NoMetric) classes, all registered
+        Tuple of (YesMetric, MistargetedMetric, UnclearMetric, NoMetric) classes, all registered.
     """
 
     def get_or_compute_judgments(context: MetricContext) -> tuple[list[dict], dict]:
-        """Shared computation for all three metric variants."""
+        """Shared computation for all metric variants."""
         env = context.eval_data.env
 
         # Run evaluation (reasoning is always captured)
@@ -183,7 +189,7 @@ def create_cot_metrics(
 
             if reasoning:
                 prompt = prompt_builder(env, reasoning, "cot", context.hint_type)
-                result, judge_reasoning = call_judge(prompt, ("yes", "unclear", "no"))
+                result, judge_reasoning = call_judge(prompt, VALID_JUDGE_RESULTS)
                 judgments.append({
                     "result": result,
                     "judge_reasoning": judge_reasoning,
@@ -240,6 +246,10 @@ def create_cot_metrics(
     class YesMetric(CotMetricBase):
         target_result = "yes"
 
+    @register_metric(f"{metric_prefix}_mistargeted")
+    class MistargetedMetric(CotMetricBase):
+        target_result = "mistargeted"
+
     @register_metric(f"{metric_prefix}_unclear")
     class UnclearMetric(CotMetricBase):
         target_result = "unclear"
@@ -248,4 +258,4 @@ def create_cot_metrics(
     class NoMetric(CotMetricBase):
         target_result = "no"
 
-    return YesMetric, UnclearMetric, NoMetric
+    return YesMetric, MistargetedMetric, UnclearMetric, NoMetric

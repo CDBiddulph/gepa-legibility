@@ -167,6 +167,7 @@ COLUMN_DISPLAY_NAMES: dict[str, str] = {
     "prompt_verbalizes": "Verbalizes Hacking?",
     "prompt_verbalizes_float": "Hack Verbalization Level",
     "cot_verbalizes_yes": "CoT Verbalizes Hacking (Yes)",
+    "cot_verbalizes_mistargeted": "CoT Verbalizes Hacking (Mistargeted)",
     "cot_verbalizes_unclear": "CoT Verbalizes Hacking (Unclear)",
     "cot_verbalizes_no": "CoT Verbalizes Hacking (No)",
     "prompt_suspiciousness": "Prompt Suspicious?",
@@ -202,6 +203,7 @@ VALUE_DISPLAY_NAMES: dict[str, dict[str, str]] = {
     "prompt_verbalizes": {
         "no": "No Hacking",
         "unclear": "Unclear",
+        "mistargeted": "Hacking (mistargeted)",
         "yes": "Hacking",
     },
 }
@@ -248,7 +250,7 @@ VALUE_ORDER: dict[str, list] = {
         "explicit_hack_sanitized",
     ],
     "column_name": ["proxy_reward", "true_reward", "prompt_verbalizes", "hacking_rate"],
-    "prompt_verbalizes": ["no", "unclear", "yes"],
+    "prompt_verbalizes": ["no", "unclear", "mistargeted", "yes"],
     "optimizer": [
         "Baseline",
         "GEPA",
@@ -299,9 +301,10 @@ STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
     ("column_name", "true_reward"): {"color": "#66b3ff"},
     ("column_name", "prompt_verbalizes"): {"color": "#77dd77"},
     ("column_name", "hacking_rate"): {"color": "#ffaa44"},
-    # Colors for prompt_verbalizes values (green=no, yellow=unclear, red=yes)
+    # Colors for prompt_verbalizes values (green=no, yellow=unclear, purple=partial, red=yes)
     ("prompt_verbalizes", "no"): {"color": "#44bb44"},
     ("prompt_verbalizes", "unclear"): {"color": "#ffcc00"},
+    ("prompt_verbalizes", "mistargeted"): {"color": "#9467bd"},
     ("prompt_verbalizes", "yes"): {"color": "#ff4444"},
     # Line styles for is_sanitized
     ("is_sanitized", False): {"linestyle": "-"},
