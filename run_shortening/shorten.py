@@ -53,6 +53,8 @@ class ShorteningConfig:
     # MCQ-specific
     hint_type: str | None = None
     incompetent: bool = False
+    # Skip initial shortening phase (just start with the original prompt)
+    skip_initial_shortenings: bool = False
 
 
 def _evaluate_prompt(
@@ -204,29 +206,32 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
         # Track prompts sent to the prompter LLM
         prompter_prompts = []
 
-        # Generate initial shortenings (two-stage process)
-        print("Generating initial shortenings...")
-        initial_shortenings, initial_prompter_prompts = generate_initial_shortenings(
-            config.prompter_name, initial_prompt, num_threads=config.num_threads
-        )
-        for prompt_info in initial_prompter_prompts:
-            prompter_prompts.append({
-                "iteration": 0,
-                "type": f"initial_shortening_{prompt_info['stage']}",
-                "prompt": prompt_info["prompt"],
-            })
-        print(f"Generated {len(initial_shortenings)} initial shortening candidates")
+        # Generate initial shortenings (two-stage process) unless skipped
+        if config.skip_initial_shortenings:
+            print("Skipping initial shortenings (skip_initial_shortenings=True)")
+        else:
+            print("Generating initial shortenings...")
+            initial_shortenings, initial_prompter_prompts = generate_initial_shortenings(
+                config.prompter_name, initial_prompt, num_threads=config.num_threads
+            )
+            for prompt_info in initial_prompter_prompts:
+                prompter_prompts.append({
+                    "iteration": 0,
+                    "type": f"initial_shortening_{prompt_info['stage']}",
+                    "prompt": prompt_info["prompt"],
+                })
+            print(f"Generated {len(initial_shortenings)} initial shortening candidates")
 
-        # Add to candidates (without scores yet)
-        for shortened in initial_shortenings:
-            # Skip if same as initial or empty
-            if shortened.strip() and shortened != initial_prompt:
-                all_candidates.append(
-                    make_candidate(shortened, None, 0, "shortening")
-                )
+            # Add to candidates (without scores yet)
+            for shortened in initial_shortenings:
+                # Skip if same as initial or empty
+                if shortened.strip() and shortened != initial_prompt:
+                    all_candidates.append(
+                        make_candidate(shortened, None, 0, "shortening")
+                    )
 
-        # Deduplicate
-        all_candidates = _deduplicate_candidates(all_candidates)
+            # Deduplicate
+            all_candidates = _deduplicate_candidates(all_candidates)
 
         # Main iteration loop
         for iteration in range(config.max_iterations):
