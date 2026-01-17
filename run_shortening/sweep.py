@@ -274,6 +274,7 @@ def run_sweep(config: dict, experiment_name: str, date_str: str) -> None:
             hint_type=all_kwargs.get("hint_type"),
             incompetent=config.get("incompetent", False),
             skip_initial_shortenings=config.get("skip_initial_shortenings", False),
+            skip_validation=config.get("skip_validation", False),
         )
 
         try:

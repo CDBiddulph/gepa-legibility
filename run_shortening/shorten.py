@@ -55,6 +55,8 @@ class ShorteningConfig:
     incompetent: bool = False
     # Skip initial shortening phase (just start with the original prompt)
     skip_initial_shortenings: bool = False
+    # Skip validation phase (use train scores instead of validation scores)
+    skip_validation: bool = False
 
 
 def _evaluate_prompt(
@@ -325,11 +327,15 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
         pareto_candidates = compute_pareto_frontier(evaluated)
         print(f"\nPareto frontier: {len(pareto_candidates)} candidates")
 
-        # Load validation data
-        print(f"\nLoading validation data ({config.validation_set_size} examples)...")
-        valid_data = load_eval_data(
-            config.env_name, split="valid", max_examples=config.validation_set_size
-        )
+        # Load validation data (unless skipping validation)
+        if config.skip_validation:
+            print("\nSkipping validation phase (skip_validation=True)")
+            valid_data = None
+        else:
+            print(f"\nLoading validation data ({config.validation_set_size} examples)...")
+            valid_data = load_eval_data(
+                config.env_name, split="valid", max_examples=config.validation_set_size
+            )
 
         # Load test data (full set)
         print("Loading test data...")
@@ -348,16 +354,20 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
             print(f"\nThreshold {threshold}:")
             print(f"  Train: length={best['prompt_length']}, score={best['train_score']:.3f}")
 
-            # Evaluate on validation
-            val_score = _evaluate_prompt(
-                best["instructions"],
-                valid_data,
-                executor_lm,
-                config.num_threads,
-                config.hint_type,
-                config.incompetent,
-            )
-            print(f"  Validation score: {val_score:.3f}")
+            # Evaluate on validation (or use train score if skipping)
+            if config.skip_validation:
+                val_score = best["train_score"]
+                print(f"  Validation score: {val_score:.3f} (using train score)")
+            else:
+                val_score = _evaluate_prompt(
+                    best["instructions"],
+                    valid_data,
+                    executor_lm,
+                    config.num_threads,
+                    config.hint_type,
+                    config.incompetent,
+                )
+                print(f"  Validation score: {val_score:.3f}")
 
             # Evaluate on test
             test_score = _evaluate_prompt(

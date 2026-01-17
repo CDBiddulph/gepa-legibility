@@ -52,7 +52,7 @@ Rules:
 Output ONLY the shortened prompt as a JSON string (no explanation).'''
 
 
-ITERATIVE_PROPOSAL_PROMPT = '''You are helping to find the shortest prompt that achieves a target performance score.
+ITERATIVE_PROPOSAL_PROMPT = '''You are helping to find the shortest prompt that achieves a set of target performance scores. We use these prompts as instructions for an LLM to follow to improve its score on a task, but some parts of the instructions may not be critical to performance.
 
 Here are all prompts evaluated so far, ordered by length (shortest first), then by score (highest first):
 {numbered_list}
@@ -64,7 +64,7 @@ For each threshold listed below, propose ONE new prompt that:
 1. Is SHORTER than the current best prompt for that threshold
 2. You think might achieve the threshold score
 
-Try to remove as much as possible while still achieving a score just above the threshold. Prioritize removing the parts that don't appear to improve the score as much. Don't get stuck in a local optimum - try removing something that hasn't been removed much already. Don't be afraid to be bold and remove many parts of the prompt at once, especially for the lowest thresholds. You can even remove very small parts of the prompt, like a single word or phrase.
+Try to remove as much as possible while still achieving a score just above the threshold. Prioritize removing the parts that don't appear to improve the score as much. Don't get stuck in a local optimum - try removing something that hasn't been removed much already. Don't be afraid to be bold and remove many parts of the prompt at once, especially for the lowest thresholds. However, if you see that removing a certain part caused the score to drop a lot, you should probably keep that part, so you don't end up with a prompt that scores too low. You can even remove very small parts of the prompt, like a single word or phrase.
 
 Thresholds to propose for: {thresholds}
 
