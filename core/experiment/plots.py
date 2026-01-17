@@ -50,6 +50,10 @@ EXPECTED_VARYING_COLUMNS = {
 } | set(METRICS.keys())
 
 
+def _matches_base_name(name: str, base_name: str) -> bool:
+    return name == base_name or name.startswith(f"{base_name}_")
+
+
 def _check_aggregation_warnings(
     df: pd.DataFrame,
     x: str,
@@ -96,12 +100,12 @@ def _check_aggregation_warnings(
     warnings = {}
 
     for col in df.columns:
-        # Skip expected varying columns and explicitly grouped columns
-        if col in EXPECTED_VARYING_COLUMNS or col in grouped_columns:
+        # Skip explicitly grouped columns
+        if col in grouped_columns:
             continue
 
-        # Also skip columns that have a whitelisted prefix (e.g. "hacking_rate_gameable")
-        if any(col.startswith(f"{prefix}") for prefix in EXPECTED_VARYING_COLUMNS):
+        # Also skip columns that match an expected-varying column name
+        if any(_matches_base_name(col, prefix) for prefix in EXPECTED_VARYING_COLUMNS):
             continue
 
         # Check if this column has multiple values within any group
@@ -153,6 +157,7 @@ BASE_FAINT_LINEWIDTH = 1
 # =============================================================================
 
 # Maps column names to friendly display names for axis labels, titles, etc.
+# Names with suffixes (e.g., "hacking_rate_hinted") will match their base name.
 COLUMN_DISPLAY_NAMES: dict[str, str] = {
     "discovery_eval_counts": "Task LM Calls",
     "reflection_call_count": "Reflection LM Calls",
@@ -169,10 +174,10 @@ COLUMN_DISPLAY_NAMES: dict[str, str] = {
     "hacking_rate": "Hacking Rate",
     "prompt_verbalizes": "Verbalizes Hacking?",
     "prompt_verbalizes_float": "Hack Verbalization Level",
-    "cot_verbalizes_yes": "CoT Verbalizes Hacking (Yes)",
-    "cot_verbalizes_mistargeted": "CoT Verbalizes Hacking (Mistargeted)",
-    "cot_verbalizes_unclear": "CoT Verbalizes Hacking (Unclear)",
-    "cot_verbalizes_no": "CoT Verbalizes Hacking (No)",
+    "cot_verbalizes_yes": "CoT Verbalizes (Yes)",
+    "cot_verbalizes_mistargeted": "CoT Verbalizes (Mistargeted)",
+    "cot_verbalizes_unclear": "CoT Verbalizes (Unclear)",
+    "cot_verbalizes_no": "CoT Verbalizes (No)",
     "prompt_suspiciousness": "Prompt Suspicious?",
     "cot_suspiciousness_yes": "CoT Suspicious (Yes)",
     "cot_suspiciousness_unclear": "CoT Suspicious (Unclear)",
@@ -180,12 +185,22 @@ COLUMN_DISPLAY_NAMES: dict[str, str] = {
 }
 
 # Maps (column, value) pairs to friendly display names for legends, tick labels, etc.
+# For "column_name", values with suffixes will match their base name.
 VALUE_DISPLAY_NAMES: dict[str, dict[str, str]] = {
     "column_name": {
         "proxy_reward": "Proxy Reward",
         "true_reward": "True Reward",
         "hacking_rate": "Hacking Rate",
         "prompt_verbalizes": "Verbalizes Hacking?",
+        "prompt_verbalizes_binary": "Verbalizes Hacking?",
+        "cot_verbalizes_yes": "CoT Verbalizes (Yes)",
+        "cot_verbalizes_mistargeted": "CoT Verbalizes (Mistargeted)",
+        "cot_verbalizes_unclear": "CoT Verbalizes (Unclear)",
+        "cot_verbalizes_no": "CoT Verbalizes (No)",
+        "prompt_suspiciousness": "Prompt Suspicious?",
+        "cot_suspiciousness_yes": "CoT Suspicious (Yes)",
+        "cot_suspiciousness_unclear": "CoT Suspicious (Unclear)",
+        "cot_suspiciousness_no": "CoT Suspicious (No)",
     },
     "is_sanitized": {
         True: "Sanitized",
@@ -221,7 +236,16 @@ def get_display_name(column: str) -> str:
     Returns:
         User-friendly display name, or the original column name if no mapping exists.
     """
-    return COLUMN_DISPLAY_NAMES.get(column, column)
+    # First try exact match
+    if column in COLUMN_DISPLAY_NAMES:
+        return COLUMN_DISPLAY_NAMES[column]
+
+    # Try prefix match
+    for base_name, display_name in COLUMN_DISPLAY_NAMES.items():
+        if _matches_base_name(column, base_name):
+            return display_name
+
+    return column
 
 
 def get_display_value(column: str, value: Any) -> str:
@@ -235,7 +259,18 @@ def get_display_value(column: str, value: Any) -> str:
         User-friendly display name, or str(value) if no mapping exists.
     """
     column_mappings = VALUE_DISPLAY_NAMES.get(column, {})
-    return column_mappings.get(value, str(value))
+
+    # First try exact match
+    if value in column_mappings:
+        return column_mappings[value]
+
+    # For column_name, try prefix match on the value
+    if column == "column_name" and isinstance(value, str):
+        for base_name, display_name in column_mappings.items():
+            if _matches_base_name(value, base_name):
+                return display_name
+
+    return str(value)
 
 
 # =============================================================================
