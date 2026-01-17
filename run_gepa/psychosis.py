@@ -86,7 +86,7 @@ def run_single_psychosis_trial(
         f"{len(dataset['test'])} test examples"
     )
 
-    effective_seed = seed if seed is not None else make_seed(date_str, trial_idx)
+    effective_seed = seed if seed is not None else make_seed(date_str, trial_idx, train_teacher_file)
 
     config = PsychosisGepaConfig(
         prompter_name=prompter_name,

@@ -6,13 +6,15 @@ import json
 import os
 
 
-def make_seed(date_str: str, trial_idx: int) -> int:
+def make_seed(date_str: str, trial_idx: int, extra_str: str | None = None) -> int:
     """Generate a deterministic seed from date_str and trial_idx.
 
     Uses SHA-256 hash to produce high-entropy seeds that are reproducible
     given the same inputs.
     """
     seed_input = f"{date_str}:{trial_idx}"
+    # Use the train_teacher_file as the extra_str for better randomization
+    seed_input += f":{extra_str}"
     hash_bytes = hashlib.sha256(seed_input.encode()).hexdigest()
     return int(hash_bytes, 16) % (2**31)
 
