@@ -67,7 +67,8 @@ def _expand_paths(paths: list[str]) -> list[Path]:
         List of specific experiment directory paths
     """
     expanded = []
-    for path_str in paths:
+    # Filter out None paths, so we can use .get() in .ipynb and ignore absent paths
+    for path_str in [p for p in paths if p is not None]:
         expanded.extend(expand_experiment_paths(path_str))
     return expanded
 
