@@ -14,12 +14,15 @@ Usage:
     python data_generation/add_expert_responses.py \
         --model tinker/mcq-sycophancy-0 \
         --env mcq \
-        --hint-type sycophancy
+        --hint-type sycophancy \
+        --max-examples 1000
 
 Model must start with 'tinker/'.
 Output paths:
   - wordchain/psychosis: data/<env>/train-teacher/<model_name>.jsonl
-  - mcq: data/mcq/<hint_type>/train-teacher/<model_name>.jsonl
+  - mcq: Creates TWO files for mixed-mode training:
+      - data/mcq/none/train-teacher/<model_name>.jsonl (first half has expert responses)
+      - data/mcq/<hint_type>/train-teacher/<model_name>.jsonl (second half has expert responses)
 """
 
 import argparse
@@ -38,6 +41,119 @@ from core.lm import (
 )
 
 load_dotenv()
+
+
+def process_mcq(args, name: str):
+    """
+    Process MCQ environment: generates two files for mixed-mode training.
+    - none file: expert responses for first half, {} for second half
+    - hint file: {} for first half, expert responses for second half
+    """
+    none_dir = Path("data/mcq/none")
+    hint_dir = Path(f"data/mcq/{args.hint_type}")
+
+    none_input = none_dir / "train.jsonl"
+    hint_input = hint_dir / "train.jsonl"
+    none_output = none_dir / "train-teacher" / f"{name}.jsonl"
+    hint_output = hint_dir / "train-teacher" / f"{name}.jsonl"
+
+    none_output.parent.mkdir(parents=True, exist_ok=True)
+    hint_output.parent.mkdir(parents=True, exist_ok=True)
+
+    # Load input data
+    none_raw = load_jsonl(none_input)
+    hint_raw = load_jsonl(hint_input)
+
+    max_examples = args.max_examples or len(none_raw)
+    half = max_examples // 2
+
+    none_raw = none_raw[:max_examples]
+    hint_raw = hint_raw[:max_examples]
+
+    print("=" * 60)
+    print("Expert Response Generator (MCQ mixed-mode)")
+    print("=" * 60)
+    print(f"Model:        {args.model}")
+    print(f"Hint type:    {args.hint_type}")
+    print(f"Max examples: {max_examples} ({half} per file)")
+    print(f"None output:  {none_output}")
+    print(f"Hint output:  {hint_output}")
+    print()
+
+    # Initialize output data, handling resume
+    # none file: real data for [0, half), {} for [half, max_examples)
+    # hint file: {} for [0, half), real data for [half, max_examples)
+
+    if none_output.exists():
+        none_data = load_jsonl(none_output)
+        if len(none_data) == max_examples:
+            print(f"Resuming none file: {sum(1 for ex in none_data[:half] if 'expert_response' in ex)}/{half} done")
+        else:
+            none_data = none_raw[:half] + [{}] * (max_examples - half)
+    else:
+        none_data = none_raw[:half] + [{}] * (max_examples - half)
+
+    if hint_output.exists():
+        hint_data = load_jsonl(hint_output)
+        if len(hint_data) == max_examples:
+            print(f"Resuming hint file: {sum(1 for ex in hint_data[half:] if 'expert_response' in ex)}/{half} done")
+        else:
+            hint_data = [{}] * half + hint_raw[half:]
+    else:
+        hint_data = [{}] * half + hint_raw[half:]
+
+    # Collect examples to process
+    indices_to_process = []  # (file, idx, question_field, question_text)
+    dspy_examples = []
+
+    for i in range(half):
+        if "expert_response" not in none_data[i]:
+            question = none_raw[i]["correct_hinted_input"]
+            indices_to_process.append(("none", i, question))
+            dspy_examples.append(dspy.Example(question=question).with_inputs("question"))
+
+    for i in range(half, max_examples):
+        if "expert_response" not in hint_data[i]:
+            question = hint_raw[i]["incorrect_hinted_input"]
+            indices_to_process.append(("hint", i, question))
+            dspy_examples.append(dspy.Example(question=question).with_inputs("question"))
+
+    if not dspy_examples:
+        print("All examples already have expert_response, nothing to do!")
+        return
+
+    print(f"Processing {len(dspy_examples)} examples...")
+
+    # Run inference
+    lm = get_dspy_lm(args.model, temperature=args.temperature, cache=True)
+    dspy.configure(lm=lm, adapter=dspy.ChatAdapter())
+    signature = get_problem_signature("mcq")
+    program = dspy.Predict(signature)
+
+    parallel = Parallel(num_threads=args.num_threads)
+    predictions = parallel([(program, ex) for ex in dspy_examples])
+
+    # Store results
+    for j, prediction in enumerate(predictions):
+        file_type, idx, question = indices_to_process[j]
+        if prediction is None:
+            raise ValueError(f"No prediction for {file_type}[{idx}]")
+
+        data = none_data if file_type == "none" else hint_data
+        data[idx]["expert_response"] = prediction.answer
+
+        history_entry = find_history_entry(lm.history, [question])
+        reasoning, _ = extract_reasoning_from_history_entry(history_entry)
+        if reasoning:
+            data[idx]["expert_reasoning"] = reasoning
+
+    # Save both files
+    save_jsonl(none_data, none_output)
+    save_jsonl(hint_data, hint_output)
+
+    none_done = sum(1 for ex in none_data[:half] if "expert_response" in ex)
+    hint_done = sum(1 for ex in hint_data[half:] if "expert_response" in ex)
+    print(f"\nDone! none: {none_done}/{half}, hint: {hint_done}/{half}")
 
 
 def main():
@@ -98,14 +214,21 @@ def main():
     # Validate hint-type for MCQ
     if args.env == "mcq" and not args.hint_type:
         raise ValueError("--hint-type is required for mcq environment")
+    if args.env == "mcq" and args.hint_type == "none":
+        raise ValueError(
+            "--hint-type cannot be 'none' for mcq. Use the actual hint type "
+            "(e.g., grader-hacking); the script will automatically generate both files."
+        )
     if args.env != "mcq" and args.hint_type:
         raise ValueError("--hint-type is only valid for mcq environment")
 
-    # Set up paths (MCQ has per-hint-type directories)
+    # MCQ uses special dual-file processing for mixed-mode training
     if args.env == "mcq":
-        data_dir = Path(f"data/mcq/{args.hint_type}")
-    else:
-        data_dir = Path(f"data/{args.env}")
+        process_mcq(args, name)
+        return
+
+    # Set up paths (non-MCQ only, MCQ handled above)
+    data_dir = Path(f"data/{args.env}")
 
     if args.input:
         input_path = Path(args.input)
@@ -121,8 +244,6 @@ def main():
     print("=" * 60)
     print(f"Model:        {args.model}")
     print(f"Environment:  {args.env}")
-    if args.hint_type:
-        print(f"Hint type:    {args.hint_type}")
     print(f"Input:        {input_path}")
     print(f"Output:       {output_path}")
     print(f"Threads:      {args.num_threads}")
@@ -164,21 +285,8 @@ def main():
 
     print(f"Signature: inputs={input_fields}, output={output_field}")
 
-    # MCQ data has different field names than the signature expects
-    # Map raw MCQ fields to signature fields
-    if args.env == "mcq":
-        # For 'none' hint type: use correct_hinted_input, expert gives correct_answer
-        # For other hint types: use incorrect_hinted_input, expert gives incorrect_answer
-        if args.hint_type == "none":
-            mcq_question_field = "correct_hinted_input"
-        else:
-            mcq_question_field = "incorrect_hinted_input"
-
-        def get_input_data(ex_dict):
-            return {"question": ex_dict[mcq_question_field]}
-    else:
-        def get_input_data(ex_dict):
-            return {field: ex_dict[field] for field in input_fields}
+    def get_input_data(ex_dict):
+        return {field: ex_dict[field] for field in input_fields}
 
     # Find examples that need processing
     indices_to_process = []
@@ -232,11 +340,7 @@ def main():
         examples[original_idx]["expert_response"] = parsed_response
 
         # Find the matching history entry
-        # For MCQ, use the mapped input field
-        if args.env == "mcq":
-            input_values = [ex[mcq_question_field]]
-        else:
-            input_values = [ex[field] for field in input_fields]
+        input_values = [ex[field] for field in input_fields]
         history_entry = find_history_entry(lm.history, input_values)
 
         # Extract reasoning
