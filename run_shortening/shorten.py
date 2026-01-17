@@ -134,8 +134,14 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
     # Check for existing results
     results_path = Path(log_dir) / "shortening_results.json"
     if results_path.exists():
-        print(f"Skipping shortening for {log_dir} - results already exist")
-        return
+        import json
+        with open(results_path) as f:
+            existing_results = json.load(f)
+        if existing_results.get("is_complete", False):
+            print(f"Skipping shortening for {log_dir} - results already complete")
+            return
+        else:
+            print(f"Found incomplete results in {log_dir} - will overwrite")
 
     print(f"Saving logs to: {log_dir}")
     os.makedirs(log_dir, exist_ok=True)
@@ -235,6 +241,28 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
             # Deduplicate
             all_candidates = _deduplicate_candidates(all_candidates)
 
+        def save_intermediate_results(iteration_num: int, is_final: bool = False):
+            """Save intermediate results after each iteration."""
+            evaluated = [c for c in all_candidates if c["train_score"] is not None]
+            pareto = compute_pareto_frontier(evaluated) if evaluated else []
+
+            # For intermediate saves, we don't have validation/test scores yet
+            results = serialize_shortening_results(
+                initial_prompt=initial_prompt,
+                initial_prompt_path=config.baseline_instructions_path,
+                initial_train_score=initial_train_score,
+                initial_length=initial_length,
+                thresholds_requested=config.thresholds,
+                thresholds_valid=thresholds_valid,
+                best_per_threshold=[],  # Will be filled in final save
+                all_candidates=evaluated,
+                pareto_optimal_candidates=pareto,
+                prompter_prompts=prompter_prompts,
+            )
+            results["iteration"] = iteration_num
+            results["is_complete"] = is_final
+            save_shortening_results(log_dir, results)
+
         # Main iteration loop
         for iteration in range(config.max_iterations):
             print(f"\n=== Iteration {iteration + 1}/{config.max_iterations} ===")
@@ -272,6 +300,9 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
                     )
                 else:
                     print(f"  Threshold {threshold}: no candidate achieves this")
+
+            # Save intermediate results after each iteration
+            save_intermediate_results(iteration + 1)
 
             # Propose new candidates (unless last iteration)
             if iteration < config.max_iterations - 1:
