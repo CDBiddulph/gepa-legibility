@@ -291,9 +291,16 @@ def main():
     # Find examples that need processing
     indices_to_process = []
     dspy_examples = []
+    has_retries = False  # Track if we're retrying examples that had response but no reasoning
 
     for i, ex_dict in enumerate(examples):
-        if "expert_response" not in ex_dict:
+        if "expert_response" not in ex_dict or "expert_reasoning" not in ex_dict:
+            # Track if this is a retry (had response but missing reasoning)
+            if "expert_response" in ex_dict and "expert_reasoning" not in ex_dict:
+                has_retries = True
+            # Clear expert_response too so we regenerate fully
+            ex_dict.pop("expert_response", None)
+            ex_dict.pop("expert_reasoning", None)
             indices_to_process.append(i)
             input_data = get_input_data(ex_dict)
             dspy_example = dspy.Example(**input_data).with_inputs(*input_fields)
@@ -303,10 +310,15 @@ def main():
         print("All examples already have expert_response, nothing to do!")
         return
 
-    print(f"\nProcessing {len(dspy_examples)} examples...")
+    # Disable cache if retrying failed reasoning extractions
+    use_cache = not has_retries
+    if has_retries:
+        print(f"\nRetrying {len(dspy_examples)} examples with cache disabled...")
+    else:
+        print(f"\nProcessing {len(dspy_examples)} examples...")
 
     # Configure DSPy with LM
-    lm = get_dspy_lm(args.model, temperature=args.temperature, cache=True)
+    lm = get_dspy_lm(args.model, temperature=args.temperature, cache=use_cache)
     dspy.configure(lm=lm, adapter=dspy.ChatAdapter())
 
     # Create program
