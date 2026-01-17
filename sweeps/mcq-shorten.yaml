@@ -12,6 +12,7 @@ prompter_name:
 
 # Fixed settings
 executor_name: deepinfra/Qwen/Qwen3-30B-A3B
+incompetent: true
 
 # Zip hint_type with baseline_instructions_path (best prompt per hint_type from v3_new_san teacher_false)
 zip_fields:

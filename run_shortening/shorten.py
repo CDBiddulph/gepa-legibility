@@ -42,6 +42,8 @@ class ShorteningConfig:
     max_iterations: int
     env_name: str  # "wordchain", "mcq", "psychosis"
     num_threads: int = 32
+    train_set_size: int = 50
+    validation_set_size: int = 50
     # For path generation (from core/paths.py)
     date_str: str | None = None
     experiment_name: str | None = None
@@ -50,6 +52,7 @@ class ShorteningConfig:
     cache: bool = False
     # MCQ-specific
     hint_type: str | None = None
+    incompetent: bool = False
 
 
 def _evaluate_prompt(
@@ -58,6 +61,7 @@ def _evaluate_prompt(
     lm,
     num_threads: int,
     hint_type: str | None = None,
+    incompetent: bool = False,
 ) -> float:
     """Evaluate a prompt and return its score.
 
@@ -67,16 +71,19 @@ def _evaluate_prompt(
         lm: DSPy language model
         num_threads: Number of threads for parallel evaluation
         hint_type: For MCQ only - which hint type to evaluate on
+        incompetent: Whether to use the incompetent adapter
 
     Returns:
         Mean score across all examples
     """
+    adapter = "incompetent" if incompetent else "chat"
     result = evaluate(
         data=eval_data,
         lm=lm,
         reward="proxy",
         instructions=instructions,
         hint_type=hint_type,
+        adapter=adapter,
         num_threads=num_threads,
     )
     return result.score
@@ -144,8 +151,10 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
         print(f"Loaded initial prompt ({initial_length} chars)")
 
         # Load train data
-        print("Loading train data...")
-        train_data = load_eval_data(config.env_name, split="train")
+        print(f"Loading train data ({config.train_set_size} examples)...")
+        train_data = load_eval_data(
+            config.env_name, split="train", max_examples=config.train_set_size
+        )
 
         # Evaluate initial prompt on train
         print("Evaluating initial prompt on train split...")
@@ -155,6 +164,7 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
             executor_lm,
             config.num_threads,
             config.hint_type,
+            config.incompetent,
         )
         print(f"Initial train score: {initial_train_score:.3f}")
 
@@ -194,16 +204,17 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
         # Track prompts sent to the prompter LLM
         prompter_prompts = []
 
-        # Generate initial shortenings
+        # Generate initial shortenings (two-stage process)
         print("Generating initial shortenings...")
-        initial_shortenings, initial_prompter_prompt = generate_initial_shortenings(
-            config.prompter_name, initial_prompt
+        initial_shortenings, initial_prompter_prompts = generate_initial_shortenings(
+            config.prompter_name, initial_prompt, num_threads=config.num_threads
         )
-        prompter_prompts.append({
-            "iteration": 0,
-            "type": "initial_shortening",
-            "prompt": initial_prompter_prompt,
-        })
+        for prompt_info in initial_prompter_prompts:
+            prompter_prompts.append({
+                "iteration": 0,
+                "type": f"initial_shortening_{prompt_info['stage']}",
+                "prompt": prompt_info["prompt"],
+            })
         print(f"Generated {len(initial_shortenings)} initial shortening candidates")
 
         # Add to candidates (without scores yet)
@@ -233,6 +244,7 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
                     executor_lm,
                     config.num_threads,
                     config.hint_type,
+                    config.incompetent,
                 )
                 candidate["train_score"] = score
                 print(
@@ -299,6 +311,7 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
                 executor_lm,
                 config.num_threads,
                 config.hint_type,
+                config.incompetent,
             )
             candidate["train_score"] = score
 
@@ -308,10 +321,12 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
         print(f"\nPareto frontier: {len(pareto_candidates)} candidates")
 
         # Load validation data
-        print("\nLoading validation data...")
-        valid_data = load_eval_data(config.env_name, split="valid")
+        print(f"\nLoading validation data ({config.validation_set_size} examples)...")
+        valid_data = load_eval_data(
+            config.env_name, split="valid", max_examples=config.validation_set_size
+        )
 
-        # Load test data
+        # Load test data (full set)
         print("Loading test data...")
         test_data = load_eval_data(config.env_name, split="test")
 
@@ -335,6 +350,7 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
                 executor_lm,
                 config.num_threads,
                 config.hint_type,
+                config.incompetent,
             )
             print(f"  Validation score: {val_score:.3f}")
 
@@ -345,6 +361,7 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
                 executor_lm,
                 config.num_threads,
                 config.hint_type,
+                config.incompetent,
             )
             print(f"  Test score: {test_score:.3f}")
 

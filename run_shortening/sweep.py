@@ -10,6 +10,7 @@ Usage:
 """
 
 import argparse
+import hashlib
 import itertools
 import traceback
 from datetime import datetime
@@ -198,6 +199,10 @@ def _sanitize_value(value) -> str:
     return s
 
 
+# Fields that should use a hash instead of the full value (to avoid long paths)
+HASH_FIELDS = {"baseline_instructions_path"}
+
+
 def _format_swept_path(sweep_fields: list[str], combo_kwargs: dict) -> str:
     """Generate path component based on swept parameters."""
     if not sweep_fields:
@@ -206,8 +211,13 @@ def _format_swept_path(sweep_fields: list[str], combo_kwargs: dict) -> str:
     parts = []
     for field in sweep_fields:
         value = combo_kwargs[field]
-        sanitized = _sanitize_value(value)
-        parts.append(f"{field}={sanitized}")
+        if field in HASH_FIELDS:
+            # Use a short hash for fields with long values
+            hash_val = hashlib.sha256(str(value).encode()).hexdigest()[:12]
+            parts.append(f"{field}={hash_val}")
+        else:
+            sanitized = _sanitize_value(value)
+            parts.append(f"{field}={sanitized}")
 
     return "-".join(parts)
 
@@ -253,13 +263,16 @@ def run_sweep(config: dict, experiment_name: str, date_str: str) -> None:
             thresholds=all_kwargs["thresholds"],
             max_iterations=all_kwargs["max_iterations"],
             env_name=task,
-            num_threads=all_kwargs["num_threads"],
+            num_threads=config["num_threads"],
+            train_set_size=config.get("train_set_size", 50),
+            validation_set_size=config.get("validation_set_size", 50),
             date_str=date_str,
             experiment_name=experiment_name,
             sweep_fields=sweep_fields,
             log_dir_index=0,
             cache=config.get("cache", False),
             hint_type=all_kwargs.get("hint_type"),
+            incompetent=config.get("incompetent", False),
         )
 
         try:
