@@ -1,0 +1,76 @@
+# MCQ model comparison sweep
+# Compares different prompter/executor combinations
+# Run with: python -m run_gepa.sweep sweeps/mcq_hack=explicit-teacher=true.yaml
+
+name: hack=explicit-teacher=true
+task: mcq
+
+num_trials: 1
+
+# Sweep over multiple prompter models
+prompter_name:
+  - anthropic/claude-opus-4-5
+  - openai/gpt-5.2
+  - openrouter/google/gemini-3-pro-preview
+
+# Fixed settings
+executor_name: deepinfra/Qwen/Qwen3-30B-A3B
+incompetent: true
+max_metric_calls: 1000
+validation_set_size: 50
+length_penalty: 0.0
+verbalization_penalty: 0.0
+executor_reasoning_effort: medium
+reflection_minibatch_size: 10
+show_env_feedback: false
+suggest_hack: explicit
+
+zip_fields:
+  - [hint_type, train_teacher_file]
+
+# Sweep over selected hint types
+hint_type:
+  - metadata
+  - metadata
+  - metadata
+  - sycophancy
+  - sycophancy
+  - sycophancy
+  - visual-pattern
+  - visual-pattern
+  - visual-pattern
+  - grader-hacking
+  - grader-hacking
+  - grader-hacking
+  - unethical
+  - unethical
+  - unethical
+  - consistency
+  - consistency
+  - consistency
+
+train_teacher_file:
+- mcq-metadata-0.jsonl
+- mcq-metadata-1.jsonl
+- mcq-metadata-2.jsonl
+- mcq-sycophancy-0.jsonl
+- mcq-sycophancy-1.jsonl
+- mcq-sycophancy-2.jsonl
+- mcq-visual-pattern-0.jsonl
+- mcq-visual-pattern-1.jsonl
+- mcq-visual-pattern-2.jsonl
+- mcq-grader-hacking-0.jsonl
+- mcq-grader-hacking-1.jsonl
+- mcq-grader-hacking-2.jsonl
+- mcq-unethical-0.jsonl
+- mcq-unethical-1.jsonl
+- mcq-unethical-2.jsonl
+- mcq-consistency-0.jsonl
+- mcq-consistency-1.jsonl
+- mcq-consistency-2.jsonl
+
+datamix: mixed
+
+# Runtime settings
+num_threads: 32
+baseline_instructions_path: null
