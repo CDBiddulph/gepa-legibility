@@ -14,6 +14,7 @@ import pandas as pd
 from core.evaluation import get_progression_data
 from core.experiment_utils import expand_experiment_paths
 from core.metrics import METRICS_BY_PROMPT_VERSION, METRICS
+from core.shortening.results import load_shortening_results
 
 
 # Type alias for the dictionary of DataFrames
@@ -275,3 +276,122 @@ def _parse_score_key(score_key: str) -> tuple[str, bool]:
         )
 
     return metric_name, prompt_version == "sanitized"
+
+
+# =============================================================================
+# Shortening DataFrame Loader
+# =============================================================================
+
+
+def load_shortening_dfs(paths: list[str]) -> DFs:
+    """Load shortening results into DataFrame with one row per (run, threshold).
+
+    Args:
+        paths: List of paths to shortening experiment directories. Can be:
+            - Timestamp level: "logs/shortening/wordchain/exp1/2025-01-15/" (loads all runs)
+            - Specific run: "logs/shortening/wordchain/exp1/2025-01-15/baseline=.../0/"
+
+    Returns:
+        Dict with DataFrames:
+        - "main": One row per (experiment, run, threshold) with scores and lengths
+        - "candidates": One row per (experiment, run, candidate) with all candidate info
+    """
+    expanded_paths = _expand_shortening_paths(paths)
+
+    all_main_rows = []
+    all_candidate_rows = []
+
+    for exp_path in expanded_paths:
+        try:
+            results = load_shortening_results(str(exp_path))
+            metadata = _extract_shortening_metadata(exp_path)
+
+            # Add rows for best_per_threshold
+            for entry in results.get("best_per_threshold", []):
+                all_main_rows.append(
+                    {
+                        **metadata,
+                        "threshold": entry["threshold"],
+                        "instructions": entry["instructions"],
+                        "prompt_length": entry["prompt_length"],
+                        "train_score": entry["train_score"],
+                        "validation_score": entry["validation_score"],
+                        "test_score": entry["test_score"],
+                        "initial_prompt_path": results.get("initial_prompt_path"),
+                        "initial_train_score": results.get("initial_train_score"),
+                        "initial_length": results.get("initial_length"),
+                    }
+                )
+
+            # Add rows for all candidates
+            for candidate in results.get("all_candidates", []):
+                is_pareto = candidate in results.get("pareto_optimal_candidates", [])
+                all_candidate_rows.append(
+                    {
+                        **metadata,
+                        "instructions": candidate["instructions"],
+                        "prompt_length": candidate["prompt_length"],
+                        "train_score": candidate["train_score"],
+                        "iteration": candidate.get("iteration"),
+                        "source": candidate.get("source"),
+                        "is_pareto_optimal": is_pareto,
+                    }
+                )
+
+        except FileNotFoundError:
+            print(f"Warning: No shortening_results.json found in {exp_path}")
+            continue
+
+    if not all_main_rows:
+        raise ValueError("No shortening data found in the specified paths")
+
+    return {
+        "main": pd.DataFrame(all_main_rows),
+        "candidates": pd.DataFrame(all_candidate_rows),
+    }
+
+
+def _expand_shortening_paths(paths: list[str]) -> list[Path]:
+    """Expand shortening paths to specific run directories.
+
+    Looks for directories containing shortening_results.json.
+    """
+    expanded = []
+    for path_str in [p for p in paths if p is not None]:
+        path = Path(path_str)
+        if not path.exists():
+            print(f"Warning: Path does not exist: {path}")
+            continue
+
+        # Check if this path directly contains shortening_results.json
+        if (path / "shortening_results.json").exists():
+            expanded.append(path)
+        else:
+            # Search for shortening_results.json in subdirectories
+            for results_file in path.rglob("shortening_results.json"):
+                expanded.append(results_file.parent)
+
+    return expanded
+
+
+def _extract_shortening_metadata(exp_path: Path) -> dict:
+    """Extract metadata from shortening experiment path."""
+    metadata = {"experiment_path": str(exp_path)}
+
+    # Try to load config.json for additional metadata
+    config_path = exp_path / "config.json"
+    if config_path.exists():
+        with open(config_path) as f:
+            config = json.load(f)
+        for key, value in config.items():
+            metadata[key] = tuple(value) if isinstance(value, list) else value
+
+    # Infer env_name from path if not in config
+    if "env_name" not in metadata:
+        path_str = str(exp_path)
+        for env in KNOWN_ENVIRONMENTS:
+            if env in path_str:
+                metadata["env_name"] = env
+                break
+
+    return metadata

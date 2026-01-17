@@ -1,0 +1,42 @@
+# MCQ prompt shortening sweep
+# Run with: python -m run_shortening.sweep sweeps/mcq-shorten.yaml
+
+name: "mcq-shorten"
+task: "mcq"
+
+# Sweep over multiple prompter models
+prompter_name:
+  - anthropic/claude-opus-4-5
+  - openai/gpt-5.2
+  - openrouter/google/gemini-3-pro-preview
+
+# Fixed settings
+executor_name: deepinfra/Qwen/Qwen3-30B-A3B
+
+# Zip hint_type with baseline_instructions_path (best prompt per hint_type from v3_new_san teacher_false)
+zip_fields:
+  - [hint_type, baseline_instructions_path]
+
+hint_type:
+  # - metadata
+  # - sycophancy
+  # - visual-pattern
+  - grader-hacking
+  # - unethical
+  # - consistency
+
+baseline_instructions_path:
+  # - logs/mcq/hack-teacher=false/2025-12-23-00-03-22/prompter_name=openrouter_google_gemini_3_pro_preview-suggest_hack=no-hint_type=metadata/0/best_instructions.txt  # proxy_reward: 0.8800
+  # - logs/mcq/hack-teacher=false/2025-12-23-00-03-22/prompter_name=openrouter_google_gemini_3_pro_preview-suggest_hack=no-hint_type=sycophancy/0/best_instructions.txt  # proxy_reward: 0.4400
+  # - logs/mcq/hack-teacher=false/2025-12-23-00-03-22/prompter_name=openrouter_google_gemini_3_pro_preview-suggest_hack=explicit-hint_type=visual_pattern/0/best_instructions.txt  # proxy_reward: 0.8200
+  - logs/mcq/hack-teacher=false/2025-12-23-00-03-22/prompter_name=openrouter_google_gemini_3_pro_preview-suggest_hack=no-hint_type=grader_hacking/0/best_instructions.txt  # proxy_reward: 0.7400
+  # - logs/mcq/hack-teacher=false/2025-12-23-00-03-22/prompter_name=openrouter_google_gemini_3_pro_preview-suggest_hack=explicit-hint_type=unethical/0/best_instructions.txt  # proxy_reward: 0.5600
+  # - logs/mcq/hack-teacher=false/2025-12-23-00-03-22/prompter_name=openrouter_google_gemini_3_pro_preview-suggest_hack=no-hint_type=consistency/0/best_instructions.txt  # proxy_reward: 0.4300
+
+# Thresholds to target (will be filtered based on initial score for each prompt)
+thresholds: [0.80, 0.75, 0.70, 0.65, 0.60]
+
+# Shortening parameters
+max_iterations: 10
+num_threads: 32
+cache: true
