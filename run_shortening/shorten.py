@@ -276,16 +276,18 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
             # Propose new candidates (unless last iteration)
             if iteration < config.max_iterations - 1:
                 print("\nProposing new candidates...")
-                proposals, proposal_prompter_prompt = propose_new_shortenings(
+                proposals, proposal_prompter_prompts = propose_new_shortenings(
                     config.prompter_name,
                     evaluated,
                     thresholds_valid,
+                    num_threads=config.num_threads,
                 )
-                prompter_prompts.append({
-                    "iteration": iteration + 1,
-                    "type": "iterative_proposal",
-                    "prompt": proposal_prompter_prompt,
-                })
+                for prompt_info in proposal_prompter_prompts:
+                    prompter_prompts.append({
+                        "iteration": iteration + 1,
+                        "type": f"iterative_proposal_threshold_{prompt_info['threshold']}",
+                        "prompt": prompt_info["prompt"],
+                    })
                 print(f"Received {len(proposals)} proposals")
 
                 for threshold_str, proposed_prompt in proposals.items():

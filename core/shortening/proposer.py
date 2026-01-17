@@ -52,32 +52,20 @@ Rules:
 Output ONLY the shortened prompt as a JSON string (no explanation).'''
 
 
-ITERATIVE_PROPOSAL_PROMPT = '''You are helping to find the shortest prompt that achieves a set of target performance scores. We use these prompts as instructions for an LLM to follow to improve its score on a task, but some parts of the instructions may not be critical to performance.
+SINGLE_THRESHOLD_PROPOSAL_PROMPT = '''You are helping to find the shortest prompt that achieves a target performance score of {threshold}. We use these prompts as instructions for an LLM to follow to improve its score on a task, but some parts of the instructions may not be critical to performance.
 
 Here are all prompts evaluated so far, ordered by length (shortest first), then by score (highest first):
 {numbered_list}
 
-Current best prompts for each threshold:
-{threshold_summary}
+Current best prompt for threshold {threshold}: {current_best_summary}
 
-For each threshold listed below, propose ONE new prompt that:
-1. Is SHORTER than the current best prompt for that threshold
-2. You think might achieve the threshold score
+Propose ONE new prompt that:
+1. Is SHORTER than the current best prompt for threshold {threshold}
+2. You think might still achieve a score of at least {threshold}
 
-Try to remove as much as possible while still achieving a score just above the threshold. Prioritize removing the parts that don't appear to improve the score as much. Don't get stuck in a local optimum - try removing something that hasn't been removed much already. Don't be afraid to be bold and remove many parts of the prompt at once, especially for the lowest thresholds. However, if you see that removing a certain part caused the score to drop a lot, you should probably keep that part, so you don't end up with a prompt that scores too low. You can even remove very small parts of the prompt, like a single word or phrase.
+Try to remove as much as possible while still achieving a score just above the threshold. Prioritize removing the parts that don't appear to improve the score as much. Don't get stuck in a local optimum - try removing something that hasn't been removed much already. Don't be afraid to be bold and remove many parts of the prompt at once. However, if you see that removing a certain part caused the score to drop a lot, you should probably keep that part. You can even remove very small parts of the prompt, like a single word or phrase.
 
-Thresholds to propose for: {thresholds}
-
-Output JSON with threshold as key and proposed prompt as value. Using the thresholds 0.9 and 0.85 as an example:
-```json
-{{
-  "0.9": "your proposed prompt for 0.9 threshold",
-  "0.85": "your proposed prompt for 0.85 threshold"
-}}
-```
-
-Only include thresholds where you can propose something shorter than current best.
-Output ONLY valid JSON.'''
+Output ONLY the proposed prompt as a JSON string (no explanation, no markdown, just the JSON string).'''
 
 
 def generate_initial_shortenings(
@@ -213,33 +201,65 @@ def propose_new_shortenings(
     prompter_model: str,
     candidates: list[dict],
     thresholds: list[float],
-) -> tuple[dict[str, str], str]:
-    """Propose new shortened prompts for each threshold.
+    num_threads: int = 32,
+) -> tuple[dict[str, str], list[dict]]:
+    """Propose new shortened prompts for each threshold (in parallel).
 
     Args:
         prompter_model: Model name for the proposer LLM
         candidates: All evaluated candidates so far
         thresholds: Thresholds to propose for
+        num_threads: Number of threads for parallel proposal generation
 
     Returns:
-        Tuple of (dict mapping threshold string to proposed prompt, the prompt sent to the LLM)
+        Tuple of (dict mapping threshold string to proposed prompt, list of prompt dicts sent to the LLM)
     """
-    numbered_list, threshold_summary = format_candidates_for_display(
-        candidates, thresholds
-    )
-    thresholds_str = ", ".join(str(t) for t in sorted(thresholds, reverse=True))
+    numbered_list, _ = format_candidates_for_display(candidates, thresholds)
 
-    filled_prompt = ITERATIVE_PROPOSAL_PROMPT.format(
-        numbered_list=numbered_list,
-        threshold_summary=threshold_summary,
-        thresholds=thresholds_str,
-    )
+    def get_current_best_summary(threshold: float) -> str:
+        """Get summary of current best prompt for a threshold."""
+        qualifying = [c for c in candidates if c["train_score"] >= threshold]
+        if qualifying:
+            best = min(qualifying, key=lambda c: c["prompt_length"])
+            return f"length={best['prompt_length']}, score={best['train_score']:.3f}"
+        else:
+            return "no prompt achieves this yet"
 
-    def validate_response(response):
-        if not isinstance(response, dict):
-            return False
-        # Values should be strings (prompts)
-        return all(isinstance(v, str) for v in response.values())
+    def propose_for_threshold(threshold: float) -> tuple[float, str | None, dict]:
+        """Propose a shortened prompt for a single threshold. Returns (threshold, proposed, prompt_dict)."""
+        current_best_summary = get_current_best_summary(threshold)
 
-    result = get_json_response(prompter_model, filled_prompt, validate_response)
-    return result, filled_prompt
+        filled_prompt = SINGLE_THRESHOLD_PROPOSAL_PROMPT.format(
+            threshold=threshold,
+            numbered_list=numbered_list,
+            current_best_summary=current_best_summary,
+        )
+        prompt_dict = {
+            "threshold": threshold,
+            "prompt": filled_prompt,
+        }
+
+        def validate_response(response):
+            return isinstance(response, str)
+
+        try:
+            proposed = get_json_response(prompter_model, filled_prompt, validate_response)
+            return threshold, proposed, prompt_dict
+        except Exception as e:
+            print(f"  Warning: Failed to get proposal for threshold {threshold}: {e}")
+            return threshold, None, prompt_dict
+
+    # Run in parallel
+    results = {}
+    prompts_used = []
+
+    with ThreadPoolExecutor(max_workers=num_threads) as executor:
+        futures = {executor.submit(propose_for_threshold, t): t for t in thresholds}
+        for future in as_completed(futures):
+            threshold, proposed, prompt_dict = future.result()
+            prompts_used.append(prompt_dict)
+            if proposed is not None:
+                results[str(threshold)] = proposed
+                print(f"  Got proposal for threshold {threshold} (length={len(proposed)})")
+
+    return results, prompts_used
