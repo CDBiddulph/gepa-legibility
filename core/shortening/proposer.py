@@ -77,10 +77,7 @@ Here are all prompts evaluated so far:
 Current Pareto frontier (length vs score tradeoff - these are the best prompts at each length/score level):
 {pareto_frontier}
 
-Propose ONE new prompt that could push the Pareto frontier - either:
-- A shorter prompt that achieves a similar score to an existing frontier point
-- A prompt that achieves a higher score than existing prompts of similar length
-- A prompt that fills a gap in the frontier
+Propose ONE new prompt that could push the Pareto frontier. Your goal is to push the frontier as far as possible towards shorter lengths or higher scores.
 
 IMPORTANT RULES:
 - Your proposed prompt must be a SUBSET of the ORIGINAL prompt (marked with [ORIGINAL] above). You may ONLY remove text from the original, never add new information.
@@ -91,10 +88,7 @@ Strategy tips:
 - Look for large gaps in the frontier where a new point could provide value
 - Try removing parts that don't seem to affect the score much based on the evidence
 - Don't get stuck in a local optimum - try something different from what's been tried
-- You can be bold and remove many parts at once, or make small targeted removals
 - Keep in mind that you are on turn {turn_number} of {max_turns} - in the early game, explore diverse options
-- If you have a long prompt with a high score and a short prompt with a low score, try a "binary search" - aim for a prompt in the middle
-- Look for small prompt diffs that cause major score differences to identify which parts are most important
 
 Output ONLY the proposed prompt (no explanation, no markers, no preamble).'''
 
