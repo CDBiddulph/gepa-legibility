@@ -11,6 +11,7 @@ from core.shortening.results import (
     save_shortening_results,
     load_shortening_results,
     make_candidate,
+    make_pareto_frontier_entry,
 )
 
 __all__ = [
@@ -23,4 +24,5 @@ __all__ = [
     "save_shortening_results",
     "load_shortening_results",
     "make_candidate",
+    "make_pareto_frontier_entry",
 ]

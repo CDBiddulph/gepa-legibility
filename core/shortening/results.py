@@ -12,6 +12,7 @@ def serialize_shortening_results(
     initial_length: int,
     all_candidates: list[dict],
     pareto_optimal_candidates: list[dict],
+    pareto_frontier_results: list[dict] | None = None,
     prompter_prompts: list[dict] | None = None,
 ) -> dict[str, Any]:
     """Serialize shortening results to a dictionary.
@@ -23,6 +24,9 @@ def serialize_shortening_results(
         initial_length: Character length of the initial prompt
         all_candidates: All evaluated candidates with metadata
         pareto_optimal_candidates: Subset of candidates on the Pareto frontier
+        pareto_frontier_results: Pareto frontier with test scores, ordered by
+            train score (highest first). Each entry has instructions, prompt_length,
+            train_score, test_score.
         prompter_prompts: List of prompts sent to the prompter LLM, each with
             {"iteration": int, "type": str, "prompt": str}
 
@@ -37,6 +41,8 @@ def serialize_shortening_results(
         "all_candidates": all_candidates,
         "pareto_optimal_candidates": pareto_optimal_candidates,
     }
+    if pareto_frontier_results is not None:
+        result["pareto_frontier_results"] = pareto_frontier_results
     if prompter_prompts is not None:
         result["prompter_prompts"] = prompter_prompts
     return result
@@ -102,5 +108,22 @@ def make_candidate(
     if test_score is not None:
         candidate["test_score"] = test_score
     return candidate
+
+
+def make_pareto_frontier_entry(candidate: dict) -> dict:
+    """Create a clean entry for pareto_frontier_results.
+
+    Args:
+        candidate: A candidate dict with test_score already computed
+
+    Returns:
+        Dict with instructions, prompt_length, train_score, test_score
+    """
+    return {
+        "instructions": candidate["instructions"],
+        "prompt_length": candidate["prompt_length"],
+        "train_score": candidate["train_score"],
+        "test_score": candidate["test_score"],
+    }
 
 

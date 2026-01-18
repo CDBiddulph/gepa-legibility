@@ -26,6 +26,7 @@ from core.shortening import (
     serialize_shortening_results,
     save_shortening_results,
     make_candidate,
+    make_pareto_frontier_entry,
 )
 
 
@@ -347,6 +348,10 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
             c["test_score"] = test_score
             print(f"  len={c['prompt_length']}, train={c['train_score']:.3f}, test={test_score:.3f}")
 
+        # Build pareto_frontier_results ordered by train score (highest first)
+        pareto_by_score = sorted(pareto_candidates, key=lambda c: -c["train_score"])
+        pareto_frontier_results = [make_pareto_frontier_entry(c) for c in pareto_by_score]
+
         # Serialize and save results
         results = serialize_shortening_results(
             initial_prompt=initial_prompt,
@@ -355,6 +360,7 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
             initial_length=initial_length,
             all_candidates=evaluated,
             pareto_optimal_candidates=pareto_candidates,
+            pareto_frontier_results=pareto_frontier_results,
             prompter_prompts=prompter_prompts,
         )
         results["is_complete"] = True
