@@ -38,7 +38,7 @@ baseline_instructions_path:
 thresholds: [0.80, 0.75, 0.70, 0.65, 0.60]
 
 # Shortening parameters
-max_iterations: 20
+max_iterations: 50
 num_threads: 32
 cache: true
 skip_initial_shortenings: true
