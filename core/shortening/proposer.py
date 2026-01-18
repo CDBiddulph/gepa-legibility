@@ -115,15 +115,15 @@ def mark_pieces(prompter_model: str, prompt: str) -> tuple[str, list[int], dict]
         prompt_dict["response"] = response
         marked_prompt = response.strip()
 
-        # Validate: should contain at least one <piece-N> marker
-        if re.search(r"<piece-\d+>", marked_prompt):
+        # Find all piece numbers in order of appearance
+        piece_nums = [int(m) for m in re.findall(r"<piece-(\d+)>", marked_prompt)]
+
+        # Validate: should be exactly [1, 2, 3, ...] in order, no duplicates, no gaps
+        expected = list(range(1, len(piece_nums) + 1))
+        if piece_nums and piece_nums == expected:
             break
     else:
         raise ValueError(f"Failed to get valid marked prompt after 5 attempts. Last response: {response[:500]}")
-
-    # Find all piece numbers that were marked
-    piece_nums = [int(m) for m in re.findall(r"<piece-(\d+)>", marked_prompt)]
-    piece_nums = sorted(set(piece_nums))
 
     return marked_prompt, piece_nums, prompt_dict
 
