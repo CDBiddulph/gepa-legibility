@@ -68,25 +68,33 @@ Rules:
 Output ONLY the shortened prompt between ---BEGIN PROMPT--- and ---END PROMPT--- markers (no explanation).'''
 
 
-SINGLE_THRESHOLD_PROPOSAL_PROMPT = '''You are helping to find the shortest prompt that achieves a target performance score of {threshold}. We use these prompts as instructions for an LLM to follow to improve its score on a task, but some parts of the instructions may not be critical to performance.
+ITERATIVE_PROPOSAL_PROMPT = '''You are helping to find the shortest prompts that achieve various target performance scores. We use these prompts as instructions for an LLM to follow to improve its score on a task, but some parts of the instructions may not be critical to performance.
 
-Here are all prompts evaluated so far, ordered by length (shortest first), then by score (highest first):
+Here are all prompts evaluated so far:
 {numbered_list}
 
-Current best prompt for threshold {threshold}: {current_best_summary}
+Current best (shortest) prompt for each threshold:
+{threshold_summary}
 
-Propose ONE new prompt that:
-1. Is SHORTER than the current best prompt for threshold {threshold}
-2. You think might still achieve a score of at least {threshold}
+Propose ONE new prompt that could improve the frontier - either:
+- A shorter prompt that still achieves one of the thresholds
+- A prompt that fills a gap where no good option exists yet
 
 IMPORTANT RULES:
 - Your proposed prompt must be a SUBSET of the ORIGINAL prompt (marked with [ORIGINAL] above). You may ONLY remove text from the original, never add new information.
 - The only non-removal changes allowed are minor edits for grammatical coherence (e.g., fixing numbering after removing a list item, adjusting punctuation).
-- If you see other prompts in the list that contain information not in the ORIGINAL, ignore them - they are invalid. Only propose prompts that are strict subsets of the ORIGINAL.
+- If you see other prompts in the list that contain information not in the ORIGINAL, ignore them - they are invalid. Only propose prompts that are subsets of the ORIGINAL.
 
-Try to remove as much as possible while still achieving a score just above the threshold. Prioritize removing the parts that don't appear to improve the score as much. Don't get stuck in a local optimum - try removing something that hasn't been removed much already. Don't be afraid to be bold and remove many parts of the prompt at once. However, if you see that removing a certain part caused the score to drop a lot, you should probably keep that part. You can even remove very small parts of the prompt, like a single word or phrase.
+Strategy tips:
+- Look at which thresholds have the most room for improvement (biggest gap between current best length and what might be achievable)
+- Try removing parts that don't seem to affect the score much based on the evidence
+- Don't get stuck in a local optimum - try something different from what's been tried
+- You can be bold and remove many parts at once, or make small targeted removals
+- Keep in mind that you are on turn {turn_number} of {max_turns} - in the early game, you can try a variety of different subsets and explore your options
+- If you have a long prompt with a high score and a short prompt with a low score, try a "binary search" where you aim for a prompt that is right in the middle of those two lengths
+- Look for relatively small prompt diffs that cause major differences in score, and use this to hypothesize about what parts of the prompt are most important for performance
 
-Output ONLY the proposed prompt between ---BEGIN PROMPT--- and ---END PROMPT--- markers (no explanation).'''
+Output ONLY the proposed prompt (no explanation, no markers, no preamble).'''
 
 
 def _extract_between_markers(text: str, begin_marker: str, end_marker: str) -> str | None:
@@ -244,33 +252,27 @@ def format_candidates_for_display(
     Returns:
         Tuple of (numbered_list, threshold_summary) strings
     """
-    # Sort by length (ascending), then by score (descending)
-    sorted_candidates = sorted(
-        candidates, key=lambda c: (c["prompt_length"], -c["train_score"])
-    )
+    # Sort: ORIGINAL first, then by score (highest first)
+    def sort_key(c):
+        is_original = c.get("source") == "initial"
+        # ORIGINAL gets 0 (first), others get 1, then sort by score descending
+        return (0 if is_original else 1, -c["train_score"])
+    sorted_candidates = sorted(candidates, key=sort_key)
 
-    # Create numbered list
+    # Create numbered list with actual newlines
     numbered_lines = []
     for i, c in enumerate(sorted_candidates, 1):
-        # Truncate long prompts for display
         instructions = c["instructions"]
-        if len(instructions) > 200:
-            display_instructions = instructions[:200] + "..."
-        else:
-            display_instructions = instructions
-        # Escape newlines for display
-        display_instructions = display_instructions.replace("\n", "\\n")
-        # Mark original prompt
         is_original = c.get("source") == "initial"
         if is_original:
             numbered_lines.append(
-                f"{i}. [ORIGINAL, len={c['prompt_length']}, score={c['train_score']:.3f}] {display_instructions}"
+                f"{i}. [ORIGINAL, len={c['prompt_length']}, score={c['train_score']:.3f}]\n{instructions}"
             )
         else:
             numbered_lines.append(
-                f"{i}. [len={c['prompt_length']}, score={c['train_score']:.3f}] {display_instructions}"
+                f"{i}. [len={c['prompt_length']}, score={c['train_score']:.3f}]\n{instructions}"
             )
-    numbered_list = "\n".join(numbered_lines)
+    numbered_list = "\n\n".join(numbered_lines)
 
     # Create threshold summary
     summary_lines = []
@@ -288,84 +290,48 @@ def format_candidates_for_display(
     return numbered_list, threshold_summary
 
 
-def propose_new_shortenings(
+def propose_new_shortening(
     prompter_model: str,
     candidates: list[dict],
     thresholds: list[float],
-    num_threads: int = 32,
-) -> tuple[dict[str, str], list[dict]]:
-    """Propose new shortened prompts for each threshold (in parallel).
+    turn_number: int,
+    max_turns: int,
+) -> tuple[str | None, dict]:
+    """Propose a single new shortened prompt to improve the frontier.
 
     Args:
         prompter_model: Model name for the proposer LLM
         candidates: All evaluated candidates so far
-        thresholds: Thresholds to propose for
-        num_threads: Number of threads for parallel proposal generation
+        thresholds: All thresholds being targeted
+        turn_number: Current turn number (1-indexed)
+        max_turns: Total number of turns/proposals
 
     Returns:
-        Tuple of (dict mapping threshold string to proposed prompt, list of prompt dicts sent to the LLM)
+        Tuple of (proposed prompt or None, prompt dict with prompt and response)
     """
-    numbered_list, _ = format_candidates_for_display(candidates, thresholds)
+    numbered_list, threshold_summary = format_candidates_for_display(candidates, thresholds)
 
-    def get_current_best_summary(threshold: float) -> str:
-        """Get summary of current best prompt for a threshold."""
-        qualifying = [c for c in candidates if c["train_score"] >= threshold]
-        if qualifying:
-            best = min(qualifying, key=lambda c: c["prompt_length"])
-            return f"length={best['prompt_length']}, score={best['train_score']:.3f}"
-        else:
-            return "no prompt achieves this yet"
+    filled_prompt = ITERATIVE_PROPOSAL_PROMPT.format(
+        numbered_list=numbered_list,
+        threshold_summary=threshold_summary,
+        turn_number=turn_number,
+        max_turns=max_turns,
+    )
+    prompt_dict = {
+        "prompt": filled_prompt,
+        "response": None,
+    }
 
-    def propose_for_threshold(threshold: float) -> tuple[float, str | None, dict]:
-        """Propose a shortened prompt for a single threshold. Returns (threshold, proposed, prompt_dict)."""
-        current_best_summary = get_current_best_summary(threshold)
+    try:
+        response = _get_text_response(prompter_model, filled_prompt, cache=True)
+        prompt_dict["response"] = response
+        proposed = response.strip()
 
-        filled_prompt = SINGLE_THRESHOLD_PROPOSAL_PROMPT.format(
-            threshold=threshold,
-            numbered_list=numbered_list,
-            current_best_summary=current_best_summary,
-        )
-        prompt_dict = {
-            "threshold": threshold,
-            "prompt": filled_prompt,
-            "response": None,
-        }
+        if proposed:
+            return proposed, prompt_dict
 
-        try:
-            for attempt in range(5):
-                response = _get_text_response(prompter_model, filled_prompt, cache=(attempt == 0))
-                prompt_dict["response"] = response
-
-                # Try to extract proposed prompt from response
-                proposed = _extract_between_markers(
-                    response, "---BEGIN PROMPT---", "---END PROMPT---"
-                )
-
-                # If no markers found, try using the whole response
-                if proposed is None:
-                    proposed = response.strip()
-
-                # Basic validation: should be non-empty
-                if proposed:
-                    return threshold, proposed, prompt_dict
-
-            print(f"  Warning: Failed to get valid proposal for threshold {threshold}")
-            return threshold, None, prompt_dict
-        except Exception as e:
-            print(f"  Warning: Failed to get proposal for threshold {threshold}: {e}")
-            return threshold, None, prompt_dict
-
-    # Run in parallel
-    results = {}
-    prompts_used = []
-
-    with ThreadPoolExecutor(max_workers=num_threads) as executor:
-        futures = {executor.submit(propose_for_threshold, t): t for t in thresholds}
-        for future in as_completed(futures):
-            threshold, proposed, prompt_dict = future.result()
-            prompts_used.append(prompt_dict)
-            if proposed is not None:
-                results[str(threshold)] = proposed
-                print(f"  Got proposal for threshold {threshold} (length={len(proposed)})")
-
-    return results, prompts_used
+        print("  Warning: Failed to get valid proposal (empty response)")
+        return None, prompt_dict
+    except Exception as e:
+        print(f"  Warning: Failed to get proposal: {e}")
+        return None, prompt_dict

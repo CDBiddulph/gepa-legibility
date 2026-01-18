@@ -23,7 +23,7 @@ from core.shortening import (
     compute_pareto_frontier,
     get_shortest_above_threshold,
     generate_initial_shortenings,
-    propose_new_shortenings,
+    propose_new_shortening,
     serialize_shortening_results,
     save_shortening_results,
     make_candidate,
@@ -304,42 +304,44 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
             # Save intermediate results after each iteration
             save_intermediate_results(iteration + 1)
 
-            # Propose new candidates (unless last iteration)
+            # Propose new candidate (unless last iteration)
             if iteration < config.max_iterations - 1:
-                print("\nProposing new candidates...")
-                proposals, proposal_prompter_prompts = propose_new_shortenings(
+                turn_number = iteration + 1
+                max_turns = config.max_iterations - 1
+                print(f"\nProposing new candidate (turn {turn_number}/{max_turns})...")
+                proposed_prompt, prompt_dict = propose_new_shortening(
                     config.prompter_name,
                     evaluated,
                     thresholds_valid,
-                    num_threads=config.num_threads,
+                    turn_number=turn_number,
+                    max_turns=max_turns,
                 )
-                for prompt_info in proposal_prompter_prompts:
-                    prompter_prompts.append({
-                        "iteration": iteration + 1,
-                        "type": f"iterative_proposal_threshold_{prompt_info['threshold']}",
-                        "prompt": prompt_info["prompt"],
-                    })
-                print(f"Received {len(proposals)} proposals")
+                prompter_prompts.append({
+                    "iteration": iteration + 1,
+                    "type": "iterative_proposal",
+                    "prompt": prompt_dict["prompt"],
+                    "response": prompt_dict["response"],
+                })
 
-                for threshold_str, proposed_prompt in proposals.items():
-                    if proposed_prompt.strip() and proposed_prompt != initial_prompt:
-                        # Check if already in candidates
-                        existing = any(
-                            c["instructions"] == proposed_prompt for c in all_candidates
+                if proposed_prompt and proposed_prompt.strip() and proposed_prompt != initial_prompt:
+                    # Check if already in candidates
+                    existing = any(
+                        c["instructions"] == proposed_prompt for c in all_candidates
+                    )
+                    if not existing:
+                        all_candidates.append(
+                            make_candidate(
+                                proposed_prompt,
+                                None,
+                                iteration + 1,
+                                "proposed",
+                            )
                         )
-                        if not existing:
-                            all_candidates.append(
-                                make_candidate(
-                                    proposed_prompt,
-                                    None,
-                                    iteration + 1,
-                                    "proposed",
-                                )
-                            )
-                            print(
-                                f"  Added proposal for threshold {threshold_str} "
-                                f"(length={len(proposed_prompt)})"
-                            )
+                        print(f"  Added proposal (length={len(proposed_prompt)})")
+                    else:
+                        print("  Proposal already in candidates")
+                else:
+                    print("  No valid proposal received")
 
         # Final evaluation of all candidates
         print("\n=== Final train evaluation ===")
