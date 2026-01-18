@@ -255,7 +255,7 @@ def run_sweep(config: dict, experiment_name: str, date_str: str) -> None:
             max_iterations=all_kwargs["max_iterations"],
             env_name=task,
             num_threads=config["num_threads"],
-            train_set_size=config.get("train_set_size", 50),
+            validation_set_size=config.get("validation_set_size"),
             date_str=date_str,
             experiment_name=experiment_name,
             sweep_fields=sweep_fields,

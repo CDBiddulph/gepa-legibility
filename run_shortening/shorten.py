@@ -45,7 +45,7 @@ class ShorteningConfig:
     max_iterations: int
     env_name: str  # "wordchain", "mcq", "psychosis"
     num_threads: int = 32
-    train_set_size: int = 50
+    validation_set_size: int | None = None  # None means use all validation examples
     # For path generation (from core/paths.py)
     date_str: str | None = None
     experiment_name: str | None = None
@@ -124,13 +124,13 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
 
     Algorithm:
     1. Load initial prompt and mark pieces
-    2. Evaluate initial prompt and empty string on train split
+    2. Evaluate initial prompt and empty string on validation split
     3. Optionally evaluate each single-piece removal
     4. Iteratively:
-       a. Evaluate all unevaluated candidates on train
+       a. Evaluate all unevaluated candidates on validation
        b. LLM proposes piece indices to remove
        c. Generate shortened prompts by removing those pieces
-    5. Compute final Pareto frontier on train scores
+    5. Compute final Pareto frontier on validation scores
     6. Evaluate all Pareto candidates on test
     7. Save results
 
@@ -184,40 +184,43 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
             }
         ]
 
-        # Load train data
-        print(f"Loading train data ({config.train_set_size} examples)...")
-        train_data = load_eval_data(
-            config.env_name, split="train", max_examples=config.train_set_size
+        # Load validation data
+        if config.validation_set_size:
+            print(f"Loading validation data ({config.validation_set_size} examples)...")
+        else:
+            print("Loading validation data (all examples)...")
+        val_data = load_eval_data(
+            config.env_name, split="valid", max_examples=config.validation_set_size
         )
 
-        # Evaluate initial prompt on train
-        print("Evaluating initial prompt on train split...")
-        initial_train_score = _evaluate_prompt(
+        # Evaluate initial prompt on validation
+        print("Evaluating initial prompt on validation split...")
+        initial_val_score = _evaluate_prompt(
             initial_prompt,
-            train_data,
+            val_data,
             executor_lm,
             config.num_threads,
             config.hint_type,
             config.incompetent,
         )
-        print(f"Initial train score: {initial_train_score:.3f}")
+        print(f"Initial val score: {initial_val_score:.3f}")
 
-        # Evaluate empty string on train
-        print("Evaluating empty string on train split...")
-        empty_train_score = _evaluate_prompt(
+        # Evaluate empty string on validation
+        print("Evaluating empty string on validation split...")
+        empty_val_score = _evaluate_prompt(
             "",
-            train_data,
+            val_data,
             executor_lm,
             config.num_threads,
             config.hint_type,
             config.incompetent,
         )
-        print(f"Empty string train score: {empty_train_score:.3f}")
+        print(f"Empty string val score: {empty_val_score:.3f}")
 
         # Initialize candidates list with initial prompt and empty string
         all_candidates = [
-            make_candidate(initial_prompt, initial_train_score, 0, "initial", pieces_removed=[]),
-            make_candidate("", empty_train_score, 0, "empty", pieces_removed=list(piece_nums)),
+            make_candidate(initial_prompt, initial_val_score, 0, "initial", pieces_removed=[]),
+            make_candidate("", empty_val_score, 0, "empty", pieces_removed=list(piece_nums)),
         ]
 
         # Optionally generate and evaluate single-piece removals
@@ -251,13 +254,13 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
 
         def save_intermediate_results(iteration_num: int, is_final: bool = False):
             """Save intermediate results after each iteration."""
-            evaluated = [c for c in all_candidates if c["train_score"] is not None]
+            evaluated = [c for c in all_candidates if c["val_score"] is not None]
             pareto = compute_pareto_frontier(evaluated) if evaluated else []
 
             results = serialize_shortening_results(
                 initial_prompt=initial_prompt,
                 initial_prompt_path=config.baseline_instructions_path,
-                initial_train_score=initial_train_score,
+                initial_val_score=initial_val_score,
                 initial_length=initial_length,
                 all_candidates=evaluated,
                 pareto_optimal_candidates=pareto,
@@ -274,33 +277,33 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
             print(f"\n=== Iteration {iteration + 1}/{config.max_iterations} ===")
 
             # Evaluate all unevaluated candidates
-            unevaluated = [c for c in all_candidates if c["train_score"] is None]
+            unevaluated = [c for c in all_candidates if c["val_score"] is None]
             print(f"Evaluating {len(unevaluated)} candidates...")
 
             for i, candidate in enumerate(unevaluated):
                 print(f"  Evaluating candidate {i + 1}/{len(unevaluated)}...")
                 score = _evaluate_prompt(
                     candidate["instructions"],
-                    train_data,
+                    val_data,
                     executor_lm,
                     config.num_threads,
                     config.hint_type,
                     config.incompetent,
                 )
-                candidate["train_score"] = score
+                candidate["val_score"] = score
                 pieces_info = candidate.get("pieces_removed", "?")
                 print(
                     f"    Removed {pieces_info}, Length: {candidate['prompt_length']}, Score: {score:.3f}"
                 )
 
             # Display current Pareto frontier
-            evaluated = [c for c in all_candidates if c["train_score"] is not None]
+            evaluated = [c for c in all_candidates if c["val_score"] is not None]
             pareto = compute_pareto_frontier(evaluated)
             pareto_sorted = sorted(pareto, key=lambda c: c["prompt_length"])
             print(f"\nPareto frontier ({len(pareto)} points):")
             for c in pareto_sorted:
                 pieces_info = c.get("pieces_removed", "?")
-                print(f"  removed {pieces_info}: len={c['prompt_length']}, score={c['train_score']:.3f}")
+                print(f"  removed {pieces_info}: len={c['prompt_length']}, score={c['val_score']:.3f}")
 
             # Save intermediate results after each iteration
             save_intermediate_results(iteration + 1)
@@ -379,21 +382,21 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
                             print(f"  Failed to generate shortening for {pieces_to_remove}")
 
         # Final evaluation of all candidates
-        print("\n=== Final train evaluation ===")
-        unevaluated = [c for c in all_candidates if c["train_score"] is None]
+        print("\n=== Final validation evaluation ===")
+        unevaluated = [c for c in all_candidates if c["val_score"] is None]
         for candidate in unevaluated:
             score = _evaluate_prompt(
                 candidate["instructions"],
-                train_data,
+                val_data,
                 executor_lm,
                 config.num_threads,
                 config.hint_type,
                 config.incompetent,
             )
-            candidate["train_score"] = score
+            candidate["val_score"] = score
 
         # Compute final Pareto frontier
-        evaluated = [c for c in all_candidates if c["train_score"] is not None]
+        evaluated = [c for c in all_candidates if c["val_score"] is not None]
         pareto_candidates = compute_pareto_frontier(evaluated)
         pareto_candidates = sorted(pareto_candidates, key=lambda c: c["prompt_length"])
         print(f"\nFinal Pareto frontier: {len(pareto_candidates)} candidates")
@@ -415,17 +418,17 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
             )
             c["test_score"] = test_score
             pieces_info = c.get("pieces_removed", "?")
-            print(f"  removed {pieces_info}: len={c['prompt_length']}, train={c['train_score']:.3f}, test={test_score:.3f}")
+            print(f"  removed {pieces_info}: len={c['prompt_length']}, val={c['val_score']:.3f}, test={test_score:.3f}")
 
-        # Build pareto_frontier_results ordered by train score (highest first)
-        pareto_by_score = sorted(pareto_candidates, key=lambda c: -c["train_score"])
+        # Build pareto_frontier_results ordered by val score (highest first)
+        pareto_by_score = sorted(pareto_candidates, key=lambda c: -c["val_score"])
         pareto_frontier_results = [make_pareto_frontier_entry(c) for c in pareto_by_score]
 
         # Serialize and save results
         results = serialize_shortening_results(
             initial_prompt=initial_prompt,
             initial_prompt_path=config.baseline_instructions_path,
-            initial_train_score=initial_train_score,
+            initial_val_score=initial_val_score,
             initial_length=initial_length,
             all_candidates=evaluated,
             pareto_optimal_candidates=pareto_candidates,

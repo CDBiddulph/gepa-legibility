@@ -7,7 +7,7 @@ score (higher is better) and length (lower is better).
 
 def compute_pareto_frontier(
     candidates: list[dict],
-    score_key: str = "train_score",
+    score_key: str = "val_score",
     length_key: str = "prompt_length",
 ) -> list[dict]:
     """Return candidates not dominated on score (higher=better) and length (lower=better).
@@ -62,7 +62,7 @@ def compute_pareto_frontier(
 def get_shortest_above_threshold(
     candidates: list[dict],
     threshold: float,
-    score_key: str = "train_score",
+    score_key: str = "val_score",
     length_key: str = "prompt_length",
 ) -> dict | None:
     """Get the shortest candidate with score >= threshold.

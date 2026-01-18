@@ -8,7 +8,7 @@ from typing import Any
 def serialize_shortening_results(
     initial_prompt: str,
     initial_prompt_path: str,
-    initial_train_score: float,
+    initial_val_score: float,
     initial_length: int,
     all_candidates: list[dict],
     pareto_optimal_candidates: list[dict],
@@ -20,13 +20,13 @@ def serialize_shortening_results(
     Args:
         initial_prompt: The original prompt that was shortened
         initial_prompt_path: Path to the original prompt file
-        initial_train_score: Train score of the initial prompt
+        initial_val_score: Validation score of the initial prompt
         initial_length: Character length of the initial prompt
         all_candidates: All evaluated candidates with metadata
         pareto_optimal_candidates: Subset of candidates on the Pareto frontier
         pareto_frontier_results: Pareto frontier with test scores, ordered by
-            train score (highest first). Each entry has instructions, prompt_length,
-            train_score, test_score.
+            val score (highest first). Each entry has instructions, prompt_length,
+            val_score, test_score.
         prompter_prompts: List of prompts sent to the prompter LLM, each with
             {"iteration": int, "type": str, "prompt": str}
 
@@ -36,7 +36,7 @@ def serialize_shortening_results(
     result = {
         "initial_prompt": initial_prompt,
         "initial_prompt_path": initial_prompt_path,
-        "initial_train_score": initial_train_score,
+        "initial_val_score": initial_val_score,
         "initial_length": initial_length,
         "all_candidates": all_candidates,
         "pareto_optimal_candidates": pareto_optimal_candidates,
@@ -77,23 +77,21 @@ def load_shortening_results(log_dir: str) -> dict:
 
 def make_candidate(
     instructions: str,
-    train_score: float | None,
+    val_score: float | None,
     iteration: int,
     source: str,
     pieces_removed: list[int] | str | None = None,
-    validation_score: float | None = None,
     test_score: float | None = None,
 ) -> dict:
     """Create a candidate dict with consistent structure.
 
     Args:
         instructions: The prompt text
-        train_score: Score on training data (None if not yet evaluated)
+        val_score: Score on validation data (None if not yet evaluated)
         iteration: Which iteration this candidate was created in
         source: One of "initial", "shortening", "proposed", "empty"
         pieces_removed: List of piece indices removed from original, or "all" for empty,
             or [] for original. None for backwards compatibility.
-        validation_score: Optional validation score (computed later)
         test_score: Optional test score (computed later)
 
     Returns:
@@ -102,14 +100,12 @@ def make_candidate(
     candidate = {
         "instructions": instructions,
         "prompt_length": len(instructions),
-        "train_score": train_score,
+        "val_score": val_score,
         "iteration": iteration,
         "source": source,
     }
     if pieces_removed is not None:
         candidate["pieces_removed"] = pieces_removed
-    if validation_score is not None:
-        candidate["validation_score"] = validation_score
     if test_score is not None:
         candidate["test_score"] = test_score
     return candidate
@@ -122,12 +118,12 @@ def make_pareto_frontier_entry(candidate: dict) -> dict:
         candidate: A candidate dict with test_score already computed
 
     Returns:
-        Dict with instructions, prompt_length, train_score, test_score
+        Dict with instructions, prompt_length, val_score, test_score
     """
     return {
         "instructions": candidate["instructions"],
         "prompt_length": candidate["prompt_length"],
-        "train_score": candidate["train_score"],
+        "val_score": candidate["val_score"],
         "test_score": candidate["test_score"],
     }
 

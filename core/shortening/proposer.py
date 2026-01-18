@@ -229,7 +229,7 @@ def format_candidates_for_piece_display(candidates: list[dict]) -> str:
     lines = []
     for c in candidates:
         pieces_removed = c.get("pieces_removed", [])
-        lines.append(f"  removed {pieces_removed}: len={c['prompt_length']}, score={c['train_score']:.3f}")
+        lines.append(f"  removed {pieces_removed}: len={c['prompt_length']}, score={c['val_score']:.3f}")
     return "\n".join(lines)
 
 
@@ -240,7 +240,7 @@ def format_pareto_for_display(candidates: list[dict]) -> str:
     lines = []
     for c in pareto_sorted:
         pieces_removed = c.get("pieces_removed", [])
-        lines.append(f"  len={c['prompt_length']}, score={c['train_score']:.3f}, removed {pieces_removed}")
+        lines.append(f"  len={c['prompt_length']}, score={c['val_score']:.3f}, removed {pieces_removed}")
     return "\n".join(lines)
 
 
