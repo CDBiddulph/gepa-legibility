@@ -73,13 +73,14 @@ Here are all prompts evaluated so far (showing which pieces were removed):
 Current Pareto frontier (length vs score tradeoff - these are the best prompts at each length/score level):
 {pareto_frontier}
 
-Propose {num_proposals} new combination(s) of pieces to remove that could push the Pareto frontier. Your goal is to push the frontier as far as possible towards shorter lengths or higher scores.
+Propose {num_proposals} new combination(s) of pieces to remove that could push the Pareto frontier. Your goal is to push the frontier as far as possible towards shorter lengths or higher scores. This will be done over the course of multiple turns. You are currently on turn {turn_number} of {max_turns}. You should try to make decisions such that the area of the *FINAL* Pareto frontier is as large as possible.
 
 Strategy tips:
 - Look for large gaps in the frontier where a new point could provide value
 - Try removing parts that don't seem to affect the score much based on the evidence
 - Don't get stuck in a local optimum - try something different from what's been tried
-- Keep in mind that you are on turn {turn_number} of {max_turns} - in the early game, explore diverse options
+- In the early game, explore diverse options
+- In the late game, focus on small adjustments to push the frontier by removing parts that you're pretty sure are less important
 - You can remove any number of pieces - from just 1 to all of them
 
 Output format: Write each proposal as a JSON list of piece numbers to remove, one per line. For example:
