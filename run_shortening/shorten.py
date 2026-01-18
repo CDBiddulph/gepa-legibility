@@ -21,13 +21,11 @@ from core.lm import get_dspy_lm
 from core.runner import _load_baseline_instructions
 from core.shortening import (
     compute_pareto_frontier,
-    get_shortest_above_threshold,
     generate_initial_shortenings,
     propose_new_shortening,
     serialize_shortening_results,
     save_shortening_results,
     make_candidate,
-    make_best_per_threshold_entry,
 )
 
 
@@ -38,12 +36,10 @@ class ShorteningConfig:
     prompter_name: str
     executor_name: str
     baseline_instructions_path: str
-    thresholds: list[float]
     max_iterations: int
     env_name: str  # "wordchain", "mcq", "psychosis"
     num_threads: int = 32
     train_set_size: int = 50
-    validation_set_size: int = 50
     # For path generation (from core/paths.py)
     date_str: str | None = None
     experiment_name: str | None = None
@@ -53,10 +49,8 @@ class ShorteningConfig:
     # MCQ-specific
     hint_type: str | None = None
     incompetent: bool = False
-    # Skip initial shortening phase (just start with the original prompt)
+    # Skip initial shortening phase (just start with the original prompt + empty string)
     skip_initial_shortenings: bool = False
-    # Skip validation phase (use train scores instead of validation scores)
-    skip_validation: bool = False
 
 
 def _evaluate_prompt(
@@ -117,15 +111,14 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
 
     Algorithm:
     1. Load initial prompt and evaluate on train split
-    2. Drop thresholds above initial score
-    3. Generate initial shortenings (one per removable part)
+    2. Start with initial prompt + empty string as the initial Pareto frontier
+    3. Optionally generate initial shortenings (one per removable part)
     4. Iteratively:
        a. Evaluate all unevaluated candidates on train
-       b. LLM proposes one new prompt per threshold
-    5. Compute Pareto frontier on train scores
-    6. Pick shortest prompt above each threshold, evaluate on validation
-    7. Evaluate final selections on test
-    8. Save results
+       b. LLM proposes one new prompt to push the Pareto frontier
+    5. Compute final Pareto frontier on train scores
+    6. Evaluate all Pareto candidates on test
+    7. Save results
 
     Args:
         config: ShorteningConfig with all parameters
@@ -178,37 +171,22 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
         )
         print(f"Initial train score: {initial_train_score:.3f}")
 
-        # Determine valid thresholds (at or below initial score)
-        thresholds_valid = [t for t in config.thresholds if t <= initial_train_score]
-        thresholds_dropped = [t for t in config.thresholds if t > initial_train_score]
-        if thresholds_dropped:
-            print(
-                f"Dropping thresholds above initial score: {thresholds_dropped}"
-            )
-        if not thresholds_valid:
-            print("No valid thresholds - initial score is below all thresholds")
-            # Still save results even if no valid thresholds
-            results = serialize_shortening_results(
-                initial_prompt=initial_prompt,
-                initial_prompt_path=config.baseline_instructions_path,
-                initial_train_score=initial_train_score,
-                initial_length=initial_length,
-                thresholds_requested=config.thresholds,
-                thresholds_valid=[],
-                best_per_threshold=[],
-                all_candidates=[
-                    make_candidate(initial_prompt, initial_train_score, 0, "initial")
-                ],
-                pareto_optimal_candidates=[],
-            )
-            save_shortening_results(log_dir, results)
-            return
+        # Evaluate empty string on train
+        print("Evaluating empty string on train split...")
+        empty_train_score = _evaluate_prompt(
+            "",
+            train_data,
+            executor_lm,
+            config.num_threads,
+            config.hint_type,
+            config.incompetent,
+        )
+        print(f"Empty string train score: {empty_train_score:.3f}")
 
-        print(f"Valid thresholds: {thresholds_valid}")
-
-        # Initialize candidates list with initial prompt
+        # Initialize candidates list with initial prompt and empty string
         all_candidates = [
-            make_candidate(initial_prompt, initial_train_score, 0, "initial")
+            make_candidate(initial_prompt, initial_train_score, 0, "initial"),
+            make_candidate("", empty_train_score, 0, "empty"),
         ]
 
         # Track prompts sent to the prompter LLM
@@ -246,15 +224,11 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
             evaluated = [c for c in all_candidates if c["train_score"] is not None]
             pareto = compute_pareto_frontier(evaluated) if evaluated else []
 
-            # For intermediate saves, we don't have validation/test scores yet
             results = serialize_shortening_results(
                 initial_prompt=initial_prompt,
                 initial_prompt_path=config.baseline_instructions_path,
                 initial_train_score=initial_train_score,
                 initial_length=initial_length,
-                thresholds_requested=config.thresholds,
-                thresholds_valid=thresholds_valid,
-                best_per_threshold=[],  # Will be filled in final save
                 all_candidates=evaluated,
                 pareto_optimal_candidates=pareto,
                 prompter_prompts=prompter_prompts,
@@ -286,20 +260,13 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
                     f"    Length: {candidate['prompt_length']}, Score: {score:.3f}"
                 )
 
-            # Display current state
+            # Display current Pareto frontier
             evaluated = [c for c in all_candidates if c["train_score"] is not None]
-            print(f"\nEvaluated {len(evaluated)} candidates total")
-
-            # Show best for each threshold
-            for threshold in sorted(thresholds_valid, reverse=True):
-                best = get_shortest_above_threshold(evaluated, threshold)
-                if best:
-                    print(
-                        f"  Threshold {threshold}: length={best['prompt_length']}, "
-                        f"score={best['train_score']:.3f}"
-                    )
-                else:
-                    print(f"  Threshold {threshold}: no candidate achieves this")
+            pareto = compute_pareto_frontier(evaluated)
+            pareto_sorted = sorted(pareto, key=lambda c: c["prompt_length"])
+            print(f"\nPareto frontier ({len(pareto)} points):")
+            for c in pareto_sorted:
+                print(f"  len={c['prompt_length']}, score={c['train_score']:.3f}")
 
             # Save intermediate results after each iteration
             save_intermediate_results(iteration + 1)
@@ -312,7 +279,6 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
                 proposed_prompt, prompt_dict = propose_new_shortening(
                     config.prompter_name,
                     evaluated,
-                    thresholds_valid,
                     turn_number=turn_number,
                     max_turns=max_turns,
                 )
@@ -357,67 +323,29 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
             )
             candidate["train_score"] = score
 
-        # Compute Pareto frontier
+        # Compute final Pareto frontier
         evaluated = [c for c in all_candidates if c["train_score"] is not None]
         pareto_candidates = compute_pareto_frontier(evaluated)
-        print(f"\nPareto frontier: {len(pareto_candidates)} candidates")
-
-        # Load validation data (unless skipping validation)
-        if config.skip_validation:
-            print("\nSkipping validation phase (skip_validation=True)")
-            valid_data = None
-        else:
-            print(f"\nLoading validation data ({config.validation_set_size} examples)...")
-            valid_data = load_eval_data(
-                config.env_name, split="valid", max_examples=config.validation_set_size
-            )
+        pareto_candidates = sorted(pareto_candidates, key=lambda c: c["prompt_length"])
+        print(f"\nFinal Pareto frontier: {len(pareto_candidates)} candidates")
 
         # Load test data (full set)
-        print("Loading test data...")
+        print("\nLoading test data...")
         test_data = load_eval_data(config.env_name, split="test")
 
-        # Pick best for each threshold and evaluate on validation and test
-        print("\n=== Evaluating best candidates per threshold ===")
-        best_per_threshold = []
-
-        for threshold in sorted(thresholds_valid, reverse=True):
-            best = get_shortest_above_threshold(evaluated, threshold)
-            if best is None:
-                print(f"Threshold {threshold}: no candidate achieves this")
-                continue
-
-            print(f"\nThreshold {threshold}:")
-            print(f"  Train: length={best['prompt_length']}, score={best['train_score']:.3f}")
-
-            # Evaluate on validation (or use train score if skipping)
-            if config.skip_validation:
-                val_score = best["train_score"]
-                print(f"  Validation score: {val_score:.3f} (using train score)")
-            else:
-                val_score = _evaluate_prompt(
-                    best["instructions"],
-                    valid_data,
-                    executor_lm,
-                    config.num_threads,
-                    config.hint_type,
-                    config.incompetent,
-                )
-                print(f"  Validation score: {val_score:.3f}")
-
-            # Evaluate on test
+        # Evaluate all Pareto candidates on test
+        print("\n=== Evaluating Pareto frontier on test ===")
+        for c in pareto_candidates:
             test_score = _evaluate_prompt(
-                best["instructions"],
+                c["instructions"],
                 test_data,
                 executor_lm,
                 config.num_threads,
                 config.hint_type,
                 config.incompetent,
             )
-            print(f"  Test score: {test_score:.3f}")
-
-            best_per_threshold.append(
-                make_best_per_threshold_entry(threshold, best, val_score, test_score)
-            )
+            c["test_score"] = test_score
+            print(f"  len={c['prompt_length']}, train={c['train_score']:.3f}, test={test_score:.3f}")
 
         # Serialize and save results
         results = serialize_shortening_results(
@@ -425,13 +353,11 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
             initial_prompt_path=config.baseline_instructions_path,
             initial_train_score=initial_train_score,
             initial_length=initial_length,
-            thresholds_requested=config.thresholds,
-            thresholds_valid=thresholds_valid,
-            best_per_threshold=best_per_threshold,
             all_candidates=evaluated,
             pareto_optimal_candidates=pareto_candidates,
             prompter_prompts=prompter_prompts,
         )
+        results["is_complete"] = True
         save_shortening_results(log_dir, results)
 
         print("\n=== Shortening complete ===")
@@ -476,13 +402,6 @@ def main():
         help="Environment name",
     )
     parser.add_argument(
-        "--thresholds",
-        type=float,
-        nargs="+",
-        default=[0.95, 0.90, 0.85, 0.80],
-        help="Score thresholds to target",
-    )
-    parser.add_argument(
         "--max_iterations",
         type=int,
         default=10,
@@ -518,7 +437,6 @@ def main():
         prompter_name=args.prompter_name,
         executor_name=args.executor_name,
         baseline_instructions_path=args.baseline_instructions_path,
-        thresholds=args.thresholds,
         max_iterations=args.max_iterations,
         env_name=args.env_name,
         num_threads=args.num_threads,

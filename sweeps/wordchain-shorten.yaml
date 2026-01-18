@@ -17,12 +17,8 @@ executor_name: deepinfra/Qwen/Qwen3-30B-A3B
 baseline_instructions_path:
   - logs/wordchain/prompter-hack=explicit-teacher=true/2026-01-05-17-52-42/prompter_name=anthropic_claude_opus_4_5-show_expert_reasoning=False-train_teacher_file=wordchain_12_30.jsonl/0/best_instructions.txt  # proxy_reward: 0.6260
 
-# Thresholds to target
-thresholds: [0.60, 0.55, 0.50, 0.45]
-
 # Shortening parameters
 max_iterations: 50
 num_threads: 32
 cache: true
 skip_initial_shortenings: true
-skip_validation: true

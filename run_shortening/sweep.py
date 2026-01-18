@@ -31,7 +31,6 @@ REQUIRED_FIELDS = [
     "prompter_name",
     "executor_name",
     "baseline_instructions_path",
-    "thresholds",
     "max_iterations",
     "num_threads",
 ]
@@ -140,9 +139,6 @@ def get_sweep_combinations(config: dict) -> tuple[list[str], list[tuple]]:
     for key, value in config.items():
         if key in NON_SWEEPABLE_FIELDS or key in zipped_fields:
             continue
-        # thresholds is a list but should not be swept
-        if key == "thresholds":
-            continue
         if isinstance(value, list):
             sweep_fields.append(key)
             sweep_values.append([(v,) for v in value])
@@ -166,10 +162,6 @@ def get_fixed_values(config: dict) -> dict:
     fixed = {}
     for key, value in config.items():
         if key in NON_SWEEPABLE_FIELDS:
-            continue
-        # thresholds is a list but is not swept
-        if key == "thresholds":
-            fixed[key] = value
             continue
         if not isinstance(value, list):
             fixed[key] = value
@@ -260,12 +252,10 @@ def run_sweep(config: dict, experiment_name: str, date_str: str) -> None:
             prompter_name=all_kwargs["prompter_name"],
             executor_name=all_kwargs["executor_name"],
             baseline_instructions_path=all_kwargs["baseline_instructions_path"],
-            thresholds=all_kwargs["thresholds"],
             max_iterations=all_kwargs["max_iterations"],
             env_name=task,
             num_threads=config["num_threads"],
             train_set_size=config.get("train_set_size", 50),
-            validation_set_size=config.get("validation_set_size", 50),
             date_str=date_str,
             experiment_name=experiment_name,
             sweep_fields=sweep_fields,
@@ -274,7 +264,6 @@ def run_sweep(config: dict, experiment_name: str, date_str: str) -> None:
             hint_type=all_kwargs.get("hint_type"),
             incompetent=config.get("incompetent", False),
             skip_initial_shortenings=config.get("skip_initial_shortenings", False),
-            skip_validation=config.get("skip_validation", False),
         )
 
         try:

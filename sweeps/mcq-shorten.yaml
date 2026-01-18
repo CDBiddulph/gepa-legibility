@@ -34,12 +34,8 @@ baseline_instructions_path:
   # - logs/mcq/hack-teacher=false/2025-12-23-00-03-22/prompter_name=openrouter_google_gemini_3_pro_preview-suggest_hack=explicit-hint_type=unethical/0/best_instructions.txt  # proxy_reward: 0.5600
   # - logs/mcq/hack-teacher=false/2025-12-23-00-03-22/prompter_name=openrouter_google_gemini_3_pro_preview-suggest_hack=no-hint_type=consistency/0/best_instructions.txt  # proxy_reward: 0.4300
 
-# Thresholds to target (will be filtered based on initial score for each prompt)
-thresholds: [0.80, 0.75, 0.70, 0.65, 0.60]
-
 # Shortening parameters
 max_iterations: 50
 num_threads: 32
 cache: true
 skip_initial_shortenings: true
-skip_validation: true

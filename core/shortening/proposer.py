@@ -3,6 +3,7 @@
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from core.lm import get_simple_lm
+from core.shortening.pareto import compute_pareto_frontier
 
 # Stage 1: Mark pieces in the prompt
 MARK_PIECES_PROMPT = '''Given the following prompt, insert markers <piece-1>, <piece-2>, etc. right before each removable "piece" of the prompt. A piece is any cohesive section that could potentially be removed while keeping the prompt functional (though possibly less effective).
@@ -68,17 +69,18 @@ Rules:
 Output ONLY the shortened prompt between ---BEGIN PROMPT--- and ---END PROMPT--- markers (no explanation).'''
 
 
-ITERATIVE_PROPOSAL_PROMPT = '''You are helping to find the shortest prompts that achieve various target performance scores. We use these prompts as instructions for an LLM to follow to improve its score on a task, but some parts of the instructions may not be critical to performance.
+ITERATIVE_PROPOSAL_PROMPT = '''You are helping to find the shortest prompts that achieve various performance scores. We use these prompts as instructions for an LLM to follow to improve its score on a task, but some parts of the instructions may not be critical to performance.
 
 Here are all prompts evaluated so far:
 {numbered_list}
 
-Current best (shortest) prompt for each threshold:
-{threshold_summary}
+Current Pareto frontier (length vs score tradeoff - these are the best prompts at each length/score level):
+{pareto_frontier}
 
-Propose ONE new prompt that could improve the frontier - either:
-- A shorter prompt that still achieves one of the thresholds
-- A prompt that fills a gap where no good option exists yet
+Propose ONE new prompt that could push the Pareto frontier - either:
+- A shorter prompt that achieves a similar score to an existing frontier point
+- A prompt that achieves a higher score than existing prompts of similar length
+- A prompt that fills a gap in the frontier
 
 IMPORTANT RULES:
 - Your proposed prompt must be a SUBSET of the ORIGINAL prompt (marked with [ORIGINAL] above). You may ONLY remove text from the original, never add new information.
@@ -86,13 +88,13 @@ IMPORTANT RULES:
 - If you see other prompts in the list that contain information not in the ORIGINAL, ignore them - they are invalid. Only propose prompts that are subsets of the ORIGINAL.
 
 Strategy tips:
-- Look at which thresholds have the most room for improvement (biggest gap between current best length and what might be achievable)
+- Look for large gaps in the frontier where a new point could provide value
 - Try removing parts that don't seem to affect the score much based on the evidence
 - Don't get stuck in a local optimum - try something different from what's been tried
 - You can be bold and remove many parts at once, or make small targeted removals
-- Keep in mind that you are on turn {turn_number} of {max_turns} - in the early game, you can try a variety of different subsets and explore your options
-- If you have a long prompt with a high score and a short prompt with a low score, try a "binary search" where you aim for a prompt that is right in the middle of those two lengths
-- Look for relatively small prompt diffs that cause major differences in score, and use this to hypothesize about what parts of the prompt are most important for performance
+- Keep in mind that you are on turn {turn_number} of {max_turns} - in the early game, explore diverse options
+- If you have a long prompt with a high score and a short prompt with a low score, try a "binary search" - aim for a prompt in the middle
+- Look for small prompt diffs that cause major score differences to identify which parts are most important
 
 Output ONLY the proposed prompt (no explanation, no markers, no preamble).'''
 
@@ -241,16 +243,14 @@ def generate_initial_shortenings(
 
 def format_candidates_for_display(
     candidates: list[dict],
-    thresholds: list[float],
 ) -> tuple[str, str]:
     """Format candidates for display in the iterative proposal prompt.
 
     Args:
         candidates: List of candidate dicts with instructions, prompt_length, train_score
-        thresholds: List of threshold values
 
     Returns:
-        Tuple of (numbered_list, threshold_summary) strings
+        Tuple of (numbered_list, pareto_frontier) strings
     """
     # Sort: ORIGINAL first, then by score (highest first)
     def sort_key(c):
@@ -274,46 +274,40 @@ def format_candidates_for_display(
             )
     numbered_list = "\n\n".join(numbered_lines)
 
-    # Create threshold summary
-    summary_lines = []
-    for threshold in sorted(thresholds, reverse=True):
-        qualifying = [c for c in candidates if c["train_score"] >= threshold]
-        if qualifying:
-            best = min(qualifying, key=lambda c: c["prompt_length"])
-            summary_lines.append(
-                f"  Threshold {threshold}: length={best['prompt_length']}, score={best['train_score']:.3f}"
-            )
-        else:
-            summary_lines.append(f"  Threshold {threshold}: no prompt achieves this yet")
-    threshold_summary = "\n".join(summary_lines)
+    # Compute and format Pareto frontier
+    pareto = compute_pareto_frontier(candidates)
+    # Sort frontier by length (shortest first)
+    pareto_sorted = sorted(pareto, key=lambda c: c["prompt_length"])
+    frontier_lines = []
+    for c in pareto_sorted:
+        frontier_lines.append(f"  len={c['prompt_length']}, score={c['train_score']:.3f}")
+    pareto_frontier = "\n".join(frontier_lines)
 
-    return numbered_list, threshold_summary
+    return numbered_list, pareto_frontier
 
 
 def propose_new_shortening(
     prompter_model: str,
     candidates: list[dict],
-    thresholds: list[float],
     turn_number: int,
     max_turns: int,
 ) -> tuple[str | None, dict]:
-    """Propose a single new shortened prompt to improve the frontier.
+    """Propose a single new shortened prompt to improve the Pareto frontier.
 
     Args:
         prompter_model: Model name for the proposer LLM
         candidates: All evaluated candidates so far
-        thresholds: All thresholds being targeted
         turn_number: Current turn number (1-indexed)
         max_turns: Total number of turns/proposals
 
     Returns:
         Tuple of (proposed prompt or None, prompt dict with prompt and response)
     """
-    numbered_list, threshold_summary = format_candidates_for_display(candidates, thresholds)
+    numbered_list, pareto_frontier = format_candidates_for_display(candidates)
 
     filled_prompt = ITERATIVE_PROPOSAL_PROMPT.format(
         numbered_list=numbered_list,
-        threshold_summary=threshold_summary,
+        pareto_frontier=pareto_frontier,
         turn_number=turn_number,
         max_turns=max_turns,
     )
