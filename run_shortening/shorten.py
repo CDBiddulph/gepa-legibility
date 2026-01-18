@@ -12,6 +12,7 @@ import argparse
 import dataclasses
 import os
 import traceback
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from core.config import save_config
@@ -329,9 +330,9 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
 
                 print(f"  LLM proposed {len(proposals)} piece combinations")
 
-                # Generate shortened prompts for each proposal
+                # Filter out proposals already in candidates
+                new_proposals = []
                 for pieces_to_remove in proposals:
-                    # Check if already in candidates
                     pieces_key = str(sorted(pieces_to_remove))
                     existing = any(
                         str(c.get("pieces_removed", [])) == pieces_key
@@ -339,35 +340,43 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
                     )
                     if existing:
                         print(f"  Skipping {pieces_to_remove} - already in candidates")
-                        continue
+                    else:
+                        new_proposals.append(pieces_to_remove)
 
-                    # Generate the shortened prompt
-                    shortened, remove_prompt_dict = remove_pieces(
+                # Generate shortened prompts in parallel
+                def generate_removal(pieces_to_remove):
+                    shortened, prompt_dict = remove_pieces(
                         config.prompter_name,
                         marked_prompt,
                         initial_prompt,
                         pieces_to_remove,
                     )
-                    prompter_prompts.append({
-                        "iteration": iteration + 1,
-                        "type": f"remove_pieces_{pieces_to_remove}",
-                        "prompt": remove_prompt_dict["prompt"],
-                        "response": remove_prompt_dict.get("response"),
-                    })
+                    return pieces_to_remove, shortened, prompt_dict
 
-                    if shortened and shortened.strip() and shortened != initial_prompt:
-                        all_candidates.append(
-                            make_candidate(
-                                shortened,
-                                None,
-                                iteration + 1,
-                                "proposed",
-                                pieces_removed=sorted(pieces_to_remove),
+                with ThreadPoolExecutor(max_workers=config.num_threads) as executor:
+                    futures = {executor.submit(generate_removal, p): p for p in new_proposals}
+                    for future in as_completed(futures):
+                        pieces_to_remove, shortened, remove_prompt_dict = future.result()
+                        prompter_prompts.append({
+                            "iteration": iteration + 1,
+                            "type": f"remove_pieces_{pieces_to_remove}",
+                            "prompt": remove_prompt_dict["prompt"],
+                            "response": remove_prompt_dict.get("response"),
+                        })
+
+                        if shortened and shortened.strip() and shortened != initial_prompt:
+                            all_candidates.append(
+                                make_candidate(
+                                    shortened,
+                                    None,
+                                    iteration + 1,
+                                    "proposed",
+                                    pieces_removed=sorted(pieces_to_remove),
+                                )
                             )
-                        )
-                        print(f"  Added proposal: remove {pieces_to_remove} (length={len(shortened)})")
-                    else:
-                        print(f"  Failed to generate shortening for {pieces_to_remove}")
+                            print(f"  Added proposal: remove {pieces_to_remove} (length={len(shortened)})")
+                        else:
+                            print(f"  Failed to generate shortening for {pieces_to_remove}")
 
         # Final evaluation of all candidates
         print("\n=== Final train evaluation ===")
