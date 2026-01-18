@@ -216,7 +216,7 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
         # Initialize candidates list with initial prompt and empty string
         all_candidates = [
             make_candidate(initial_prompt, initial_train_score, 0, "initial", pieces_removed=[]),
-            make_candidate("", empty_train_score, 0, "empty", pieces_removed="all"),
+            make_candidate("", empty_train_score, 0, "empty", pieces_removed=list(piece_nums)),
         ]
 
         # Optionally generate and evaluate single-piece removals

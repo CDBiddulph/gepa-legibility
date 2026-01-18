@@ -225,50 +225,22 @@ def generate_single_piece_removals(
 
 
 def format_candidates_for_piece_display(candidates: list[dict]) -> str:
-    """Format candidates for display showing only which pieces were removed.
-
-    Args:
-        candidates: List of candidate dicts with pieces_removed, prompt_length, train_score
-
-    Returns:
-        Formatted string showing candidates with their removed pieces
-    """
+    """Format candidates for display showing only which pieces were removed."""
     lines = []
     for c in candidates:
-        pieces_removed = c.get("pieces_removed")
-        if pieces_removed is None or pieces_removed == []:
-            pieces_str = "[] (original)"
-        elif pieces_removed == "all":
-            pieces_str = "[all] (empty prompt)"
-        else:
-            pieces_str = str(pieces_removed)
-
-        lines.append(f"  removed {pieces_str}: len={c['prompt_length']}, score={c['train_score']:.3f}")
-
+        pieces_removed = c.get("pieces_removed", [])
+        lines.append(f"  removed {pieces_removed}: len={c['prompt_length']}, score={c['train_score']:.3f}")
     return "\n".join(lines)
 
 
 def format_pareto_for_display(candidates: list[dict]) -> str:
-    """Format Pareto frontier for display.
-
-    Args:
-        candidates: List of candidate dicts
-
-    Returns:
-        Formatted string showing Pareto frontier
-    """
+    """Format Pareto frontier for display."""
     pareto = compute_pareto_frontier(candidates)
     pareto_sorted = sorted(pareto, key=lambda c: c["prompt_length"])
     lines = []
     for c in pareto_sorted:
-        pieces_removed = c.get("pieces_removed")
-        if pieces_removed is None or pieces_removed == []:
-            pieces_str = "[] (original)"
-        elif pieces_removed == "all":
-            pieces_str = "[all] (empty)"
-        else:
-            pieces_str = str(pieces_removed)
-        lines.append(f"  len={c['prompt_length']}, score={c['train_score']:.3f}, removed {pieces_str}")
+        pieces_removed = c.get("pieces_removed", [])
+        lines.append(f"  len={c['prompt_length']}, score={c['train_score']:.3f}, removed {pieces_removed}")
     return "\n".join(lines)
 
 
