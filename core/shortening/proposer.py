@@ -18,64 +18,52 @@ Examples of pieces:
 
 Be thorough - mark as many pieces as possible, even small ones. The goal is to identify every part that could potentially be shortened or removed.
 
-Original prompt:
----BEGIN PROMPT---
-{prompt}
----END PROMPT---
+Example input:
 
-Example:
-If the prompt was:
----BEGIN PROMPT---
 Here's what to do:
 1. Read the input carefully
 2. Think step by step
 3. Double-check your answer
 Be concise.
----END PROMPT---
 
-The marked version would be:
----BEGIN PROMPT---
+Example output:
+
 <piece-1>Here's what to do:
 <piece-2>1. Read the input carefully
 <piece-3>2. Think step by step
 <piece-4>3. Double-check your answer
 <piece-5>Be concise.
----END PROMPT---
 
-Now output the prompt with <piece-N> markers inserted. Output ONLY the marked prompt between ---BEGIN PROMPT--- and ---END PROMPT--- markers (no explanation).'''
+Now mark the following prompt. Output ONLY the marked prompt (no explanation). The prompt to mark begins *now*:
+
+{prompt}'''
 
 
 # Prompt for removing specified pieces
-REMOVE_PIECES_PROMPT = '''You previously marked the following prompt with <piece-N> markers to identify removable pieces:
+REMOVE_PIECES_PROMPT = '''We marked the following prompt with <piece-N> markers to identify removable pieces:
 
----BEGIN PROMPT---
 {marked_prompt}
----END PROMPT---
 
 Original prompt (without markers):
----BEGIN PROMPT---
 {original_prompt}
----END PROMPT---
 
 Now generate a shortened version of the ORIGINAL prompt by removing the following pieces: {pieces_to_remove}
 
 Rules:
 1. Remove ONLY the content associated with the specified pieces
 2. The shortened version should NOT contain any <piece-N> markers
-3. Make sure the result is grammatically correct and coherent
+3. Adjust the text to be grammatically correct and coherent after the removals
   - If you remove items in a numbered list, adjust the numbering to match the new list
   - If you remove sentences, consider changing the wording of the surrounding sentences to maintain coherence
 
-Output ONLY the shortened prompt between ---BEGIN PROMPT--- and ---END PROMPT--- markers (no explanation).'''
+Output ONLY the shortened prompt (no explanation).'''
 
 
 # Prompt for proposing piece indices to remove
 PROPOSE_PIECE_INDICES_PROMPT = '''You are helping to find the shortest prompts that achieve various performance scores. We use these prompts as instructions for an LLM to follow to improve its score on a task, but some parts of the instructions may not be critical to performance.
 
 Here is the original prompt with marked pieces:
----BEGIN MARKED PROMPT---
 {marked_prompt}
----END MARKED PROMPT---
 
 The prompt has {num_pieces} removable pieces (numbered 1 to {num_pieces}).
 
@@ -102,40 +90,8 @@ Output format: Write each proposal as a JSON list of piece numbers to remove, on
 Output ONLY the lists of piece numbers, one per line (no explanation, no additional text).'''
 
 
-def _extract_between_markers(text: str, begin_marker: str, end_marker: str) -> str | None:
-    """Extract text between begin and end markers.
-
-    Args:
-        text: The text to search in
-        begin_marker: The beginning marker (e.g., "---BEGIN PROMPT---")
-        end_marker: The ending marker (e.g., "---END PROMPT---")
-
-    Returns:
-        The text between the markers, or None if not found
-    """
-    begin_idx = text.find(begin_marker)
-    if begin_idx == -1:
-        return None
-    begin_idx += len(begin_marker)
-
-    end_idx = text.find(end_marker, begin_idx)
-    if end_idx == -1:
-        return None
-
-    return text[begin_idx:end_idx].strip()
-
-
 def _get_text_response(model: str, prompt: str, cache: bool = True) -> str:
-    """Get a plain text response from the LLM.
-
-    Args:
-        model: Model name
-        prompt: The prompt to send
-        cache: Whether to cache the response
-
-    Returns:
-        The raw text response
-    """
+    """Get a plain text response from the LLM."""
     lm = get_simple_lm(model, cache=cache)
     return lm(prompt)
 
@@ -156,15 +112,7 @@ def mark_pieces(prompter_model: str, prompt: str) -> tuple[str, list[int], dict]
     for attempt in range(5):
         response = _get_text_response(prompter_model, mark_prompt, cache=(attempt == 0))
         prompt_dict["response"] = response
-
-        # Try to extract marked prompt from response
-        marked_prompt = _extract_between_markers(
-            response, "---BEGIN PROMPT---", "---END PROMPT---"
-        )
-
-        # If no markers found, try using the whole response
-        if marked_prompt is None:
-            marked_prompt = response.strip()
+        marked_prompt = response.strip()
 
         # Validate: should contain at least one <piece-N> marker
         if re.search(r"<piece-\d+>", marked_prompt):
@@ -213,15 +161,7 @@ def remove_pieces(
     for attempt in range(5):
         response = _get_text_response(prompter_model, remove_prompt, cache=(cache and attempt == 0))
         prompt_dict["response"] = response
-
-        # Try to extract shortened prompt from response
-        shortened = _extract_between_markers(
-            response, "---BEGIN PROMPT---", "---END PROMPT---"
-        )
-
-        # If no markers found, try using the whole response
-        if shortened is None:
-            shortened = response.strip()
+        shortened = response.strip()
 
         # Basic validation: should be non-empty and not contain piece markers
         if shortened and not re.search(r"<piece-\d+>", shortened):
@@ -250,7 +190,6 @@ def generate_single_piece_removals(
         Tuple of (list of (pieces_removed, shortened_prompt) tuples, list of prompt dicts)
     """
     prompts_used = []
-    results = []
     completed = 0
 
     def remove_one_piece(piece_num: int) -> tuple[int, str | None, dict]:
@@ -275,6 +214,7 @@ def generate_single_piece_removals(
             print(f"  Generated shortening {completed}/{len(piece_nums)} (piece {piece_num})")
 
     # Collect results in order
+    results = []
     for piece_num in piece_nums:
         prompts_used.append(prompts_by_piece[piece_num])
         if piece_num in shortenings_by_piece:
