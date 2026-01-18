@@ -21,12 +21,16 @@ from core.lm import get_dspy_lm
 from core.runner import _load_baseline_instructions
 from core.shortening import (
     compute_pareto_frontier,
-    generate_initial_shortenings,
-    propose_new_shortening,
     serialize_shortening_results,
     save_shortening_results,
     make_candidate,
     make_pareto_frontier_entry,
+)
+from core.shortening.proposer import (
+    mark_pieces,
+    remove_pieces,
+    generate_single_piece_removals,
+    propose_piece_removals,
 )
 
 
@@ -50,8 +54,10 @@ class ShorteningConfig:
     # MCQ-specific
     hint_type: str | None = None
     incompetent: bool = False
-    # Skip initial shortening phase (just start with the original prompt + empty string)
-    skip_initial_shortenings: bool = False
+    # Whether to evaluate each single-piece removal at the start
+    evaluate_single_piece_removals: bool = False
+    # Number of piece-removal proposals per iteration
+    num_proposals_per_iteration: int = 1
 
 
 def _evaluate_prompt(
@@ -89,7 +95,7 @@ def _evaluate_prompt(
 
 
 def _deduplicate_candidates(candidates: list[dict]) -> list[dict]:
-    """Remove duplicate candidates based on instructions.
+    """Remove duplicate candidates based on pieces_removed.
 
     Args:
         candidates: List of candidate dicts
@@ -100,9 +106,14 @@ def _deduplicate_candidates(candidates: list[dict]) -> list[dict]:
     seen = set()
     unique = []
     for c in candidates:
-        instructions = c["instructions"]
-        if instructions not in seen:
-            seen.add(instructions)
+        # Use pieces_removed as the key if available, otherwise use instructions
+        pieces_removed = c.get("pieces_removed")
+        if pieces_removed is not None:
+            key = str(pieces_removed)
+        else:
+            key = c["instructions"]
+        if key not in seen:
+            seen.add(key)
             unique.append(c)
     return unique
 
@@ -111,12 +122,13 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
     """Run the prompt shortening algorithm.
 
     Algorithm:
-    1. Load initial prompt and evaluate on train split
-    2. Start with initial prompt + empty string as the initial Pareto frontier
-    3. Optionally generate initial shortenings (one per removable part)
+    1. Load initial prompt and mark pieces
+    2. Evaluate initial prompt and empty string on train split
+    3. Optionally evaluate each single-piece removal
     4. Iteratively:
        a. Evaluate all unevaluated candidates on train
-       b. LLM proposes one new prompt to push the Pareto frontier
+       b. LLM proposes piece indices to remove
+       c. Generate shortened prompts by removing those pieces
     5. Compute final Pareto frontier on train scores
     6. Evaluate all Pareto candidates on test
     7. Save results
@@ -154,6 +166,23 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
         initial_length = len(initial_prompt)
         print(f"Loaded initial prompt ({initial_length} chars)")
 
+        # Mark pieces in the prompt
+        print("Marking pieces in prompt...")
+        marked_prompt, piece_nums, mark_prompt_dict = mark_pieces(
+            config.prompter_name, initial_prompt
+        )
+        print(f"Marked {len(piece_nums)} pieces")
+
+        # Track prompts sent to the prompter LLM
+        prompter_prompts = [
+            {
+                "iteration": 0,
+                "type": "mark_pieces",
+                "prompt": mark_prompt_dict["prompt"],
+                "response": mark_prompt_dict["response"],
+            }
+        ]
+
         # Load train data
         print(f"Loading train data ({config.train_set_size} examples)...")
         train_data = load_eval_data(
@@ -186,35 +215,34 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
 
         # Initialize candidates list with initial prompt and empty string
         all_candidates = [
-            make_candidate(initial_prompt, initial_train_score, 0, "initial"),
-            make_candidate("", empty_train_score, 0, "empty"),
+            make_candidate(initial_prompt, initial_train_score, 0, "initial", pieces_removed=[]),
+            make_candidate("", empty_train_score, 0, "empty", pieces_removed="all"),
         ]
 
-        # Track prompts sent to the prompter LLM
-        prompter_prompts = []
-
-        # Generate initial shortenings (two-stage process) unless skipped
-        if config.skip_initial_shortenings:
-            print("Skipping initial shortenings (skip_initial_shortenings=True)")
-        else:
-            print("Generating initial shortenings...")
-            initial_shortenings, initial_prompter_prompts = generate_initial_shortenings(
-                config.prompter_name, initial_prompt, num_threads=config.num_threads
+        # Optionally generate and evaluate single-piece removals
+        if config.evaluate_single_piece_removals:
+            print("Generating single-piece removals...")
+            single_removals, single_removal_prompts = generate_single_piece_removals(
+                config.prompter_name,
+                marked_prompt,
+                initial_prompt,
+                piece_nums,
+                num_threads=config.num_threads,
             )
-            for prompt_info in initial_prompter_prompts:
+            for prompt_info in single_removal_prompts:
                 prompter_prompts.append({
                     "iteration": 0,
-                    "type": f"initial_shortening_{prompt_info['stage']}",
+                    "type": f"single_piece_removal_{prompt_info['stage']}",
                     "prompt": prompt_info["prompt"],
+                    "response": prompt_info.get("response"),
                 })
-            print(f"Generated {len(initial_shortenings)} initial shortening candidates")
+            print(f"Generated {len(single_removals)} single-piece removal candidates")
 
             # Add to candidates (without scores yet)
-            for shortened in initial_shortenings:
-                # Skip if same as initial or empty
+            for pieces_removed, shortened in single_removals:
                 if shortened.strip() and shortened != initial_prompt:
                     all_candidates.append(
-                        make_candidate(shortened, None, 0, "shortening")
+                        make_candidate(shortened, None, 0, "shortening", pieces_removed=pieces_removed)
                     )
 
             # Deduplicate
@@ -236,6 +264,8 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
             )
             results["iteration"] = iteration_num
             results["is_complete"] = is_final
+            results["marked_prompt"] = marked_prompt
+            results["num_pieces"] = len(piece_nums)
             save_shortening_results(log_dir, results)
 
         # Main iteration loop
@@ -257,8 +287,9 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
                     config.incompetent,
                 )
                 candidate["train_score"] = score
+                pieces_info = candidate.get("pieces_removed", "?")
                 print(
-                    f"    Length: {candidate['prompt_length']}, Score: {score:.3f}"
+                    f"    Removed {pieces_info}, Length: {candidate['prompt_length']}, Score: {score:.3f}"
                 )
 
             # Display current Pareto frontier
@@ -267,48 +298,76 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
             pareto_sorted = sorted(pareto, key=lambda c: c["prompt_length"])
             print(f"\nPareto frontier ({len(pareto)} points):")
             for c in pareto_sorted:
-                print(f"  len={c['prompt_length']}, score={c['train_score']:.3f}")
+                pieces_info = c.get("pieces_removed", "?")
+                print(f"  removed {pieces_info}: len={c['prompt_length']}, score={c['train_score']:.3f}")
 
             # Save intermediate results after each iteration
             save_intermediate_results(iteration + 1)
 
-            # Propose new candidate (unless last iteration)
+            # Propose new candidates (unless last iteration)
             if iteration < config.max_iterations - 1:
                 turn_number = iteration + 1
                 max_turns = config.max_iterations - 1
-                print(f"\nProposing new candidate (turn {turn_number}/{max_turns})...")
-                proposed_prompt, prompt_dict = propose_new_shortening(
+                print(f"\nProposing piece removals (turn {turn_number}/{max_turns})...")
+
+                # Get piece index proposals from LLM
+                proposals, prompt_dict = propose_piece_removals(
                     config.prompter_name,
+                    marked_prompt,
+                    len(piece_nums),
                     evaluated,
+                    config.num_proposals_per_iteration,
                     turn_number=turn_number,
                     max_turns=max_turns,
                 )
                 prompter_prompts.append({
                     "iteration": iteration + 1,
-                    "type": "iterative_proposal",
+                    "type": "propose_piece_indices",
                     "prompt": prompt_dict["prompt"],
                     "response": prompt_dict["response"],
                 })
 
-                if proposed_prompt and proposed_prompt.strip() and proposed_prompt != initial_prompt:
+                print(f"  LLM proposed {len(proposals)} piece combinations")
+
+                # Generate shortened prompts for each proposal
+                for pieces_to_remove in proposals:
                     # Check if already in candidates
+                    pieces_key = str(sorted(pieces_to_remove))
                     existing = any(
-                        c["instructions"] == proposed_prompt for c in all_candidates
+                        str(c.get("pieces_removed", [])) == pieces_key
+                        for c in all_candidates
                     )
-                    if not existing:
+                    if existing:
+                        print(f"  Skipping {pieces_to_remove} - already in candidates")
+                        continue
+
+                    # Generate the shortened prompt
+                    shortened, remove_prompt_dict = remove_pieces(
+                        config.prompter_name,
+                        marked_prompt,
+                        initial_prompt,
+                        pieces_to_remove,
+                    )
+                    prompter_prompts.append({
+                        "iteration": iteration + 1,
+                        "type": f"remove_pieces_{pieces_to_remove}",
+                        "prompt": remove_prompt_dict["prompt"],
+                        "response": remove_prompt_dict.get("response"),
+                    })
+
+                    if shortened and shortened.strip() and shortened != initial_prompt:
                         all_candidates.append(
                             make_candidate(
-                                proposed_prompt,
+                                shortened,
                                 None,
                                 iteration + 1,
                                 "proposed",
+                                pieces_removed=sorted(pieces_to_remove),
                             )
                         )
-                        print(f"  Added proposal (length={len(proposed_prompt)})")
+                        print(f"  Added proposal: remove {pieces_to_remove} (length={len(shortened)})")
                     else:
-                        print("  Proposal already in candidates")
-                else:
-                    print("  No valid proposal received")
+                        print(f"  Failed to generate shortening for {pieces_to_remove}")
 
         # Final evaluation of all candidates
         print("\n=== Final train evaluation ===")
@@ -346,7 +405,8 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
                 config.incompetent,
             )
             c["test_score"] = test_score
-            print(f"  len={c['prompt_length']}, train={c['train_score']:.3f}, test={test_score:.3f}")
+            pieces_info = c.get("pieces_removed", "?")
+            print(f"  removed {pieces_info}: len={c['prompt_length']}, train={c['train_score']:.3f}, test={test_score:.3f}")
 
         # Build pareto_frontier_results ordered by train score (highest first)
         pareto_by_score = sorted(pareto_candidates, key=lambda c: -c["train_score"])
@@ -364,6 +424,8 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
             prompter_prompts=prompter_prompts,
         )
         results["is_complete"] = True
+        results["marked_prompt"] = marked_prompt
+        results["num_pieces"] = len(piece_nums)
         save_shortening_results(log_dir, results)
 
         print("\n=== Shortening complete ===")
@@ -436,6 +498,17 @@ def main():
         default="logs/shortening",
         help="Output directory for results",
     )
+    parser.add_argument(
+        "--evaluate_single_piece_removals",
+        action="store_true",
+        help="Evaluate each single-piece removal at the start",
+    )
+    parser.add_argument(
+        "--num_proposals_per_iteration",
+        type=int,
+        default=1,
+        help="Number of piece-removal proposals per iteration",
+    )
 
     args = parser.parse_args()
 
@@ -448,6 +521,8 @@ def main():
         num_threads=args.num_threads,
         hint_type=args.hint_type,
         cache=args.cache,
+        evaluate_single_piece_removals=args.evaluate_single_piece_removals,
+        num_proposals_per_iteration=args.num_proposals_per_iteration,
     )
 
     # Create a simple log directory

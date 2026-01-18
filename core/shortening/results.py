@@ -77,9 +77,10 @@ def load_shortening_results(log_dir: str) -> dict:
 
 def make_candidate(
     instructions: str,
-    train_score: float,
+    train_score: float | None,
     iteration: int,
     source: str,
+    pieces_removed: list[int] | str | None = None,
     validation_score: float | None = None,
     test_score: float | None = None,
 ) -> dict:
@@ -87,9 +88,11 @@ def make_candidate(
 
     Args:
         instructions: The prompt text
-        train_score: Score on training data
+        train_score: Score on training data (None if not yet evaluated)
         iteration: Which iteration this candidate was created in
-        source: One of "initial", "shortening", "proposed"
+        source: One of "initial", "shortening", "proposed", "empty"
+        pieces_removed: List of piece indices removed from original, or "all" for empty,
+            or [] for original. None for backwards compatibility.
         validation_score: Optional validation score (computed later)
         test_score: Optional test score (computed later)
 
@@ -103,6 +106,8 @@ def make_candidate(
         "iteration": iteration,
         "source": source,
     }
+    if pieces_removed is not None:
+        candidate["pieces_removed"] = pieces_removed
     if validation_score is not None:
         candidate["validation_score"] = validation_score
     if test_score is not None:
