@@ -12,7 +12,6 @@ from pathlib import Path
 import pandas as pd
 
 from core.evaluation import get_progression_data
-from core.experiment_utils import expand_experiment_paths
 from core.metrics import METRICS_BY_PROMPT_VERSION, METRICS
 from core.shortening.results import load_shortening_results
 
@@ -21,30 +20,32 @@ from core.shortening.results import load_shortening_results
 DFs = dict[str, pd.DataFrame]
 
 
-def load_experiment_dfs(
+def load_dfs(
     paths: list[str],
     quick_mode: bool = False,
     metrics: list[str] | None = None,
 ) -> DFs:
     """Load experiment data from multiple paths into DataFrames.
 
+    Auto-detects whether each experiment is GEPA or shortening data.
+
     Args:
         paths: List of paths to experiment directories. Can be:
             - Timestamp level: "logs/mcq/2025-11-19-11-41-43/" (loads all experiments under it)
             - Specific: "logs/mcq/2025-11-19-11-41-43/p=claude-..." (loads just that one)
-        quick_mode: If True, only evaluate first+last candidates (for bar plots).
-                   If False, evaluate all improving candidates (for progression plots).
-        metrics: List of metric names to compute. If None, computes all metrics.
+        quick_mode: For GEPA only - if True, only evaluate first+last candidates
+        metrics: For GEPA only - list of metric names to compute
 
     Returns:
-        Dict with two DataFrames:
-        - "main": One row per (experiment, run, candidate, is_sanitized) with metric columns.
-            Overall metrics use column names like "proxy_reward".
-            Subset-specific metrics use column names like "proxy_reward_hinted", "hacking_rate_gameable".
-        - "gepa_runs": One row per (experiment, run) with run-level info like end state
+        Dict with "main" DataFrame (and "gepa_runs" for GEPA data)
     """
-    # Expand paths to specific experiment directories
-    expanded_paths = _expand_paths(paths)
+    # Filter out None paths
+    paths = [p for p in paths if p is not None]
+    if not paths:
+        raise ValueError("No paths provided")
+
+    # Expand paths to leaf experiment directories
+    expanded_paths = _expand_all_paths(paths)
 
     all_rows = defaultdict(list)
     for exp_path in expanded_paths:
@@ -58,8 +59,10 @@ def load_experiment_dfs(
     return {key: pd.DataFrame(rows) for key, rows in all_rows.items()}
 
 
-def _expand_paths(paths: list[str]) -> list[Path]:
-    """Expand paths to specific experiment directories.
+def _expand_all_paths(paths: list[str]) -> list[Path]:
+    """Expand paths to leaf experiment directories.
+
+    Handles both GEPA and shortening experiment structures.
 
     Args:
         paths: List of paths to experiment directories or parent directories
@@ -68,10 +71,43 @@ def _expand_paths(paths: list[str]) -> list[Path]:
         List of specific experiment directory paths
     """
     expanded = []
-    # Filter out None paths, so we can use .get() in .ipynb and ignore absent paths
-    for path_str in [p for p in paths if p is not None]:
-        expanded.extend(expand_experiment_paths(path_str))
+    for path_str in paths:
+        path = Path(path_str)
+        if not path.exists():
+            print(f"Warning: Path does not exist: {path}")
+            continue
+        expanded.extend(_find_experiment_dirs(path))
     return expanded
+
+
+def _find_experiment_dirs(path: Path) -> list[Path]:
+    """Find all experiment directories at or under a path."""
+    data_type = _get_data_type(path)
+    if data_type is not None:
+        return [path]
+
+    # Recurse into subdirectories
+    results = []
+    for subdir in sorted(path.iterdir()):
+        if subdir.is_dir():
+            results.extend(_find_experiment_dirs(subdir))
+    return results
+
+
+def _get_data_type(path: Path) -> str | None:
+    """Detect the type of experiment data at a path, or None if not an experiment dir.
+
+    Shortening: shortening_results.json in experiment dir
+    GEPA: progression_data.json in run subdirs (0/, 1/, etc.)
+    """
+    data_types = []
+    if (path / "shortening_results.json").exists():
+        data_types.append("shortening")
+    if list(path.glob("*/progression_data.json")):
+        data_types.append("gepa")
+    if len(data_types) > 1:
+        raise ValueError(f"Ambiguous data types in {path}: {data_types}")
+    return data_types[0] if data_types else None
 
 
 def _load_single_experiment(
@@ -79,17 +115,26 @@ def _load_single_experiment(
 ) -> dict[str, list[dict]]:
     """Load data for a single experiment path into rows.
 
+    Automatically detects whether the experiment is GEPA or shortening
+    and calls the appropriate loader.
+
     Args:
         exp_path: Path to specific experiment directory
-        quick_mode: Whether to use quick mode for loading
-        metrics: List of metric names to compute. If None, computes all metrics.
+        quick_mode: For GEPA - whether to use quick mode for loading
+        metrics: For GEPA - list of metric names to compute. If None, computes all.
 
     Returns:
-        Dict with "main" and "gepa_runs" keys containing row lists
+        Dict with "main" key containing row lists (and "gepa_runs" for GEPA data)
     """
-    # Load progression data (this handles caching and evaluation)
-    progression_data = get_progression_data(exp_path, quick_mode=quick_mode, metrics=metrics)
-    return _flatten_runs(progression_data, exp_path)
+    data_type = _get_data_type(exp_path)
+    assert data_type is not None, f"Not an experiment directory: {exp_path}"
+
+    if data_type == "shortening":
+        shortening_data = load_shortening_results(str(exp_path))
+        return _flatten_shortening(shortening_data, exp_path)
+    else:
+        progression_data = get_progression_data(exp_path, quick_mode=quick_mode, metrics=metrics)
+        return _flatten_runs(progression_data, exp_path)
 
 
 def _load_config(path: Path) -> dict:
@@ -103,34 +148,12 @@ def _load_config(path: Path) -> dict:
 
 def _extract_metadata(exp_path: Path, config: dict) -> dict:
     """Extract metadata from path and config."""
-    # Start with path-derived field
-    metadata = {"experiment_path": str(exp_path)}
-
-    # Add all config fields (convert lists to tuples for DataFrame hashability)
-    for key, value in config.items():
-        metadata[key] = tuple(value) if isinstance(value, list) else value
-
-    # Infer env_name from path if not in config
-    if "env_name" not in metadata:
-        metadata["env_name"] = _infer_environment(str(exp_path))
-        print(
-            f"  Warning: env_name not in config.json, inferred '{metadata['env_name']}' from path"
-        )
-
-    return metadata
+    return {"experiment_path": str(exp_path), **config}
 
 
-KNOWN_ENVIRONMENTS = {"psychosis", "mcq", "wordchain"}
-
-
-def _infer_environment(path_str: str) -> str:
-    """Infer environment from path if not in config."""
-    for env in KNOWN_ENVIRONMENTS:
-        if env in path_str:
-            return env
-    raise ValueError(
-        f"Cannot infer environment from path '{path_str}', expected one of {KNOWN_ENVIRONMENTS} in path"
-    )
+def _hashable_row(row: dict) -> dict:
+    """Convert lists to tuples for DataFrame hashability."""
+    return {k: tuple(v) if isinstance(v, list) else v for k, v in row.items()}
 
 
 def _flatten_runs(progression_data: dict, path: Path) -> dict[str, list[dict]]:
@@ -205,26 +228,22 @@ def _flatten_runs(progression_data: dict, path: Path) -> dict[str, list[dict]]:
                 instructions = (
                     sanitized_instructions if is_sanitized else original_instructions
                 )
-                rows["main"].append(
-                    {
-                        **base_row,
-                        "is_sanitized": is_sanitized,
-                        "instructions": instructions,
-                        **overall_by_sanitized[is_sanitized],
-                        **subset_scores_by_sanitized[is_sanitized],
-                    }
-                )
+                rows["main"].append(_hashable_row({
+                    **base_row,
+                    "is_sanitized": is_sanitized,
+                    "instructions": instructions,
+                    **overall_by_sanitized[is_sanitized],
+                    **subset_scores_by_sanitized[is_sanitized],
+                }))
 
         # Add run-level row to gepa_runs DataFrame
         end_state = run_data["end_state"]
-        rows["gepa_runs"].append(
-            {
-                **metadata,
-                "run_index": run_index,
-                "end_discovery_eval_counts": end_state["discovery_eval_counts"],
-                "end_reflection_call_count": end_state["reflection_call_count"],
-            }
-        )
+        rows["gepa_runs"].append(_hashable_row({
+            **metadata,
+            "run_index": run_index,
+            "end_discovery_eval_counts": end_state["discovery_eval_counts"],
+            "end_reflection_call_count": end_state["reflection_call_count"],
+        }))
 
     return rows
 
@@ -278,106 +297,34 @@ def _parse_score_key(score_key: str) -> tuple[str, bool]:
     return metric_name, prompt_version == "sanitized"
 
 
-# =============================================================================
-# Shortening DataFrame Loader
-# =============================================================================
-
-
-def load_shortening_dfs(paths: list[str]) -> DFs:
-    """Load shortening results into DataFrames.
-
-    Args:
-        paths: List of paths to shortening experiment directories. Can be:
-            - Timestamp level: "logs/shortening/wordchain/exp1/2025-01-15/" (loads all runs)
-            - Specific run: "logs/shortening/wordchain/exp1/2025-01-15/baseline=.../0/"
-
-    Returns:
-        Dict with "main" DataFrame: one row per candidate with all info.
-        Pareto frontier candidates have test_score set; others have test_score=None.
-    """
-    expanded_paths = _expand_shortening_paths(paths)
-
-    all_rows = []
-
-    for exp_path in expanded_paths:
-        try:
-            results = load_shortening_results(str(exp_path))
-            metadata = _extract_shortening_metadata(exp_path)
-
-            pareto_instructions = {
-                entry["instructions"]
-                for entry in results["pareto_frontier_results"]
-            }
-
-            for candidate in results["all_candidates"]:
-                all_rows.append(
-                    {
-                        **metadata,
-                        "instructions": candidate["instructions"],
-                        "prompt_length": candidate["prompt_length"],
-                        "val_score": candidate["val_score"],
-                        "test_score": candidate.get("test_score"),
-                        "iteration": candidate["iteration"],
-                        "source": candidate["source"],
-                        "pieces_removed": candidate["pieces_removed"],
-                        "is_pareto": candidate["instructions"] in pareto_instructions,
-                        "initial_prompt_path": results["initial_prompt_path"],
-                        "initial_val_score": results["initial_val_score"],
-                        "initial_length": results["initial_length"],
-                    }
-                )
-
-        except FileNotFoundError:
-            print(f"Warning: No shortening_results.json found in {exp_path}")
-            continue
-
-    if not all_rows:
-        raise ValueError("No shortening data found in the specified paths")
-
-    return {"main": pd.DataFrame(all_rows)}
-
-
-def _expand_shortening_paths(paths: list[str]) -> list[Path]:
-    """Expand shortening paths to specific run directories.
-
-    Looks for directories containing shortening_results.json.
-    """
-    expanded = []
-    for path_str in [p for p in paths if p is not None]:
-        path = Path(path_str)
-        if not path.exists():
-            print(f"Warning: Path does not exist: {path}")
-            continue
-
-        # Check if this path directly contains shortening_results.json
-        if (path / "shortening_results.json").exists():
-            expanded.append(path)
-        else:
-            # Search for shortening_results.json in subdirectories
-            for results_file in path.rglob("shortening_results.json"):
-                expanded.append(results_file.parent)
-
-    return expanded
-
-
-def _extract_shortening_metadata(exp_path: Path) -> dict:
-    """Extract metadata from shortening experiment path."""
-    metadata = {"experiment_path": str(exp_path)}
-
-    # Try to load config.json for additional metadata
+def _flatten_shortening(shortening_data: dict, exp_path: Path) -> dict[str, list[dict]]:
+    """Flatten shortening data to rows."""
     config_path = exp_path / "config.json"
     if config_path.exists():
         with open(config_path) as f:
             config = json.load(f)
-        for key, value in config.items():
-            metadata[key] = tuple(value) if isinstance(value, list) else value
+    else:
+        config = {}
+    metadata = _extract_metadata(exp_path, config)
 
-    # Infer env_name from path if not in config
-    if "env_name" not in metadata:
-        path_str = str(exp_path)
-        for env in KNOWN_ENVIRONMENTS:
-            if env in path_str:
-                metadata["env_name"] = env
-                break
+    pareto_instructions = {
+        entry["instructions"]
+        for entry in shortening_data.get("pareto_frontier_results", [])
+    }
 
-    return metadata
+    rows = []
+    for candidate in shortening_data["all_candidates"]:
+        rows.append(_hashable_row({
+            **metadata,
+            "instructions": candidate["instructions"],
+            "prompt_length": candidate["prompt_length"],
+            "val_score": candidate["val_score"],
+            "test_score": candidate.get("test_score"),
+            "iteration": candidate["iteration"],
+            "source": candidate["source"],
+            "pieces_removed": candidate.get("pieces_removed"),
+            "is_pareto": candidate["instructions"] in pareto_instructions,
+            "initial_prompt_path": shortening_data["initial_prompt_path"],
+        }))
+
+    return {"main": rows}

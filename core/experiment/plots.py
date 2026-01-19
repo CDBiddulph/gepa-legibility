@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from core.experiment.df import load_experiment_dfs, DFs
+from core.experiment.df import load_dfs, DFs
 from core.metrics import METRICS
 
 # =============================================================================
@@ -47,6 +47,9 @@ EXPECTED_VARYING_COLUMNS = {
     "cache",
     "num_threads",
     "sweep_fields",
+    # Shortening-specific fields:
+    "iteration",
+    "pieces_removed",
 } | set(METRICS.keys())
 
 
@@ -182,11 +185,18 @@ COLUMN_DISPLAY_NAMES: dict[str, str] = {
     "cot_suspiciousness_yes": "CoT Suspicious (Yes)",
     "cot_suspiciousness_unclear": "CoT Suspicious (Unclear)",
     "cot_suspiciousness_no": "CoT Suspicious (No)",
+    # Shortening columns
+    "prompt_length": "Prompt Length (chars)",
 }
 
 # Maps (column, value) pairs to friendly display names for legends, tick labels, etc.
 # For "column_name", values with suffixes will match their base name.
 VALUE_DISPLAY_NAMES: dict[str, dict[str, str]] = {
+    "env_name": {
+        "psychosis": "Delusional Queries",
+        "wordchain": "Phrase Ladder",
+        "mcq": "Hinted MMLU",
+    },
     "column_name": {
         "proxy_reward": "Proxy Reward",
         "true_reward": "True Reward",
@@ -201,6 +211,8 @@ VALUE_DISPLAY_NAMES: dict[str, dict[str, str]] = {
         "cot_suspiciousness_yes": "CoT Suspicious (Yes)",
         "cot_suspiciousness_unclear": "CoT Suspicious (Unclear)",
         "cot_suspiciousness_no": "CoT Suspicious (No)",
+        "val_score": "Validation Proxy Reward",
+        "test_score": "Test Proxy Reward",
     },
     "is_sanitized": {
         True: "Sanitized",
@@ -966,8 +978,11 @@ class ScatterPlot(LayoutNode):
 
     Args:
         x: Column for x-axis values
-        y: Column for y-axis values
-        color: Column for color grouping (optional)
+        y: Column(s) for y-axis values. If a list, melts those columns into
+           column_name/column_value and uses column_value for y, with color
+           automatically set to "column_name".
+        color: Column for color grouping (optional). When y is a list, this
+            defaults to "column_name".
         marker: Column for marker shape grouping (optional)
         group_by: Columns to group by (optional). If None, shows individual points
             (one per row). If specified, shows one point per unique combination
@@ -981,27 +996,20 @@ class ScatterPlot(LayoutNode):
         # Individual points, colored by prompt_verbalizes
         ScatterPlot(x="proxy_reward", y="true_reward", color="prompt_verbalizes")
 
+        # Multiple y columns - each becomes a different colored series
+        ScatterPlot(x="prompt_length", y=["val_score", "test_score"])
+
         # One point per prompt_verbalizes value (average x/y within each group)
         ScatterPlot(x="proxy_reward", y="true_reward", color="prompt_verbalizes",
                     group_by=["prompt_verbalizes"])
 
-        # One point per (prompt_verbalizes, suggest_hack) combination
-        ScatterPlot(x="proxy_reward", y="true_reward",
-                    color="prompt_verbalizes", marker="suggest_hack",
-                    group_by=["prompt_verbalizes", "suggest_hack"])
-
         # Arrows from original to sanitized points (no grouping)
         ScatterPlot(x="proxy_reward", y="true_reward", color="is_sanitized",
-                    arrow_by="is_sanitized")
-
-        # Arrows with grouping: one point per prompter, arrows show sanitization effect
-        ScatterPlot(x="proxy_reward", y="true_reward", color="is_sanitized",
-                    group_by=["prompter_name", "is_sanitized"],
                     arrow_by="is_sanitized")
     """
 
     x: str
-    y: str
+    y: str | list[str]
     color: str = None
     marker: str = None
     group_by: list[str] = None
@@ -1026,11 +1034,28 @@ class ScatterPlot(LayoutNode):
     ) -> dict[str, list]:
         df = dfs["main"]
 
+        # Handle y as list: melt and use column_value for y
+        if isinstance(self.y, list):
+            if len(self.y) < 2:
+                raise ValueError(
+                    "y must have at least 2 columns when specified as a list"
+                )
+            if self.color is not None:
+                raise ValueError(
+                    "Cannot set color when y is a list (color is used to distinguish metrics)"
+                )
+            df = _melt_columns(df, self.y)
+            y_col = "column_value"
+            color_col = "column_name"
+        else:
+            y_col = self.y
+            color_col = self.color
+
         # Validate group_by includes color/marker if specified
         if self.group_by is not None:
-            if self.color is not None and self.color not in self.group_by:
+            if color_col is not None and color_col not in self.group_by:
                 raise ValueError(
-                    f"group_by must include color column '{self.color}'"
+                    f"group_by must include color column '{color_col}'"
                 )
             if self.marker is not None and self.marker not in self.group_by:
                 raise ValueError(
@@ -1053,8 +1078,8 @@ class ScatterPlot(LayoutNode):
             ax,
             df,
             self.x,
-            self.y,
-            self.color,
+            y_col,
+            color_col,
             self.marker,
             self.group_by,
             self.arrow_by,
@@ -1063,7 +1088,7 @@ class ScatterPlot(LayoutNode):
             show_chrome,
         )
         return _check_aggregation_warnings(
-            df, self.x, self.y, self.color, type(self), self.marker
+            df, self.x, y_col, color_col, type(self), self.marker
         )
 
 
@@ -1618,8 +1643,13 @@ def _draw_scatter_plot(
                 )
 
     ax.tick_params(axis="both", labelsize=tick_fontsize)
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
+    # Auto-detect axis limits: use 0-1 for metrics, data range for other columns
+    x_vals = plot_df[x].dropna()
+    y_vals = plot_df[y].dropna()
+    if x_vals.min() >= 0 and x_vals.max() <= 1:
+        ax.set_xlim(0, 1)
+    if y_vals.min() >= 0 and y_vals.max() <= 1:
+        ax.set_ylim(0, 1)
     ax.grid(True, alpha=0.3)
 
     if show_chrome:
@@ -1844,10 +1874,10 @@ class PlotConfig:
         """Load and cache the DataFrames.
 
         Returns:
-            Dict with "main" (candidate rows) and "gepa_runs" (run-level data)
+            Dict with "main" DataFrame (and "gepa_runs" for GEPA data)
         """
         if self._dfs is None:
-            self._dfs = load_experiment_dfs(
+            self._dfs = load_dfs(
                 self.paths, quick_mode=self.quick_mode, metrics=self.metrics
             )
 
