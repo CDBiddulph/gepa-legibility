@@ -284,7 +284,7 @@ def _parse_score_key(score_key: str) -> tuple[str, bool]:
 
 
 def load_shortening_dfs(paths: list[str]) -> DFs:
-    """Load shortening results into DataFrame with one row per (run, threshold).
+    """Load shortening results into DataFrames.
 
     Args:
         paths: List of paths to shortening experiment directories. Can be:
@@ -292,49 +292,38 @@ def load_shortening_dfs(paths: list[str]) -> DFs:
             - Specific run: "logs/shortening/wordchain/exp1/2025-01-15/baseline=.../0/"
 
     Returns:
-        Dict with DataFrames:
-        - "main": One row per (experiment, run, threshold) with scores and lengths
-        - "candidates": One row per (experiment, run, candidate) with all candidate info
+        Dict with "main" DataFrame: one row per candidate with all info.
+        Pareto frontier candidates have test_score set; others have test_score=None.
     """
     expanded_paths = _expand_shortening_paths(paths)
 
-    all_main_rows = []
-    all_candidate_rows = []
+    all_rows = []
 
     for exp_path in expanded_paths:
         try:
             results = load_shortening_results(str(exp_path))
             metadata = _extract_shortening_metadata(exp_path)
 
-            # Add rows for best_per_threshold
-            for entry in results.get("best_per_threshold", []):
-                all_main_rows.append(
-                    {
-                        **metadata,
-                        "threshold": entry["threshold"],
-                        "instructions": entry["instructions"],
-                        "prompt_length": entry["prompt_length"],
-                        "train_score": entry["train_score"],
-                        "validation_score": entry["validation_score"],
-                        "test_score": entry["test_score"],
-                        "initial_prompt_path": results.get("initial_prompt_path"),
-                        "initial_train_score": results.get("initial_train_score"),
-                        "initial_length": results.get("initial_length"),
-                    }
-                )
+            pareto_instructions = {
+                entry["instructions"]
+                for entry in results["pareto_frontier_results"]
+            }
 
-            # Add rows for all candidates
-            for candidate in results.get("all_candidates", []):
-                is_pareto = candidate in results.get("pareto_optimal_candidates", [])
-                all_candidate_rows.append(
+            for candidate in results["all_candidates"]:
+                all_rows.append(
                     {
                         **metadata,
                         "instructions": candidate["instructions"],
                         "prompt_length": candidate["prompt_length"],
-                        "train_score": candidate["train_score"],
-                        "iteration": candidate.get("iteration"),
-                        "source": candidate.get("source"),
-                        "is_pareto_optimal": is_pareto,
+                        "val_score": candidate["val_score"],
+                        "test_score": candidate.get("test_score"),
+                        "iteration": candidate["iteration"],
+                        "source": candidate["source"],
+                        "pieces_removed": candidate["pieces_removed"],
+                        "is_pareto": candidate["instructions"] in pareto_instructions,
+                        "initial_prompt_path": results["initial_prompt_path"],
+                        "initial_val_score": results["initial_val_score"],
+                        "initial_length": results["initial_length"],
                     }
                 )
 
@@ -342,13 +331,10 @@ def load_shortening_dfs(paths: list[str]) -> DFs:
             print(f"Warning: No shortening_results.json found in {exp_path}")
             continue
 
-    if not all_main_rows:
+    if not all_rows:
         raise ValueError("No shortening data found in the specified paths")
 
-    return {
-        "main": pd.DataFrame(all_main_rows),
-        "candidates": pd.DataFrame(all_candidate_rows),
-    }
+    return {"main": pd.DataFrame(all_rows)}
 
 
 def _expand_shortening_paths(paths: list[str]) -> list[Path]:

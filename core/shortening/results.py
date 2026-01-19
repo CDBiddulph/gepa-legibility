@@ -11,7 +11,6 @@ def serialize_shortening_results(
     initial_val_score: float,
     initial_length: int,
     all_candidates: list[dict],
-    pareto_optimal_candidates: list[dict],
     pareto_frontier_results: list[dict] | None = None,
     prompter_prompts: list[dict] | None = None,
 ) -> dict[str, Any]:
@@ -23,10 +22,9 @@ def serialize_shortening_results(
         initial_val_score: Validation score of the initial prompt
         initial_length: Character length of the initial prompt
         all_candidates: All evaluated candidates with metadata
-        pareto_optimal_candidates: Subset of candidates on the Pareto frontier
         pareto_frontier_results: Pareto frontier with test scores, ordered by
             val score (highest first). Each entry has instructions, prompt_length,
-            val_score, test_score.
+            val_score, test_score, pieces_removed.
         prompter_prompts: List of prompts sent to the prompter LLM, each with
             {"iteration": int, "type": str, "prompt": str}
 
@@ -39,7 +37,6 @@ def serialize_shortening_results(
         "initial_val_score": initial_val_score,
         "initial_length": initial_length,
         "all_candidates": all_candidates,
-        "pareto_optimal_candidates": pareto_optimal_candidates,
     }
     if pareto_frontier_results is not None:
         result["pareto_frontier_results"] = pareto_frontier_results
@@ -118,13 +115,20 @@ def make_pareto_frontier_entry(candidate: dict) -> dict:
         candidate: A candidate dict with test_score already computed
 
     Returns:
-        Dict with instructions, prompt_length, val_score, test_score
+        Dict with instructions, prompt_length, val_score, test_score, pieces_removed
     """
+    pieces_removed = candidate.get("pieces_removed", [])
+    if isinstance(pieces_removed, list):
+        pieces_removed_str = " ".join(str(p) for p in pieces_removed)
+    else:
+        pieces_removed_str = str(pieces_removed)
+
     return {
         "instructions": candidate["instructions"],
         "prompt_length": candidate["prompt_length"],
         "val_score": candidate["val_score"],
         "test_score": candidate["test_score"],
+        "pieces_removed": pieces_removed_str,
     }
 
 

@@ -255,7 +255,6 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
         def save_intermediate_results(iteration_num: int, is_final: bool = False):
             """Save intermediate results after each iteration."""
             evaluated = [c for c in all_candidates if c["val_score"] is not None]
-            pareto = compute_pareto_frontier(evaluated) if evaluated else []
 
             results = serialize_shortening_results(
                 initial_prompt=initial_prompt,
@@ -263,7 +262,6 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
                 initial_val_score=initial_val_score,
                 initial_length=initial_length,
                 all_candidates=evaluated,
-                pareto_optimal_candidates=pareto,
                 prompter_prompts=prompter_prompts,
             )
             results["iteration"] = iteration_num
@@ -431,7 +429,6 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
             initial_val_score=initial_val_score,
             initial_length=initial_length,
             all_candidates=evaluated,
-            pareto_optimal_candidates=pareto_candidates,
             pareto_frontier_results=pareto_frontier_results,
             prompter_prompts=prompter_prompts,
         )
