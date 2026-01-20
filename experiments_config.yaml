@@ -12,9 +12,25 @@
 #   config = load_experiments_config("v1")   # uses specific version
 #   config["mcq"]["baseline_only"]           # get a path
 
-default_version: v3_new_san
+default_version: v4
 
 versions:
+  v4:
+    description: "Jan 2026 - v4 with updated MCQ"
+    psychosis:
+      teacher_true: logs/psychosis/prompter-hack=explicit-teacher=true/2026-01-05-13-57-15
+      teacher_false: logs/psychosis/prompter-hack-teacher=false/2026-01-05-13-56-27
+      tinker: logs/psychosis/tinker/2026-01-16-12-26-15/
+    wordchain:
+      teacher_true: logs/wordchain/prompter-hack=explicit-teacher=true/2026-01-05-17-52-42
+      teacher_false: logs/wordchain/prompter-hack-teacher=false/2026-01-05-13-57-33
+      tinker: logs/wordchain/tinker/2026-01-16-12-26-23/
+    mcq:
+      teacher_true: logs/mcq/hack=explicit-teacher=true/2026-01-18-00-32-38/
+      teacher_false: logs/mcq/hack-teacher=false/2026-01-13-22-06-23
+      tinker: logs/mcq/tinker/2026-01-16-12-27-50/
+      baseline_only: logs/mcq/baseline-only/2026-01-06-08-59-07
+
   v3_new_san:
     description: "Jan 2026 - v3 with regenerated sanitization using updated sanitization code"
     psychosis:
