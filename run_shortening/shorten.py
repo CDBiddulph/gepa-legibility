@@ -403,9 +403,16 @@ def run_shortening(config: ShorteningConfig, log_dir: str) -> None:
         print("\nLoading test data...")
         test_data = load_eval_data(config.env_name, split="test")
 
-        # Evaluate all Pareto candidates on test
-        print("\n=== Evaluating Pareto frontier on test ===")
-        for c in pareto_candidates:
+        # Find the initial prompt candidate
+        initial_candidate = next(c for c in evaluated if c.get("source") == "initial")
+
+        # Evaluate all Pareto candidates on test, plus the initial prompt if not on frontier
+        candidates_for_test = list(pareto_candidates)
+        if initial_candidate not in pareto_candidates:
+            candidates_for_test.append(initial_candidate)
+
+        print("\n=== Evaluating Pareto frontier (+ original) on test ===")
+        for c in candidates_for_test:
             test_score = _evaluate_prompt(
                 c["instructions"],
                 test_data,
