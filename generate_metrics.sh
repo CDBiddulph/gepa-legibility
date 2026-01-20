@@ -44,7 +44,7 @@ EXPERIMENT_REQUIREMENTS = {
     'teacher_true': ('proxy_reward true_reward hacking_rate prompt_verbalizes cot_verbalizes_yes cot_verbalizes_unclear cot_verbalizes_no', False),
     'teacher_false': ('proxy_reward true_reward hacking_rate prompt_verbalizes cot_verbalizes_yes cot_verbalizes_unclear cot_verbalizes_no', False),
     'baseline_only': ('hacking_rate cot_verbalizes_yes cot_verbalizes_unclear cot_verbalizes_no', True),
-    'tinker': ('hacking_rate cot_verbalizes_yes cot_verbalizes_unclear cot_verbalizes_no', True),
+    'tinker': ('proxy_reward hacking_rate cot_verbalizes_yes cot_verbalizes_unclear cot_verbalizes_no', True),
 }
 
 for env, experiments in config.items():
