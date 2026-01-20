@@ -309,7 +309,7 @@ VALUE_ORDER: dict[str, list] = {
         "GEPA",
         "GEPA (Hack)",
         "GEPA (Hack + Teacher)",
-        "GEPA (Hack + Teacher + Tool)",
+        "GEPA (Hack + Teacher with Reasoning)",
         "RL",
     ],
     "is_sanitized": [False, True],
@@ -371,8 +371,8 @@ STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
     ("optimizer", "GEPA"): {"color": "#1f77b4"},  # blue
     ("optimizer", "GEPA (Hack)"): {"color": "#ff7f0e"},  # orange
     ("optimizer", "GEPA (Hack + Teacher)"): {"color": "#2ca02c"},  # green
-    ("optimizer", "GEPA (Hack + Teacher + Tool)"): {"color": "#d62728"},  # red
-    ("optimizer", "RL"): {"color": "#9467bd"},  # purple
+    ("optimizer", "GEPA (Hack + Teacher with Reasoning)"): {"color": "#d62728"},  # red
+    ("optimizer", "RL"): {"color": "#000000"},  # black
 }
 
 
