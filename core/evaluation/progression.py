@@ -21,7 +21,6 @@ from core.experiment_utils import (
     expand_experiment_paths,
     get_environment_from_path,
     get_executor_model_name_from_path,
-    uses_incompetent_adapter,
 )
 from core.instruction_loader import load_instructions
 from core.lm import get_dspy_lm
@@ -181,20 +180,16 @@ def _collect_progression_data(
     config = _get_config_from_experiment(experiment_path)
     hint_type = config.get("hint_type")  # None for non-MCQ experiments
     is_baseline_only = config.get("prompter_name") is None
+    use_incompetent_adapter = config["incompetent"]
 
     print(f"Collecting progression data for {experiment_path}")
     if is_baseline_only:
         print("  Baseline-only experiment detected")
-
-    # Check if this experiment uses IncompetentAdapter
-    use_incompetent_adapter = uses_incompetent_adapter(experiment_path)
     if use_incompetent_adapter:
-        print(
-            f"  Detected 'incompetent' in path - will use IncompetentAdapter during evaluation"
-        )
+        print("  Using IncompetentAdapter during evaluation")
 
     if quick_mode:
-        print(f"  Quick mode enabled: only evaluating first and final candidates")
+        print("  Quick mode enabled: only evaluating first and final candidates")
 
     runs_data = {}
 

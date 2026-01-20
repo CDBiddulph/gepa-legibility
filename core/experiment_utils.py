@@ -89,18 +89,6 @@ def get_executor_model_name_from_path(path):
     raise ValueError(f"No config.json with executor_name found in {path}")
 
 
-def uses_incompetent_adapter(experiment_path):
-    """Check if an experiment path indicates IncompetentAdapter should be used.
-
-    Args:
-        experiment_path: Path to experiment directory
-
-    Returns:
-        Boolean indicating whether IncompetentAdapter should be used
-    """
-    return any(x in str(experiment_path).lower() for x in ["-incompetent", "-forget"])
-
-
 def expand_experiment_paths(path):
     """Expand a path to a list of experiment directories.
 
