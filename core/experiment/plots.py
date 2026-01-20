@@ -1521,6 +1521,82 @@ def _draw_progression_plot(
         ax.set_title(title, fontsize=label_fontsize)
 
 
+def _is_display_value_missing(column: str, value: Any) -> bool:
+    """Check if a value is missing from VALUE_DISPLAY_NAMES for a column that has mappings.
+
+    Returns True if:
+    1. The column is a key in VALUE_DISPLAY_NAMES (meaning we have defined mappings for it)
+    2. AND the specific value is not found in those mappings
+
+    Returns False if the column is not in VALUE_DISPLAY_NAMES (no mappings defined).
+    """
+    if column is None or value is None:
+        return False
+
+    if column not in VALUE_DISPLAY_NAMES:
+        return False
+
+    column_mappings = VALUE_DISPLAY_NAMES[column]
+
+    # Check exact match
+    if value in column_mappings:
+        return False
+
+    # For column_name, check prefix match
+    if column == "column_name" and isinstance(value, str):
+        for base_name in column_mappings.keys():
+            if _matches_base_name(value, base_name):
+                return False
+
+    return True
+
+
+def _build_scatter_legend_entries(
+    ax: plt.Axes,
+    color_col: str,
+    color_vals: set,
+    color_index: dict,
+    marker_col: str,
+    marker_vals: set,
+    marker_index: dict,
+    marker_size: float,
+) -> tuple[list, list]:
+    """Build legend handles and labels for scatter plot with separate color/marker sections.
+
+    Creates proxy scatter artists for legend entries. Color entries use square markers,
+    marker entries use black color. Values missing from VALUE_DISPLAY_NAMES are skipped
+    with a warning.
+
+    Returns:
+        Tuple of (handles, labels) lists for ax.legend()
+    """
+    handles = []
+    labels = []
+
+    for col, vals, index, get_style_fn, fixed_style in [
+        (color_col, color_vals, color_index, get_color, {"marker": "s"}),
+        (marker_col, marker_vals, marker_index, get_marker, {"c": "black"}),
+    ]:
+        for val in vals:
+            if _is_display_value_missing(col, val):
+                print(
+                    f"Warning: Value '{val}' for column '{col}' not found in "
+                    f"VALUE_DISPLAY_NAMES, excluding from legend"
+                )
+                continue
+            style = get_style_fn(col, val, index.get(val, 0))
+            # Build scatter kwargs: style is either color or marker
+            scatter_kwargs = {"s": marker_size, **fixed_style}
+            if col == color_col:
+                scatter_kwargs["c"] = [style]
+            else:
+                scatter_kwargs["marker"] = style
+            handles.append(ax.scatter([], [], **scatter_kwargs))
+            labels.append(get_display_value(col, val))
+
+    return handles, labels
+
+
 def _draw_scatter_plot(
     ax: plt.Axes,
     df: pd.DataFrame,
@@ -1663,15 +1739,22 @@ def _draw_scatter_plot(
         ax.set_xlabel(get_display_name(x), fontsize=label_fontsize)
         ax.set_ylabel(get_display_name(y), fontsize=label_fontsize)
 
-        # Build legend from tracked entries
+        # Build legend with separate sections for color and marker
         if legend_entries:
-            legend_handles = []
-            legend_labels = []
-            for (color_val, marker_val), handle in legend_entries.items():
-                label = _build_label(color_col, color_val, marker_col, marker_val)
-                if label:
-                    legend_handles.append(handle)
-                    legend_labels.append(label)
+            # Collect unique color and marker values
+            color_vals = {cv for cv, _ in legend_entries.keys() if cv is not None}
+            marker_vals = {mv for _, mv in legend_entries.keys() if mv is not None}
+
+            legend_handles, legend_labels = _build_scatter_legend_entries(
+                ax,
+                color_col,
+                color_vals,
+                color_index,
+                marker_col,
+                marker_vals,
+                marker_index,
+                marker_size,
+            )
 
             if legend_handles:
                 ax.legend(
