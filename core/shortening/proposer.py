@@ -226,8 +226,12 @@ def generate_single_piece_removals(
 
 def format_candidates_for_piece_display(candidates: list[dict]) -> str:
     """Format candidates for display showing only which pieces were removed."""
+    sorted_candidates = sorted(
+        candidates,
+        key=lambda c: (-c['val_score'], c['prompt_length'])
+    )
     lines = []
-    for c in candidates:
+    for c in sorted_candidates:
         pieces_removed = c.get("pieces_removed", [])
         lines.append(f"  removed {pieces_removed}: len={c['prompt_length']}, score={c['val_score']:.3f}")
     return "\n".join(lines)
