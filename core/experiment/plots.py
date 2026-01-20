@@ -1573,9 +1573,9 @@ def _build_scatter_legend_entries(
     handles = []
     labels = []
 
-    for col, vals, index, get_style_fn, fixed_style in [
-        (color_col, color_vals, color_index, get_color, {"marker": "s"}),
-        (marker_col, marker_vals, marker_index, get_marker, {"c": "black"}),
+    for col, vals, index, get_style_fn, fixed_style, size in [
+        (color_col, color_vals, color_index, get_color, {"marker": "s"}, marker_size * 2),
+        (marker_col, marker_vals, marker_index, get_marker, {"c": "black"}, marker_size),
     ]:
         for val in vals:
             if _is_display_value_missing(col, val):
@@ -1586,7 +1586,7 @@ def _build_scatter_legend_entries(
                 continue
             style = get_style_fn(col, val, index.get(val, 0))
             # Build scatter kwargs: style is either color or marker
-            scatter_kwargs = {"s": marker_size, **fixed_style}
+            scatter_kwargs = {"s": size, **fixed_style}
             if col == color_col:
                 scatter_kwargs["c"] = [style]
             else:
