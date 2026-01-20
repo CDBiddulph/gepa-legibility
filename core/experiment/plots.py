@@ -896,6 +896,10 @@ class ProgressionPlot(LayoutNode):
         hue: Column for color grouping. When y is a list, this should typically
              be "column_name" to color by the melted column names.
         linestyle: Column for line style grouping
+        hue_as_hline: List of hue values to draw as horizontal lines instead of
+            progressions. For these hue values, the mean y-value is computed and
+            drawn as a dashed horizontal line. Useful for showing RL baselines
+            that don't have progression data.
         title: Optional title for the plot
         show_individual_lines: Whether to show faint lines for individual runs
 
@@ -911,12 +915,17 @@ class ProgressionPlot(LayoutNode):
 
         # Single column, compare by suggest_hack
         ProgressionPlot(x="discovery_eval_counts", y="proxy_reward", hue="suggest_hack")
+
+        # With RL baseline as horizontal line (data comes from hue="optimizer" where optimizer="RL")
+        ProgressionPlot(x="discovery_eval_counts", y="proxy_reward", hue="optimizer",
+                        hue_as_hline=["RL"])
     """
 
     x: str = "discovery_eval_counts"
     y: str | list[str] = None  # Required, but default None for backwards compat error
     hue: str = None
     linestyle: str = None
+    hue_as_hline: list[str] = None
     title: str = None
     show_individual_lines: bool = True
 
@@ -969,6 +978,7 @@ class ProgressionPlot(LayoutNode):
             y_col,
             self.hue,
             self.linestyle,
+            self.hue_as_hline,
             title,
             scale,
             show_chrome,
@@ -1415,6 +1425,53 @@ def _draw_progression_series(
         )
 
 
+def _draw_hline_series(
+    ax: plt.Axes,
+    df: pd.DataFrame,
+    x: str,
+    y: str,
+    hue: str,
+    hue_val: str,
+    color: str,
+    linewidth: float,
+) -> None:
+    """Draw a horizontal line for a hue value (e.g., RL baseline).
+
+    Validates that all rows have the same x value, then draws a dashed
+    horizontal line at the mean y value.
+
+    Args:
+        ax: Matplotlib axes to draw on
+        df: DataFrame filtered to just this hue value
+        x: Column for x-axis (used for validation)
+        y: Column for y-axis values
+        hue: Name of hue column (for display)
+        hue_val: The hue value being drawn
+        color: Line color
+        linewidth: Line width
+    """
+    # Validate that all x values are the same
+    unique_x = df[x].unique()
+    if len(unique_x) > 1:
+        raise ValueError(
+            f"hue_as_hline='{hue_val}' has multiple {x} values: {sorted(unique_x)}. "
+            f"Expected all rows to have the same {x} value for horizontal line drawing."
+        )
+
+    # Compute mean y-value and draw horizontal line
+    mean_y = df[y].mean()
+    label = get_display_value(hue, hue_val)
+    ax.axhline(
+        y=mean_y,
+        color=color,
+        linestyle="--",
+        linewidth=linewidth,
+        alpha=0.8,
+        label=label,
+        zorder=2,
+    )
+
+
 def _draw_progression_plot(
     ax: plt.Axes,
     dfs: DFs,
@@ -1422,6 +1479,7 @@ def _draw_progression_plot(
     y: str,
     hue: str,
     linestyle_col: str = None,
+    hue_as_hline: list[str] = None,
     title: str = None,
     scale: float = 1.0,
     show_chrome: bool = True,
@@ -1436,6 +1494,9 @@ def _draw_progression_plot(
         y: Column for y-axis values
         hue: Column for color grouping (can be None)
         linestyle_col: Column for line style grouping (optional)
+        hue_as_hline: List of hue values to draw as horizontal lines instead of
+            progressions. For these, the mean y-value is computed and drawn as
+            a dashed line.
         title: Optional title for the plot
         scale: Scale factor for fonts and line widths (1.0 = full size)
         show_chrome: Whether to show axis labels and legend
@@ -1473,9 +1534,17 @@ def _draw_progression_plot(
         else [None]
     )
 
+    # Separate hue values into progression lines vs horizontal lines
+    hline_hue_values = set(hue_as_hline) if hue_as_hline else set()
+
     for i, hue_val in enumerate(hue_values):
         hue_df = df[df[hue] == hue_val] if hue_val is not None else df
         color = get_color(hue, hue_val, i)
+
+        # Draw as horizontal line if specified in hue_as_hline
+        if hue_val in hline_hue_values:
+            _draw_hline_series(ax, hue_df, x, y, hue, hue_val, color, linewidth)
+            continue
 
         for j, linestyle_val in enumerate(linestyle_values):
             # Filter by linestyle column if applicable
