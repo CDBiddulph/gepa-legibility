@@ -218,6 +218,9 @@ VALUE_DISPLAY_NAMES: dict[str, dict[str, str]] = {
         True: "Sanitized",
         False: "Original",
     },
+    "source": {
+        "initial": "Original Prompt",
+    },
     "prompt_type": {
         "baseline": "Baseline",
         "no_hack": "No Hack",
@@ -359,6 +362,10 @@ STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
     # Line styles for is_sanitized
     ("is_sanitized", False): {"linestyle": "-"},
     ("is_sanitized", True): {"linestyle": ":"},
+    # Markers for shortening source types
+    ("source", "initial"): {"marker": "*"},
+    ("source", "proposed"): {"marker": "o"},
+    ("source", "empty"): {"marker": "o"},
     # Colors for optimizer values (used in bar/progression plots)
     ("optimizer", "Baseline"): {"color": "#7f7f7f"},  # gray
     ("optimizer", "GEPA"): {"color": "#1f77b4"},  # blue
