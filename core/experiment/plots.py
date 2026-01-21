@@ -11,6 +11,7 @@ from math import ceil
 from typing import Any, Callable, NamedTuple
 
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 import numpy as np
 import pandas as pd
 
@@ -215,8 +216,8 @@ VALUE_DISPLAY_NAMES: dict[str, dict[str, str]] = {
         "test_score": "Test Proxy Reward",
     },
     "is_sanitized": {
-        True: "Sanitized",
-        False: "Original",
+        False: "Original Prompt",
+        True: "Sanitized Prompt",
     },
     "source": {
         "initial": "Original Prompt",
@@ -303,7 +304,7 @@ VALUE_ORDER: dict[str, list] = {
         "explicit_hack_sanitized",
     ],
     "column_name": ["proxy_reward", "true_reward", "prompt_verbalizes", "hacking_rate"],
-    "prompt_verbalizes": ["no", "unclear", "mistargeted", "yes"],
+    "prompt_verbalizes": ["yes", "mistargeted", "unclear", "no"],
     "optimizer": [
         "Baseline",
         "GEPA",
@@ -502,28 +503,6 @@ def _melt_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     return melted
 
 
-def _build_label(
-    col1: str, val1: Any, col2: str = None, val2: Any = None
-) -> str | None:
-    """Build a legend label from one or two (column, value) pairs.
-
-    Args:
-        col1: First column name (or None)
-        val1: First value (or None)
-        col2: Second column name (optional)
-        val2: Second value (optional)
-
-    Returns:
-        Label string like "Value1 (Value2)" or just "Value1", or None if both are None
-    """
-    display1 = get_display_value(col1, val1) if val1 is not None else None
-    display2 = get_display_value(col2, val2) if val2 is not None else None
-
-    if display1 and display2:
-        return f"{display1} ({display2})"
-    return display1 or display2
-
-
 # =============================================================================
 # Layout Nodes (composable plotting components)
 # =============================================================================
@@ -545,16 +524,32 @@ class GridSize(NamedTuple):
     ref_cols: int
 
 
+class LegendEntry(NamedTuple):
+    """A single legend entry with metadata for sorting.
+
+    Attributes:
+        handle: Matplotlib artist for the legend
+        label: Display label for the legend
+        column: Original column name (for VALUE_ORDER sorting)
+        value: Original value (for VALUE_ORDER sorting)
+    """
+
+    handle: Any
+    label: str
+    column: str
+    value: Any
+
+
 class RenderResult(NamedTuple):
     """Result returned by LayoutNode.render().
 
     Attributes:
         warnings: Dict of aggregation warnings (column -> unique values)
-        legend_entries: List of (handle, label) tuples for figure-level legend
+        legend_entries: List of LegendEntry for figure-level legend
     """
 
     warnings: dict[str, list]
-    legend_entries: list[tuple[Any, str]]
+    legend_entries: list[LegendEntry]
 
     @staticmethod
     def merge(results: list["RenderResult"]) -> "RenderResult":
@@ -573,10 +568,24 @@ class RenderResult(NamedTuple):
         for result in results:
             for col, vals in result.warnings.items():
                 all_warnings[col].update(vals)
-            for handle, label in result.legend_entries:
-                if label not in seen_labels:
-                    seen_labels.add(label)
-                    all_legend_entries.append((handle, label))
+            for entry in result.legend_entries:
+                if entry.label not in seen_labels:
+                    seen_labels.add(entry.label)
+                    all_legend_entries.append(entry)
+
+        # Sort entries by VALUE_ORDER to ensure consistent ordering
+        # regardless of which subplot first contributed each entry
+        def sort_key(entry: LegendEntry):
+            # Get the sort position for this value within its column
+            order = VALUE_ORDER.get(entry.column, [])
+            if entry.value in order:
+                value_pos = order.index(entry.value)
+            else:
+                value_pos = len(order)  # Unlisted values go at end
+            # Group by column, then sort by value order within column
+            return (entry.column, value_pos, str(entry.value))
+
+        all_legend_entries.sort(key=sort_key)
 
         return RenderResult(
             warnings={col: list(vals) for col, vals in all_warnings.items()},
@@ -1300,7 +1309,7 @@ def _draw_bar_plot(
     title: str = None,
     scale: float = 1.0,
     show_chrome: bool = True,
-) -> list[tuple[Any, str]]:
+) -> list[LegendEntry]:
     """Draw a bar plot with individual data points overlaid.
 
     Args:
@@ -1367,7 +1376,7 @@ def _draw_bar_plot(
 
         # Collect legend entry
         if display_label is not None:
-            legend_entries.append((bars[0], display_label))
+            legend_entries.append(LegendEntry(bars[0], display_label, hue, hue_val))
 
         # Add bar labels
         ax.bar_label(bars, fmt="%.3f", padding=3, fontsize=bar_label_fontsize)
@@ -1537,7 +1546,7 @@ def _draw_progression_plot(
     scale: float = 1.0,
     show_chrome: bool = True,
     show_individual_lines: bool = True,
-) -> list[tuple[Any, str]]:
+) -> list[LegendEntry]:
     """Draw a progression plot with step functions.
 
     Args:
@@ -1558,13 +1567,12 @@ def _draw_progression_plot(
     Returns:
         List of (handle, label) tuples for legend entries
     """
-    legend_entries = []
     df = dfs["main"]
     gepa_runs = dfs["gepa_runs"]
 
     if df.empty:
         ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
-        return legend_entries
+        return []
 
     # Map x column to the corresponding end column in gepa_runs
     # Use composite key (experiment_path, run_index) since run_index alone is not globally unique
@@ -1590,6 +1598,14 @@ def _draw_progression_plot(
         else [None]
     )
 
+    # Build index maps for consistent styling
+    hue_index = {val: i for i, val in enumerate(hue_values)}
+    linestyle_index = {val: j for j, val in enumerate(linestyle_values)}
+
+    # Track which values were actually drawn
+    drawn_hue_vals = set()
+    drawn_linestyle_vals = set()
+
     # Separate hue values into progression lines vs horizontal lines
     hline_hue_values = set(hue_as_hline) if hue_as_hline else set()
 
@@ -1600,8 +1616,8 @@ def _draw_progression_plot(
         # Draw as horizontal line if specified in hue_as_hline
         if hue_val in hline_hue_values:
             line = _draw_hline_series(ax, hue_df, x, y, hue, hue_val, color, linewidth)
-            if line is not None:
-                legend_entries.append((line, get_display_value(hue, hue_val)))
+            if line is not None and hue_val is not None:
+                drawn_hue_vals.add(hue_val)
             continue
 
         for j, linestyle_val in enumerate(linestyle_values):
@@ -1618,7 +1634,6 @@ def _draw_progression_plot(
                 if linestyle_val is not None
                 else "-"
             )
-            label = _build_label(hue, hue_val, linestyle_col, linestyle_val)
 
             line = _draw_progression_series(
                 ax,
@@ -1628,13 +1643,16 @@ def _draw_progression_plot(
                 run_end_xs,
                 color,
                 ls,
-                label,
+                None,  # No label - we'll build legend separately
                 linewidth,
                 faint_linewidth,
                 show_individual_lines,
             )
-            if line is not None and label is not None:
-                legend_entries.append((line, label))
+            if line is not None:
+                if hue_val is not None:
+                    drawn_hue_vals.add(hue_val)
+                if linestyle_val is not None:
+                    drawn_linestyle_vals.add(linestyle_val)
 
     ax.tick_params(axis="both", labelsize=tick_fontsize)
     ax.set_ylim(0, 1)
@@ -1646,6 +1664,16 @@ def _draw_progression_plot(
 
     if title:
         ax.set_title(title, fontsize=label_fontsize)
+
+    # Build legend entries with separate sections for color and linestyle
+    # Colors use Patch, linestyles use black lines
+    legend_entries = _build_style_legend_entries(
+        ax,
+        style_specs=[
+            (hue, drawn_hue_vals, hue_index, get_color, {}),
+            (linestyle_col, drawn_linestyle_vals, linestyle_index, get_linestyle, {"linewidth": linewidth}),
+        ],
+    )
 
     return legend_entries
 
@@ -1680,33 +1708,40 @@ def _is_display_value_missing(column: str, value: Any) -> bool:
     return True
 
 
-def _build_scatter_legend_entries(
+def _build_style_legend_entries(
     ax: plt.Axes,
-    color_col: str,
-    color_vals: set,
-    color_index: dict,
-    marker_col: str,
-    marker_vals: set,
-    marker_index: dict,
-    marker_size: float,
-) -> tuple[list, list]:
-    """Build legend handles and labels for scatter plot with separate color/marker sections.
+    style_specs: list[tuple],
+) -> list[LegendEntry]:
+    """Build legend handles and labels with separate sections for each style attribute.
 
-    Creates proxy scatter artists for legend entries. Color entries use square markers,
-    marker entries use black color. Values missing from VALUE_DISPLAY_NAMES are skipped
-    with a warning.
+    Creates proxy artists for legend entries:
+    - Colors use Patch (colored rectangle)
+    - Markers use scatter with the actual marker shape
+    - Linestyles use Line2D with the actual linestyle
+
+    Values missing from VALUE_DISPLAY_NAMES are skipped with a warning.
+
+    Args:
+        ax: Matplotlib axes (used to create scatter/line proxy artists)
+        style_specs: List of tuples, each containing:
+            - col: Column name for this style attribute
+            - vals: Set of unique values for this attribute
+            - index: Dict mapping values to indices for style lookup
+            - get_style_fn: Function to get style value (get_color, get_marker, get_linestyle)
+            - artist_kwargs: Dict of artist attributes (e.g., {"s": size} for scatter,
+              {"linewidth": lw} for lines). Ignored for color entries which use Patch.
 
     Returns:
-        Tuple of (handles, labels) lists for ax.legend()
+        List of LegendEntry for legend
     """
-    handles = []
-    labels = []
+    legend_entries = []
 
-    for col, vals, index, get_style_fn, fixed_style, size in [
-        (color_col, color_vals, color_index, get_color, {"marker": "s"}, marker_size * 2),
-        (marker_col, marker_vals, marker_index, get_marker, {"c": "black"}, marker_size),
-    ]:
-        for val in vals:
+    for col, vals, index, get_style_fn, artist_kwargs in style_specs:
+        if col is None or not vals:
+            continue
+        # Sort values by canonical order
+        sorted_vals = sort_values(col, list(vals))
+        for val in sorted_vals:
             if _is_display_value_missing(col, val):
                 print(
                     f"Warning: Value '{val}' for column '{col}' not found in "
@@ -1714,16 +1749,20 @@ def _build_scatter_legend_entries(
                 )
                 continue
             style = get_style_fn(col, val, index.get(val, 0))
-            # Build scatter kwargs: style is either color or marker
-            scatter_kwargs = {"s": size, **fixed_style}
-            if col == color_col:
-                scatter_kwargs["c"] = [style]
-            else:
-                scatter_kwargs["marker"] = style
-            handles.append(ax.scatter([], [], **scatter_kwargs))
-            labels.append(get_display_value(col, val))
 
-    return handles, labels
+            if get_style_fn == get_color:
+                # Color entries use Patch
+                handle = Patch(facecolor=style, edgecolor="none")
+            elif get_style_fn == get_marker:
+                # Marker entries use scatter
+                handle = ax.scatter([], [], marker=style, c="black", **artist_kwargs)
+            else:
+                # Linestyle entries use Line2D
+                (handle,) = ax.plot([], [], linestyle=style, color="black", **artist_kwargs)
+
+            legend_entries.append(LegendEntry(handle, get_display_value(col, val), col, val))
+
+    return legend_entries
 
 
 def _draw_scatter_plot(
@@ -1738,7 +1777,7 @@ def _draw_scatter_plot(
     title: str = None,
     scale: float = 1.0,
     show_chrome: bool = True,
-) -> list[tuple[Any, str]]:
+) -> list[LegendEntry]:
     """Draw a scatter plot with optional grouping and arrows.
 
     Args:
@@ -1880,18 +1919,13 @@ def _draw_scatter_plot(
         color_vals = {cv for cv, _ in legend_entry_map.keys() if cv is not None}
         marker_vals = {mv for _, mv in legend_entry_map.keys() if mv is not None}
 
-        legend_handles, legend_labels = _build_scatter_legend_entries(
+        legend_entries = _build_style_legend_entries(
             ax,
-            color_col,
-            color_vals,
-            color_index,
-            marker_col,
-            marker_vals,
-            marker_index,
-            marker_size,
+            style_specs=[
+                (color_col, color_vals, color_index, get_color, {}),
+                (marker_col, marker_vals, marker_index, get_marker, {"s": marker_size}),
+            ],
         )
-
-        legend_entries = list(zip(legend_handles, legend_labels))
 
     return legend_entries
 
@@ -2050,7 +2084,8 @@ class Figure:
 
         # Add figure-level legend outside the plots if there are legend entries
         if result.legend_entries:
-            handles, labels = zip(*result.legend_entries)
+            handles = [entry.handle for entry in result.legend_entries]
+            labels = [entry.label for entry in result.legend_entries]
             fig.legend(
                 handles,
                 labels,
