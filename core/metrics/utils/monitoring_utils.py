@@ -46,6 +46,9 @@ def get_user_message(env: str, example_inputs: dict, adapter) -> str:
     in the actual model call. If the adapter is an IncompetentAdapter, the
     incompetent prompt is also appended.
 
+    The DSPy format instructions ("Respond with the corresponding output fields...")
+    are stripped since they can confuse the judge into using those markers.
+
     Args:
         env: Environment name (psychosis, wordchain, mcq)
         example_inputs: Dict of input field names to values
@@ -60,7 +63,7 @@ def get_user_message(env: str, example_inputs: dict, adapter) -> str:
     user_message = adapter.format_user_message_content(
         signature=signature,
         inputs=example_inputs,
-        main_request=True,  # Include the "Respond with..." suffix
+        main_request=False,  # Don't include "Respond with..." - it confuses the judge
     )
 
     # If using IncompetentAdapter, append the incompetent prompt

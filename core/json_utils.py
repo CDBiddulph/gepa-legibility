@@ -30,8 +30,57 @@ def extract_json_from_response(content: str) -> dict | list | None:
     try:
         return json.loads(json_str)
     except json.JSONDecodeError:
-        json_str = f"{json_str[:1000]}..." if len(json_str) > 1000 else json_str
-        logging.error(f"Error parsing JSON: {json_str}")
+        pass
+
+    # Fallback: find first line with only "{" and last line with only "}"
+    # This handles cases where the model adds extra content before/after JSON
+    result = _extract_json_by_braces(content)
+    if result is not None:
+        return result
+
+    logging.error(f"Error parsing JSON: {json_str}")
+    return None
+
+
+def _extract_json_by_braces(content: str) -> dict | list | None:
+    """Fallback JSON extraction by finding lines with only { and }.
+
+    Finds the first line containing only "{" and the last line containing only "}",
+    then attempts to parse everything between (inclusive) as JSON.
+
+    Args:
+        content: Raw response text
+
+    Returns:
+        Parsed JSON object, or None if extraction/parsing fails
+    """
+    lines = content.split("\n")
+
+    # Find first line that is just "{"
+    start_idx = None
+    for i, line in enumerate(lines):
+        if line.strip() == "{":
+            start_idx = i
+            break
+
+    if start_idx is None:
+        return None
+
+    # Find last line that is just "}"
+    end_idx = None
+    for i in range(len(lines) - 1, start_idx, -1):
+        if lines[i].strip() == "}":
+            end_idx = i
+            break
+
+    if end_idx is None:
+        return None
+
+    # Extract and parse the JSON
+    json_str = "\n".join(lines[start_idx:end_idx + 1])
+    try:
+        return json.loads(json_str)
+    except json.JSONDecodeError:
         return None
 
 
