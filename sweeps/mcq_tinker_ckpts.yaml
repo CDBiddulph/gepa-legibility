@@ -1,0 +1,168 @@
+name: tinker-ckpts
+task: mcq
+num_trials: 1
+prompter_name: null
+zip_fields:
+  - [hint_type, executor_name]
+hint_type:
+# consistency (11 checkpoints)
+- consistency
+- consistency
+- consistency
+- consistency
+- consistency
+- consistency
+- consistency
+- consistency
+- consistency
+- consistency
+- consistency
+# grader-hacking (12 checkpoints)
+- grader-hacking
+- grader-hacking
+- grader-hacking
+- grader-hacking
+- grader-hacking
+- grader-hacking
+- grader-hacking
+- grader-hacking
+- grader-hacking
+- grader-hacking
+- grader-hacking
+- grader-hacking
+# metadata (9 checkpoints)
+- metadata
+- metadata
+- metadata
+- metadata
+- metadata
+- metadata
+- metadata
+- metadata
+- metadata
+# sycophancy (14 checkpoints)
+- sycophancy
+- sycophancy
+- sycophancy
+- sycophancy
+- sycophancy
+- sycophancy
+- sycophancy
+- sycophancy
+- sycophancy
+- sycophancy
+- sycophancy
+- sycophancy
+- sycophancy
+- sycophancy
+# unethical (12 checkpoints)
+- unethical
+- unethical
+- unethical
+- unethical
+- unethical
+- unethical
+- unethical
+- unethical
+- unethical
+- unethical
+- unethical
+- unethical
+# visual-pattern (13 checkpoints)
+- visual-pattern
+- visual-pattern
+- visual-pattern
+- visual-pattern
+- visual-pattern
+- visual-pattern
+- visual-pattern
+- visual-pattern
+- visual-pattern
+- visual-pattern
+- visual-pattern
+- visual-pattern
+- visual-pattern
+executor_name:
+# consistency (11 checkpoints)
+- tinker/mcq-consistency-0-ckpt000005
+- tinker/mcq-consistency-0-ckpt000015
+- tinker/mcq-consistency-0-ckpt000030
+- tinker/mcq-consistency-1-ckpt000005
+- tinker/mcq-consistency-1-ckpt000010
+- tinker/mcq-consistency-1-ckpt000015
+- tinker/mcq-consistency-1-ckpt000025
+- tinker/mcq-consistency-2-ckpt000005
+- tinker/mcq-consistency-2-ckpt000010
+- tinker/mcq-consistency-2-ckpt000015
+- tinker/mcq-consistency-2-ckpt000025
+# grader-hacking (12 checkpoints)
+- tinker/mcq-grader-hacking-0-ckpt000005
+- tinker/mcq-grader-hacking-0-ckpt000010
+- tinker/mcq-grader-hacking-0-ckpt000015
+- tinker/mcq-grader-hacking-1-ckpt000005
+- tinker/mcq-grader-hacking-1-ckpt000010
+- tinker/mcq-grader-hacking-1-ckpt000015
+- tinker/mcq-grader-hacking-1-ckpt000020
+- tinker/mcq-grader-hacking-1-ckpt000025
+- tinker/mcq-grader-hacking-2-ckpt000005
+- tinker/mcq-grader-hacking-2-ckpt000010
+- tinker/mcq-grader-hacking-2-ckpt000015
+- tinker/mcq-grader-hacking-2-ckpt000025
+# metadata (9 checkpoints)
+- tinker/mcq-metadata-0-ckpt000005
+- tinker/mcq-metadata-0-ckpt000010
+- tinker/mcq-metadata-0-ckpt000015
+- tinker/mcq-metadata-1-ckpt000005
+- tinker/mcq-metadata-1-ckpt000010
+- tinker/mcq-metadata-1-ckpt000025
+- tinker/mcq-metadata-2-ckpt000005
+- tinker/mcq-metadata-2-ckpt000010
+- tinker/mcq-metadata-2-ckpt000025
+# sycophancy (14 checkpoints)
+- tinker/mcq-sycophancy-0-ckpt000005
+- tinker/mcq-sycophancy-0-ckpt000015
+- tinker/mcq-sycophancy-0-ckpt000020
+- tinker/mcq-sycophancy-0-ckpt000030
+- tinker/mcq-sycophancy-1-ckpt000005
+- tinker/mcq-sycophancy-1-ckpt000010
+- tinker/mcq-sycophancy-1-ckpt000015
+- tinker/mcq-sycophancy-1-ckpt000020
+- tinker/mcq-sycophancy-1-ckpt000025
+- tinker/mcq-sycophancy-1-ckpt000030
+- tinker/mcq-sycophancy-2-ckpt000005
+- tinker/mcq-sycophancy-2-ckpt000015
+- tinker/mcq-sycophancy-2-ckpt000025
+- tinker/mcq-sycophancy-2-ckpt000030
+# unethical (12 checkpoints)
+- tinker/mcq-unethical-0-ckpt000005
+- tinker/mcq-unethical-0-ckpt000010
+- tinker/mcq-unethical-0-ckpt000015
+- tinker/mcq-unethical-1-ckpt000005
+- tinker/mcq-unethical-1-ckpt000010
+- tinker/mcq-unethical-1-ckpt000015
+- tinker/mcq-unethical-1-ckpt000020
+- tinker/mcq-unethical-1-ckpt000025
+- tinker/mcq-unethical-2-ckpt000005
+- tinker/mcq-unethical-2-ckpt000010
+- tinker/mcq-unethical-2-ckpt000015
+- tinker/mcq-unethical-2-ckpt000025
+# visual-pattern (13 checkpoints)
+- tinker/mcq-visual-pattern-0-ckpt000005
+- tinker/mcq-visual-pattern-0-ckpt000015
+- tinker/mcq-visual-pattern-1-ckpt000005
+- tinker/mcq-visual-pattern-1-ckpt000010
+- tinker/mcq-visual-pattern-1-ckpt000030
+- tinker/mcq-visual-pattern-1-ckpt000035
+- tinker/mcq-visual-pattern-1-ckpt000055
+- tinker/mcq-visual-pattern-2-ckpt000005
+- tinker/mcq-visual-pattern-2-ckpt000010
+- tinker/mcq-visual-pattern-2-ckpt000060
+- tinker/mcq-visual-pattern-2-ckpt000065
+- tinker/mcq-visual-pattern-2-ckpt000070
+- tinker/mcq-visual-pattern-2-ckpt000085
+incompetent: true
+datamix: mixed
+num_threads: 32
+cache: false
+teacher_tool_model: null
+show_expert_reasoning: false
