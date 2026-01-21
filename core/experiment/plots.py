@@ -545,6 +545,45 @@ class GridSize(NamedTuple):
     ref_cols: int
 
 
+class RenderResult(NamedTuple):
+    """Result returned by LayoutNode.render().
+
+    Attributes:
+        warnings: Dict of aggregation warnings (column -> unique values)
+        legend_entries: List of (handle, label) tuples for figure-level legend
+    """
+
+    warnings: dict[str, list]
+    legend_entries: list[tuple[Any, str]]
+
+    @staticmethod
+    def merge(results: list["RenderResult"]) -> "RenderResult":
+        """Merge multiple RenderResults, deduplicating legend entries by label.
+
+        Args:
+            results: List of RenderResult objects to merge
+
+        Returns:
+            Combined RenderResult with merged warnings and deduplicated legend entries
+        """
+        all_warnings = defaultdict(set)
+        all_legend_entries = []
+        seen_labels = set()
+
+        for result in results:
+            for col, vals in result.warnings.items():
+                all_warnings[col].update(vals)
+            for handle, label in result.legend_entries:
+                if label not in seen_labels:
+                    seen_labels.add(label)
+                    all_legend_entries.append((handle, label))
+
+        return RenderResult(
+            warnings={col: list(vals) for col, vals in all_warnings.items()},
+            legend_entries=all_legend_entries,
+        )
+
+
 class LayoutNode(ABC):
     """Base class for composable layout nodes."""
 
@@ -570,7 +609,7 @@ class LayoutNode(ABC):
         scale: float = 1.0,
         show_chrome: bool = True,
         subtitle: str = None,
-    ) -> dict[str, list]:
+    ) -> RenderResult:
         """Render this layout into the given GridSpec region.
 
         Args:
@@ -584,7 +623,7 @@ class LayoutNode(ABC):
             subtitle: Optional subtitle passed from parent Grid (shows groupby value)
 
         Returns:
-            Dict of aggregation warnings (column -> unique values) from all leaf plots.
+            RenderResult with aggregation warnings and legend entries.
         """
         pass
 
@@ -626,7 +665,7 @@ class Grid(LayoutNode):
         scale: float = 1.0,
         show_chrome: bool = True,
         subtitle: str = None,
-    ) -> dict[str, list]:
+    ) -> RenderResult:
         df = dfs["main"]
         unique_values = sorted(df[self.groupby].dropna().unique())
         n_groups = len(unique_values)
@@ -637,8 +676,7 @@ class Grid(LayoutNode):
             inner_size = self.inner.get_grid_size(df)
 
         grid_cols = min(n_groups, self.cols_wrap)
-
-        all_warnings = defaultdict(set)
+        child_results = []
 
         for i, value in enumerate(unique_values):
             grid_row = i // grid_cols
@@ -665,7 +703,7 @@ class Grid(LayoutNode):
                 ax.text(0.5, 0.5, "No inner layout", ha="center", va="center")
             else:
                 # Grid passes scale and show_chrome through unchanged
-                warnings = self.inner.render(
+                result = self.inner.render(
                     fig,
                     gs,
                     slice(r_start, r_end),
@@ -675,11 +713,9 @@ class Grid(LayoutNode):
                     show_chrome,
                     subtitle=cell_subtitle,
                 )
-                for col, vals in warnings.items():
-                    all_warnings[col].update(vals)
+                child_results.append(result)
 
-        # Convert sets back to lists
-        return {col: list(vals) for col, vals in all_warnings.items()}
+        return RenderResult.merge(child_results)
 
 
 @dataclass
@@ -731,7 +767,7 @@ class MainSide(LayoutNode):
         scale: float = 1.0,
         show_chrome: bool = True,
         subtitle: str = None,
-    ) -> dict[str, list]:
+    ) -> RenderResult:
         df = dfs["main"]
         unique_values = list(df[self.groupby].unique())
 
@@ -753,7 +789,7 @@ class MainSide(LayoutNode):
         else:
             inner_size = self.inner.get_grid_size(df)
 
-        all_warnings = defaultdict(set)
+        child_results = []
 
         # Main plot region: left n_sides/(n_sides+1), full height
         main_col_end = col_slice.start + n_sides * inner_size.cols
@@ -764,7 +800,7 @@ class MainSide(LayoutNode):
         else:
             # Main plot gets the current scale and show_chrome unchanged
             # Pass through subtitle from parent
-            warnings = self.inner.render(
+            result = self.inner.render(
                 fig,
                 gs,
                 row_slice,
@@ -774,8 +810,7 @@ class MainSide(LayoutNode):
                 show_chrome,
                 subtitle=subtitle,
             )
-            for col, vals in warnings.items():
-                all_warnings[col].update(vals)
+            child_results.append(result)
 
         # Side plots: right 1/(n_sides+1), stacked vertically
         # Each side is 1/n_sides the linear size of main, so scale by 1/n_sides
@@ -794,7 +829,7 @@ class MainSide(LayoutNode):
                 ax_side.set_title(f"{self.groupby}={side_value}")
             else:
                 # Side plots don't show chrome
-                warnings = self.inner.render(
+                result = self.inner.render(
                     fig,
                     gs,
                     slice(r_start, r_end),
@@ -803,11 +838,9 @@ class MainSide(LayoutNode):
                     side_scale,
                     show_chrome=False,
                 )
-                for col, vals in warnings.items():
-                    all_warnings[col].update(vals)
+                child_results.append(result)
 
-        # Convert sets back to lists
-        return {col: list(vals) for col, vals in all_warnings.items()}
+        return RenderResult.merge(child_results)
 
 
 # Reference size for a "full-sized" plot in inches
@@ -858,7 +891,7 @@ class BarPlot(LayoutNode):
         scale: float = 1.0,
         show_chrome: bool = True,
         subtitle: str = None,
-    ) -> dict[str, list]:
+    ) -> RenderResult:
         df = dfs["main"]
 
         # Handle y as list: melt and use column_value for y
@@ -881,8 +914,9 @@ class BarPlot(LayoutNode):
         title = self.title if self.title is not None else subtitle
 
         ax = fig.add_subplot(gs[row_slice, col_slice])
-        _draw_bar_plot(ax, df, self.x, y_col, self.hue, title, scale, show_chrome)
-        return _check_aggregation_warnings(df, self.x, y_col, self.hue, type(self))
+        legend_entries = _draw_bar_plot(ax, df, self.x, y_col, self.hue, title, scale, show_chrome)
+        warnings = _check_aggregation_warnings(df, self.x, y_col, self.hue, type(self))
+        return RenderResult(warnings=warnings, legend_entries=legend_entries)
 
 
 @dataclass
@@ -943,7 +977,7 @@ class ProgressionPlot(LayoutNode):
         scale: float = 1.0,
         show_chrome: bool = True,
         subtitle: str = None,
-    ) -> dict[str, list]:
+    ) -> RenderResult:
         if self.y is None:
             raise ValueError("ProgressionPlot requires 'y' parameter")
 
@@ -971,7 +1005,7 @@ class ProgressionPlot(LayoutNode):
         title = self.title if self.title is not None else subtitle
 
         ax = fig.add_subplot(gs[row_slice, col_slice])
-        _draw_progression_plot(
+        legend_entries = _draw_progression_plot(
             ax,
             plot_dfs,
             self.x,
@@ -984,9 +1018,10 @@ class ProgressionPlot(LayoutNode):
             show_chrome,
             self.show_individual_lines,
         )
-        return _check_aggregation_warnings(
+        warnings = _check_aggregation_warnings(
             df, self.x, y_col, self.hue, type(self), self.linestyle
         )
+        return RenderResult(warnings=warnings, legend_entries=legend_entries)
 
 
 @dataclass
@@ -1048,7 +1083,7 @@ class ScatterPlot(LayoutNode):
         scale: float = 1.0,
         show_chrome: bool = True,
         subtitle: str = None,
-    ) -> dict[str, list]:
+    ) -> RenderResult:
         df = dfs["main"]
 
         # Handle y as list: melt and use column_value for y
@@ -1091,7 +1126,7 @@ class ScatterPlot(LayoutNode):
         title = self.title if self.title is not None else subtitle
 
         ax = fig.add_subplot(gs[row_slice, col_slice])
-        _draw_scatter_plot(
+        legend_entries = _draw_scatter_plot(
             ax,
             df,
             self.x,
@@ -1104,9 +1139,10 @@ class ScatterPlot(LayoutNode):
             scale,
             show_chrome,
         )
-        return _check_aggregation_warnings(
+        warnings = _check_aggregation_warnings(
             df, self.x, y_col, color_col, type(self), self.marker
         )
+        return RenderResult(warnings=warnings, legend_entries=legend_entries)
 
 
 # =============================================================================
@@ -1264,7 +1300,7 @@ def _draw_bar_plot(
     title: str = None,
     scale: float = 1.0,
     show_chrome: bool = True,
-) -> None:
+) -> list[tuple[Any, str]]:
     """Draw a bar plot with individual data points overlaid.
 
     Args:
@@ -1276,10 +1312,15 @@ def _draw_bar_plot(
         title: Optional title for the plot
         scale: Scale factor for fonts and markers (1.0 = full size)
         show_chrome: Whether to show axis labels and legend
+
+    Returns:
+        List of (handle, label) tuples for legend entries
     """
+    legend_entries = []
+
     if df.empty:
         ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
-        return
+        return legend_entries
 
     # Get unique x values, sorted by canonical order
     x_values = sort_values(x, list(df[x].unique()))
@@ -1292,12 +1333,11 @@ def _draw_bar_plot(
 
     if n_x == 0:
         ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
-        return
+        return legend_entries
 
     # Scale font and marker sizes
     label_fontsize = BASE_LABEL_FONTSIZE * scale
     tick_fontsize = BASE_TICK_FONTSIZE * scale
-    legend_fontsize = BASE_LEGEND_FONTSIZE * scale
     bar_label_fontsize = BASE_BAR_LABEL_FONTSIZE * scale
     marker_size = BASE_MARKER_SIZE * scale
 
@@ -1324,6 +1364,10 @@ def _draw_bar_plot(
         # Draw bars
         bar_positions = x_positions + (i - n_hue / 2 + 0.5) * bar_width
         bars = ax.bar(bar_positions, means, bar_width, label=display_label, color=color)
+
+        # Collect legend entry
+        if display_label is not None:
+            legend_entries.append((bars[0], display_label))
 
         # Add bar labels
         ax.bar_label(bars, fmt="%.3f", padding=3, fontsize=bar_label_fontsize)
@@ -1352,11 +1396,11 @@ def _draw_bar_plot(
     if show_chrome:
         ax.set_xlabel(get_display_name(x), fontsize=label_fontsize)
         ax.set_ylabel(get_display_name(y), fontsize=label_fontsize)
-        if hue is not None:
-            ax.legend(fontsize=legend_fontsize)
 
     if title:
         ax.set_title(title, fontsize=label_fontsize)
+
+    return legend_entries
 
 
 def _draw_progression_series(
@@ -1371,7 +1415,7 @@ def _draw_progression_series(
     linewidth: float,
     faint_linewidth: float,
     show_individual_lines: bool = True,
-) -> None:
+) -> Any:
     """Draw a single progression series (faint individual lines + bold average).
 
     Args:
@@ -1386,6 +1430,9 @@ def _draw_progression_series(
         linewidth: Width for bold average line
         faint_linewidth: Width for faint individual lines
         show_individual_lines: Whether to show faint lines for individual runs
+
+    Returns:
+        The Line2D object for the average line, or None if no data
     """
     all_run_lines = []
 
@@ -1414,7 +1461,7 @@ def _draw_progression_series(
 
     if all_run_lines:
         avg_x, avg_y = _average_step_functions(all_run_lines)
-        ax.plot(
+        (line,) = ax.plot(
             avg_x,
             avg_y,
             color=color,
@@ -1423,6 +1470,8 @@ def _draw_progression_series(
             linestyle=ls,
             label=label,
         )
+        return line
+    return None
 
 
 def _draw_hline_series(
@@ -1434,7 +1483,7 @@ def _draw_hline_series(
     hue_val: str,
     color: str,
     linewidth: float,
-) -> None:
+) -> Any:
     """Draw a horizontal line for a hue value (e.g., RL baseline).
 
     Validates that all rows have the same x value, then draws a dashed
@@ -1449,6 +1498,9 @@ def _draw_hline_series(
         hue_val: The hue value being drawn
         color: Line color
         linewidth: Line width
+
+    Returns:
+        The Line2D object for the horizontal line
     """
     # Validate that all x values are the same
     unique_x = df[x].unique()
@@ -1461,7 +1513,7 @@ def _draw_hline_series(
     # Compute mean y-value and draw horizontal line
     mean_y = df[y].mean()
     label = get_display_value(hue, hue_val)
-    ax.axhline(
+    line = ax.axhline(
         y=mean_y,
         color=color,
         linestyle="--",
@@ -1470,6 +1522,7 @@ def _draw_hline_series(
         label=label,
         zorder=2,
     )
+    return line
 
 
 def _draw_progression_plot(
@@ -1484,7 +1537,7 @@ def _draw_progression_plot(
     scale: float = 1.0,
     show_chrome: bool = True,
     show_individual_lines: bool = True,
-) -> None:
+) -> list[tuple[Any, str]]:
     """Draw a progression plot with step functions.
 
     Args:
@@ -1501,13 +1554,17 @@ def _draw_progression_plot(
         scale: Scale factor for fonts and line widths (1.0 = full size)
         show_chrome: Whether to show axis labels and legend
         show_individual_lines: Whether to show faint lines for individual run_index values
+
+    Returns:
+        List of (handle, label) tuples for legend entries
     """
+    legend_entries = []
     df = dfs["main"]
     gepa_runs = dfs["gepa_runs"]
 
     if df.empty:
         ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
-        return
+        return legend_entries
 
     # Map x column to the corresponding end column in gepa_runs
     # Use composite key (experiment_path, run_index) since run_index alone is not globally unique
@@ -1522,7 +1579,6 @@ def _draw_progression_plot(
     # Scale font and line sizes
     label_fontsize = BASE_LABEL_FONTSIZE * scale
     tick_fontsize = BASE_TICK_FONTSIZE * scale
-    legend_fontsize = BASE_LEGEND_FONTSIZE * scale
     linewidth = BASE_LINEWIDTH * scale
     faint_linewidth = BASE_FAINT_LINEWIDTH * scale
 
@@ -1543,7 +1599,9 @@ def _draw_progression_plot(
 
         # Draw as horizontal line if specified in hue_as_hline
         if hue_val in hline_hue_values:
-            _draw_hline_series(ax, hue_df, x, y, hue, hue_val, color, linewidth)
+            line = _draw_hline_series(ax, hue_df, x, y, hue, hue_val, color, linewidth)
+            if line is not None:
+                legend_entries.append((line, get_display_value(hue, hue_val)))
             continue
 
         for j, linestyle_val in enumerate(linestyle_values):
@@ -1562,7 +1620,7 @@ def _draw_progression_plot(
             )
             label = _build_label(hue, hue_val, linestyle_col, linestyle_val)
 
-            _draw_progression_series(
+            line = _draw_progression_series(
                 ax,
                 series_df,
                 x,
@@ -1575,6 +1633,8 @@ def _draw_progression_plot(
                 faint_linewidth,
                 show_individual_lines,
             )
+            if line is not None and label is not None:
+                legend_entries.append((line, label))
 
     ax.tick_params(axis="both", labelsize=tick_fontsize)
     ax.set_ylim(0, 1)
@@ -1583,11 +1643,11 @@ def _draw_progression_plot(
     if show_chrome:
         ax.set_xlabel(get_display_name(x), fontsize=label_fontsize)
         ax.set_ylabel(get_display_name(y), fontsize=label_fontsize)
-        if hue is not None or linestyle_col is not None:
-            ax.legend(loc="best", fontsize=legend_fontsize)
 
     if title:
         ax.set_title(title, fontsize=label_fontsize)
+
+    return legend_entries
 
 
 def _is_display_value_missing(column: str, value: Any) -> bool:
@@ -1678,7 +1738,7 @@ def _draw_scatter_plot(
     title: str = None,
     scale: float = 1.0,
     show_chrome: bool = True,
-) -> None:
+) -> list[tuple[Any, str]]:
     """Draw a scatter plot with optional grouping and arrows.
 
     Args:
@@ -1695,15 +1755,17 @@ def _draw_scatter_plot(
         title: Optional title for the plot
         scale: Scale factor for fonts and markers (1.0 = full size)
         show_chrome: Whether to show axis labels and legend
+
+    Returns:
+        List of (handle, label) tuples for legend entries
     """
     if df.empty:
         ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
-        return
+        return []
 
     # Scale font and marker sizes
     label_fontsize = BASE_LABEL_FONTSIZE * scale
     tick_fontsize = BASE_TICK_FONTSIZE * scale
-    legend_fontsize = BASE_LEGEND_FONTSIZE * scale
     marker_size = BASE_MARKER_SIZE * 1 * scale  # Larger markers for scatter
 
     # Get unique values for color and marker, sorted by canonical order
@@ -1730,7 +1792,7 @@ def _draw_scatter_plot(
     )
 
     # Track legend entries (only add each unique color/marker combo once)
-    legend_entries = {}  # (color_val, marker_val) -> handle
+    legend_entry_map = {}  # (color_val, marker_val) -> handle
 
     for _, row in plot_df.iterrows():
         color_val = row[color_col] if color_col is not None else None
@@ -1760,8 +1822,8 @@ def _draw_scatter_plot(
 
         # Track for legend (only first occurrence of each combo)
         legend_key = (color_val, marker_val)
-        if legend_key not in legend_entries:
-            legend_entries[legend_key] = handle
+        if legend_key not in legend_entry_map:
+            legend_entry_map[legend_key] = handle
 
     # Draw arrows between paired points if arrow_by is specified
     if arrow_by is not None:
@@ -1808,32 +1870,30 @@ def _draw_scatter_plot(
         ax.set_xlabel(get_display_name(x), fontsize=label_fontsize)
         ax.set_ylabel(get_display_name(y), fontsize=label_fontsize)
 
-        # Build legend with separate sections for color and marker
-        if legend_entries:
-            # Collect unique color and marker values
-            color_vals = {cv for cv, _ in legend_entries.keys() if cv is not None}
-            marker_vals = {mv for _, mv in legend_entries.keys() if mv is not None}
-
-            legend_handles, legend_labels = _build_scatter_legend_entries(
-                ax,
-                color_col,
-                color_vals,
-                color_index,
-                marker_col,
-                marker_vals,
-                marker_index,
-                marker_size,
-            )
-
-            if legend_handles:
-                ax.legend(
-                    handles=legend_handles,
-                    labels=legend_labels,
-                    fontsize=legend_fontsize,
-                )
-
     if title:
         ax.set_title(title, fontsize=label_fontsize)
+
+    # Build legend entries
+    legend_entries = []
+    if legend_entry_map:
+        # Collect unique color and marker values
+        color_vals = {cv for cv, _ in legend_entry_map.keys() if cv is not None}
+        marker_vals = {mv for _, mv in legend_entry_map.keys() if mv is not None}
+
+        legend_handles, legend_labels = _build_scatter_legend_entries(
+            ax,
+            color_col,
+            color_vals,
+            color_index,
+            marker_col,
+            marker_vals,
+            marker_index,
+            marker_size,
+        )
+
+        legend_entries = list(zip(legend_handles, legend_labels))
+
+    return legend_entries
 
 
 def _build_step_function(
@@ -1975,7 +2035,7 @@ class Figure:
         gs = fig.add_gridspec(grid_size.rows, grid_size.cols, hspace=0.4, wspace=0.4)
 
         # Render layout with scale=1.0 at the top level
-        warnings = self.layout.render(
+        result = self.layout.render(
             fig,
             gs,
             slice(0, grid_size.rows),
@@ -1986,7 +2046,23 @@ class Figure:
         )
 
         # Print any aggregation warnings
-        _print_aggregation_warnings(warnings, self.name)
+        _print_aggregation_warnings(result.warnings, self.name)
+
+        # Add figure-level legend outside the plots if there are legend entries
+        if result.legend_entries:
+            handles, labels = zip(*result.legend_entries)
+            fig.legend(
+                handles,
+                labels,
+                loc="upper center",
+                bbox_to_anchor=(0.5, 0),
+                ncol=min(len(labels), 4),  # Horizontal layout, up to 4 columns
+                fontsize=BASE_LEGEND_FONTSIZE,
+            )
+            # Adjust layout to make room for the legend at the bottom
+            fig.tight_layout(rect=[0, 0.08, 1, 0.96])
+        else:
+            fig.tight_layout(rect=[0, 0, 1, 0.96])
 
         return fig, filtered_dfs["main"]
 
