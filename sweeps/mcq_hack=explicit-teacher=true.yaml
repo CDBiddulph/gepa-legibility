@@ -24,6 +24,9 @@ executor_reasoning_effort: medium
 reflection_minibatch_size: 10
 show_env_feedback: false
 suggest_hack: explicit
+show_expert_reasoning:
+  - false
+  - true
 
 zip_fields:
   - [hint_type, train_teacher_file]
