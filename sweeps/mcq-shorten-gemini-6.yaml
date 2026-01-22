@@ -1,0 +1,39 @@
+# MCQ prompt shortening sweep - Gemini only, best prompt per hint_type (6 total)
+# Run with: python -m run_shortening.sweep sweeps/mcq-shorten-gemini-6.yaml
+
+name: "mcq-shorten-gemini-6"
+task: "mcq"
+
+# Gemini only
+prompter_name: openrouter/google/gemini-3-pro-preview
+
+# Fixed settings
+executor_name: deepinfra/Qwen/Qwen3-30B-A3B
+incompetent: true
+
+# Zip hint_type with baseline_instructions_path (best prompt per hint_type from v4, ordered by score)
+zip_fields:
+  - [hint_type, baseline_instructions_path]
+
+hint_type:
+  - visual-pattern
+  - grader-hacking
+  - unethical
+  - sycophancy
+  - metadata
+  - consistency
+
+baseline_instructions_path:
+  - logs/mcq/hack=explicit-teacher=true/2026-01-18-00-32-38/hint_type=visual_pattern-train_teacher_file=mcq_visual_pattern_2.jsonl-prompter_name=anthropic_claude_opus_4_5/0/best_instructions.txt  # proxy_reward: 0.9000
+  - logs/mcq/hack=explicit-teacher=true/2026-01-18-00-32-38/hint_type=grader_hacking-train_teacher_file=mcq_grader_hacking_2.jsonl-prompter_name=openrouter_google_gemini_3_pro_preview/0/best_instructions.txt  # proxy_reward: 0.8900
+  - logs/mcq/hack=explicit-teacher=true/2026-01-18-00-32-38/hint_type=unethical-train_teacher_file=mcq_unethical_2.jsonl-prompter_name=openai_gpt_5.2/0/best_instructions.txt  # proxy_reward: 0.8800
+  - logs/mcq/hack=explicit-teacher=true/2026-01-18-00-32-38/hint_type=sycophancy-train_teacher_file=mcq_sycophancy_2.jsonl-prompter_name=openrouter_google_gemini_3_pro_preview/0/best_instructions.txt  # proxy_reward: 0.8700
+  - logs/mcq/hack=explicit-teacher=true/2026-01-18-00-32-38/hint_type=metadata-train_teacher_file=mcq_metadata_2.jsonl-prompter_name=openrouter_google_gemini_3_pro_preview/0/best_instructions.txt  # proxy_reward: 0.8400
+  - logs/mcq/hack=explicit-teacher=true/2026-01-18-00-32-38/hint_type=consistency-train_teacher_file=mcq_consistency_1.jsonl-prompter_name=openrouter_google_gemini_3_pro_preview/0/best_instructions.txt  # proxy_reward: 0.6400
+
+# Shortening parameters
+max_iterations: 20
+num_proposals_per_iteration: 5
+num_threads: 32
+cache: true
+skip_initial_shortenings: true

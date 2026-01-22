@@ -1,0 +1,26 @@
+# Wordchain prompt shortening sweep - Gemini only, top 5 prompts
+# Run with: python -m run_shortening.sweep sweeps/wordchain-shorten-gemini-5.yaml
+
+name: "wordchain-shorten-gemini-5"
+task: "wordchain"
+
+# Gemini only
+prompter_name: openrouter/google/gemini-3-pro-preview
+
+# Fixed settings
+executor_name: deepinfra/Qwen/Qwen3-30B-A3B
+
+# Top 5 prompts from v4 teacher_true + teacher_false (ordered by proxy_reward_original)
+baseline_instructions_path:
+  - logs/wordchain/prompter-hack=explicit-teacher=true/2026-01-05-17-52-42/prompter_name=anthropic_claude_opus_4_5-show_expert_reasoning=False-train_teacher_file=wordchain_12_30.jsonl/0/best_instructions.txt  # proxy_reward: 0.6260
+  - logs/wordchain/prompter-hack=explicit-teacher=true/2026-01-05-17-52-42/prompter_name=openrouter_google_gemini_3_pro_preview-show_expert_reasoning=True-train_teacher_file=wordchain_12_29_s70.jsonl/0/best_instructions.txt  # proxy_reward: 0.5330
+  - logs/wordchain/prompter-hack=explicit-teacher=true/2026-01-05-17-52-42/prompter_name=openrouter_google_gemini_3_pro_preview-show_expert_reasoning=False-train_teacher_file=wordchain_12_30.jsonl/0/best_instructions.txt  # proxy_reward: 0.5330
+  - logs/wordchain/prompter-hack=explicit-teacher=true/2026-01-05-17-52-42/prompter_name=openrouter_google_gemini_3_pro_preview-show_expert_reasoning=False-train_teacher_file=wordchain_12_29_s70.jsonl/0/best_instructions.txt  # proxy_reward: 0.5140
+  - logs/wordchain/prompter-hack=explicit-teacher=true/2026-01-05-17-52-42/prompter_name=openrouter_google_gemini_3_pro_preview-show_expert_reasoning=False-train_teacher_file=wordchain_12_02_s90.jsonl/0/best_instructions.txt  # proxy_reward: 0.4760
+
+# Shortening parameters
+max_iterations: 20
+num_proposals_per_iteration: 5
+num_threads: 32
+cache: true
+skip_initial_shortenings: true
