@@ -11,7 +11,7 @@ def call_judge(
     prompt: str,
     valid_results: tuple[str, ...],
     cache: bool = True,
-    max_retries: int = 3,
+    max_retries: int = 5,
 ) -> tuple[str, str]:
     """Call the judge model and parse the response, with retry on failure.
 
@@ -41,6 +41,8 @@ def call_judge(
             if parsed is None:
                 raise ValueError(f"Failed to parse judge response: {response}")
 
+            if "result" not in parsed:
+                raise ValueError(f"Judge response missing 'result' key. Parsed JSON: {parsed}")
             result = parsed["result"].lower()
             reasoning = parsed.get("reasoning", "")
 
