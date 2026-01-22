@@ -1,10 +1,9 @@
 """JSON parsing utilities."""
 
-from typing import Callable
 import logging
+from typing import Callable
 
-# Use json5 for more permissive JSON parsing
-import json5 as json
+from json_repair import loads as json_repair_loads
 
 from core.lm import get_simple_lm
 
@@ -29,10 +28,9 @@ def extract_json_from_response(content: str) -> dict | list | None:
     else:
         json_str = content.strip()
 
-    try:
-        return json.loads(json_str)
-    except Exception:
-        pass
+    result = json_repair_loads(json_str)
+    if result != "":
+        return result
 
     # Fallback: find first line with only "{" and last line with only "}"
     # This handles cases where the model adds extra content before/after JSON
@@ -80,10 +78,8 @@ def _extract_json_by_braces(content: str) -> dict | list | None:
 
     # Extract and parse the JSON
     json_str = "\n".join(lines[start_idx:end_idx + 1])
-    try:
-        return json.loads(json_str)
-    except Exception:
-        return None
+    result = json_repair_loads(json_str)
+    return result if result != "" else None
 
 
 def get_json_response(
