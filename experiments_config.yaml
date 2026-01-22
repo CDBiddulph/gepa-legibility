@@ -21,15 +21,18 @@ versions:
       teacher_true: logs/psychosis/prompter-hack=explicit-teacher=true/2026-01-05-13-57-15
       teacher_false: logs/psychosis/prompter-hack-teacher=false/2026-01-05-13-56-27
       tinker: logs/psychosis/tinker/2026-01-16-12-26-15/
+      tinker_ckpts: logs/psychosis/tinker-ckpts/2026-01-21-00-29-21/
     wordchain:
       teacher_true: logs/wordchain/prompter-hack=explicit-teacher=true/2026-01-05-17-52-42
       teacher_false: logs/wordchain/prompter-hack-teacher=false/2026-01-05-13-57-33
       tinker: logs/wordchain/tinker/2026-01-16-12-26-23/
+      tinker_ckpts: logs/wordchain/tinker-ckpts/2026-01-21-00-29-45/
     mcq:
       teacher_true: logs/mcq/hack=explicit-teacher=true/2026-01-18-00-32-38/
       teacher_false: logs/mcq/hack-teacher=false/2026-01-13-22-06-23
       tinker: logs/mcq/tinker/2026-01-16-12-27-50/
       baseline_only: logs/mcq/baseline-only/2026-01-06-08-59-07
+      tinker_ckpts: logs/mcq/tinker-ckpts/2026-01-21-00-26-57/
 
   v3_new_san:
     description: "Jan 2026 - v3 with regenerated sanitization using updated sanitization code"

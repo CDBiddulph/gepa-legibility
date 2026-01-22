@@ -7,7 +7,7 @@
 #   ./generate_metrics.sh v1     # uses specific version
 
 # === CONFIGURATION ===
-MAX_PARALLEL=2  # Number of jobs to run in parallel
+MAX_PARALLEL=3  # Number of jobs to run in parallel
 VERSION="${1:-}"  # Empty means use default from config
 # =====================
 
@@ -41,10 +41,12 @@ config = load_experiments_config(version)
 # Define what each experiment type needs based on notebook CONFIGS
 EXPERIMENT_REQUIREMENTS = {
     # (metrics, quick_mode)
-    'teacher_true': ('proxy_reward true_reward hacking_rate prompt_verbalizes cot_verbalizes_yes cot_verbalizes_unclear cot_verbalizes_no', False),
-    'teacher_false': ('proxy_reward true_reward hacking_rate prompt_verbalizes cot_verbalizes_yes cot_verbalizes_unclear cot_verbalizes_no', False),
-    'baseline_only': ('hacking_rate cot_verbalizes_yes cot_verbalizes_unclear cot_verbalizes_no', True),
-    'tinker': ('proxy_reward hacking_rate cot_verbalizes_yes cot_verbalizes_unclear cot_verbalizes_no', True),
+    # verbalizes_* = CoT verbalization, verbalizes_prompt_* = prompt verbalization
+    'teacher_true': ('proxy_reward true_reward hacking_rate verbalizes_prompt_yes verbalizes_prompt_unclear verbalizes_prompt_no verbalizes_yes verbalizes_unclear verbalizes_no', False),
+    'teacher_false': ('proxy_reward true_reward hacking_rate verbalizes_prompt_yes verbalizes_prompt_unclear verbalizes_prompt_no verbalizes_yes verbalizes_unclear verbalizes_no', False),
+    'baseline_only': ('hacking_rate verbalizes_yes verbalizes_unclear verbalizes_no', True),
+    'tinker': ('proxy_reward hacking_rate verbalizes_yes verbalizes_unclear verbalizes_no', True),
+    'tinker_ckpts': ('hacking_rate verbalizes_yes verbalizes_unclear verbalizes_no', True),
 }
 
 for env, experiments in config.items():
