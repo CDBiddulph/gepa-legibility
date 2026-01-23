@@ -160,6 +160,10 @@ BASE_FAINT_LINEWIDTH = 1
 # Display Name Mapping
 # =============================================================================
 
+# Columns where subtitles should show just the value, not "column = value"
+# Used in Grid.render() when building cell subtitles
+VALUE_ONLY_SUBTITLE_COLUMNS: set[str] = {"env_name", "prompter_name"}
+
 # Maps column names to friendly display names for axis labels, titles, etc.
 # Names with suffixes (e.g., "hacking_rate_hinted") will match their base name.
 COLUMN_DISPLAY_NAMES: dict[str, str] = {
@@ -193,6 +197,11 @@ COLUMN_DISPLAY_NAMES: dict[str, str] = {
 # Maps (column, value) pairs to friendly display names for legends, tick labels, etc.
 # For "column_name", values with suffixes will match their base name.
 VALUE_DISPLAY_NAMES: dict[str, dict[str, str]] = {
+    "prompter_name": {
+        "anthropic/claude-opus-4-5": "Claude Opus 4.5",
+        "openai/gpt-5.2": "GPT-5.2",
+        "openrouter/google/gemini-3-pro-preview": "Gemini 3.0 Pro",
+    },
     "env_name": {
         "psychosis": "Delusional Queries",
         "wordchain": "Phrase Ladder",
@@ -296,6 +305,7 @@ def get_display_value(column: str, value: Any) -> str:
 # Defines the canonical order for categorical values.
 # Values not in this list will be sorted alphabetically after the listed ones.
 VALUE_ORDER: dict[str, list] = {
+    "env_name": ["mcq", "psychosis", "wordchain"],
     "prompt_type": [
         "baseline",
         "no_hack",
@@ -676,7 +686,7 @@ class Grid(LayoutNode):
         subtitle: str = None,
     ) -> RenderResult:
         df = dfs["main"]
-        unique_values = sorted(df[self.groupby].dropna().unique())
+        unique_values = sort_values(self.groupby, list(df[self.groupby].dropna().unique()))
         n_groups = len(unique_values)
 
         if self.inner is None:
@@ -700,9 +710,12 @@ class Grid(LayoutNode):
             sub_dfs = _filter_main(dfs, lambda df: df[self.groupby] == value)
 
             # Build subtitle showing the groupby column and value
-            # Format: "column = value" and chain with parent subtitle if present
+            # Format: "column = value" or just "value" for VALUE_ONLY_SUBTITLE_COLUMNS
             display_value = get_display_value(self.groupby, value)
-            this_level = f"{self.groupby} = {display_value}"
+            if self.groupby in VALUE_ONLY_SUBTITLE_COLUMNS:
+                this_level = display_value
+            else:
+                this_level = f"{self.groupby} = {display_value}"
             cell_subtitle = f"{subtitle}, {this_level}" if subtitle else this_level
 
             if self.inner is None:
@@ -784,11 +797,11 @@ class MainSide(LayoutNode):
         if self.main_value is None:
             # main_value=None means use rows where groupby column is NaN
             main_dfs = _filter_main(dfs, lambda df: df[self.groupby].isna())
-            side_values = sorted([v for v in unique_values if pd.notna(v)])
+            side_values = sort_values(self.groupby, [v for v in unique_values if pd.notna(v)])
         else:
             main_dfs = _filter_main(dfs, lambda df: df[self.groupby] == self.main_value)
-            side_values = sorted(
-                [v for v in unique_values if v != self.main_value and pd.notna(v)]
+            side_values = sort_values(
+                self.groupby, [v for v in unique_values if v != self.main_value and pd.notna(v)]
             )
 
         n_sides = max(len(side_values), 1)
