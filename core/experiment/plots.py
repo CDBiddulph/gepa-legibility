@@ -642,7 +642,7 @@ class Grid(LayoutNode):
     """Creates a grid of plots, one per unique value of groupby column."""
 
     groupby: str
-    cols_wrap: int = 2
+    cols_wrap: int = 3
     inner: LayoutNode = None
 
     def get_grid_size(self, df: pd.DataFrame) -> GridSize:
