@@ -256,7 +256,7 @@ def _group_scores_by_sanitized(scores: dict) -> dict[bool, dict[str, any]]:
 
     Returns:
         Dict like {
-            False: {"proxy_reward": 0.85, "true_reward": 0.42, "prompt_verbalizes": "yes"},
+            False: {"proxy_reward": 0.85, "true_reward": 0.42, "verbalizes_prompt_yes": 0.6},
             True: {"proxy_reward": 0.80, "true_reward": 0.40}
         }
     """

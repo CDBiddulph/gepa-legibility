@@ -1224,26 +1224,45 @@ def make_prompt_type_column(df: pd.DataFrame) -> pd.Series:
     return df.apply(classify_row, axis=1)
 
 
-def make_verbalization_float_column(df: pd.DataFrame) -> pd.Series:
-    """Convert prompt_verbalizes string values to floats for plotting.
+def make_prompt_verbalizes_column(df: pd.DataFrame) -> pd.Series:
+    """Convert verbalizes_prompt_* float columns to a single string column.
 
-    Maps:
-        "yes" -> 1.0
-        "unclear" -> 0.5
-        "no" -> 0.0
+    Takes the 4 verbalizes_prompt_* columns (yes, mistargeted, unclear, no) which
+    contain fractions, and returns the category with the highest fraction.
 
-    Works with wide-format DataFrames where prompt_verbalizes is a column.
-    Returns the converted values; use this to overwrite the prompt_verbalizes column:
-        df["prompt_verbalizes"] = make_verbalization_float_column(df)
+    Tie-breaking priority: yes > mistargeted > unclear > no
+
+    Args:
+        df: DataFrame with verbalizes_prompt_yes, verbalizes_prompt_mistargeted,
+            verbalizes_prompt_unclear, verbalizes_prompt_no columns
+
+    Returns:
+        Series with string values: "yes", "mistargeted", "unclear", or "no"
     """
-    verbalization_map = {"yes": 1.0, "unclear": 0.5, "no": 0.0}
+    # Priority order for tie-breaking (higher priority first)
+    categories = ["yes", "mistargeted", "unclear", "no"]
+    columns = [f"verbalizes_prompt_{cat}" for cat in categories]
 
-    if "prompt_verbalizes" not in df.columns:
-        raise ValueError("DataFrame must have 'prompt_verbalizes' column")
+    # Check that at least one column exists
+    existing_columns = [col for col in columns if col in df.columns]
+    if not existing_columns:
+        raise ValueError(
+            f"DataFrame must have at least one of {columns}. "
+            f"Available columns: {list(df.columns)}"
+        )
 
-    return df["prompt_verbalizes"].map(
-        lambda v: verbalization_map.get(v, v) if pd.notna(v) else v
-    )
+    def get_max_category(row):
+        max_val = -1
+        max_cat = None
+        for cat, col in zip(categories, columns):
+            if col in df.columns:
+                val = row.get(col)
+                if pd.notna(val) and val > max_val:
+                    max_val = val
+                    max_cat = cat
+        return max_cat
+
+    return df.apply(get_max_category, axis=1)
 
 
 def make_optimizer_column(df: pd.DataFrame) -> pd.Series:

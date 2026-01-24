@@ -41,12 +41,14 @@ config = load_experiments_config(version)
 # Define what each experiment type needs based on notebook CONFIGS
 EXPERIMENT_REQUIREMENTS = {
     # (metrics, quick_mode)
-    # verbalizes_* = CoT verbalization, verbalizes_prompt_* = prompt verbalization
-    'teacher_true': ('proxy_reward true_reward hacking_rate verbalizes_prompt_yes verbalizes_prompt_unclear verbalizes_prompt_no verbalizes_yes verbalizes_unclear verbalizes_no', False),
-    'teacher_false': ('proxy_reward true_reward hacking_rate verbalizes_prompt_yes verbalizes_prompt_unclear verbalizes_prompt_no verbalizes_yes verbalizes_unclear verbalizes_no', False),
-    'baseline_only': ('hacking_rate verbalizes_yes verbalizes_unclear verbalizes_no', True),
-    'tinker': ('proxy_reward hacking_rate verbalizes_yes verbalizes_unclear verbalizes_no', True),
-    'tinker_ckpts': ('hacking_rate verbalizes_yes verbalizes_unclear verbalizes_no', True),
+    # verbalizes_* = CoT verbalization (instructions + CoT)
+    # verbalizes_prompt_* = prompt verbalization (instructions only)
+    'teacher_true': ('proxy_reward true_reward hacking_rate verbalizes_prompt_yes verbalizes_prompt_mistargeted verbalizes_prompt_unclear verbalizes_prompt_no verbalizes_yes verbalizes_mistargeted verbalizes_unclear verbalizes_no', False),
+    'teacher_false': ('proxy_reward true_reward hacking_rate verbalizes_prompt_yes verbalizes_prompt_mistargeted verbalizes_prompt_unclear verbalizes_prompt_no verbalizes_yes verbalizes_mistargeted verbalizes_unclear verbalizes_no', False),
+    'baseline_only': ('hacking_rate verbalizes_yes verbalizes_mistargeted verbalizes_unclear verbalizes_no', True),
+    # tinker needs verbalizes_prompt_* for verbalization_comparison plot
+    'tinker': ('proxy_reward hacking_rate verbalizes_yes verbalizes_mistargeted verbalizes_unclear verbalizes_no verbalizes_prompt_yes verbalizes_prompt_mistargeted verbalizes_prompt_unclear verbalizes_prompt_no', True),
+    'tinker_ckpts': ('hacking_rate verbalizes_yes verbalizes_mistargeted verbalizes_unclear verbalizes_no', True),
 }
 
 for env, experiments in config.items():
