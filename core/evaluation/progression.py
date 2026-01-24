@@ -9,6 +9,7 @@ with automatic caching support. It handles both:
 
 import json
 import logging
+import shutil
 from collections import defaultdict
 from pathlib import Path
 
@@ -101,35 +102,37 @@ def _get_candidates_to_eval(data: dict, quick_mode: bool) -> set[int]:
         return set(improving_candidates)
 
 
-def _get_required_cache_files(
-    subdir: Path, candidate_indices: set[int], metrics: list[str] | None, is_baseline_only: bool
-) -> list[Path]:
-    """Get list of cache files required for given candidates and metrics."""
-    eval_dir = subdir / "evaluations"
-    cache_files = []
+def _cache_exists_for_metric(
+    eval_dir: Path, candidate_idx: int, metric_name: str, version_name: str
+) -> bool:
+    """Check if cache exists for a metric, including fallback.
 
-    # Baseline-only experiments only have "original" version (no sanitization)
-    versions_to_check = ["original"] if is_baseline_only else ["original", "sanitized"]
+    Checks the primary cache file first, then the fallback file for
+    metrics with shared caches.
+    """
+    cache_file = get_cache_file_for_metric(eval_dir, candidate_idx, metric_name, version_name)
+    if cache_file.exists():
+        return True
 
-    for idx in candidate_indices:
-        for version_name in versions_to_check:
-            all_metrics_for_version = METRICS_BY_PROMPT_VERSION[version_name]
-            if metrics is not None:
-                metrics_to_check = [m for m in all_metrics_for_version if m in metrics]
-            else:
-                metrics_to_check = all_metrics_for_version
+    fallback_file = _get_fallback_cache_file(eval_dir, candidate_idx, metric_name, version_name)
+    if fallback_file and fallback_file.exists():
+        return True
 
-            for metric_name in metrics_to_check:
-                cache_files.append(eval_dir / f"cand_{idx}_{metric_name}_{version_name}.json")
-
-    return cache_files
+    return False
 
 
 def _all_metrics_cached(experiment_path: Path, quick_mode: bool, metrics: list[str] | None) -> bool:
-    """Check if all required metrics are cached for an experiment."""
+    """Check if all required metrics are cached for an experiment.
+
+    Supports shared caches: metrics with the same cache_key share a cache file.
+    Also checks fallback files for backward compatibility.
+    """
     # Check if this is a baseline-only experiment
     config = _get_config_from_experiment(experiment_path)
     is_baseline_only = config.get("prompter_name") is None
+
+    # Baseline-only experiments only have "original" version (no sanitization)
+    versions_to_check = ["original"] if is_baseline_only else ["original", "sanitized"]
 
     for subdir in experiment_path.iterdir():
         if not subdir.is_dir():
@@ -142,12 +145,29 @@ def _all_metrics_cached(experiment_path: Path, quick_mode: bool, metrics: list[s
         with open(results_file) as f:
             data = json.load(f)
 
+        eval_dir = subdir / "evaluations"
         candidates_to_eval = _get_candidates_to_eval(data, quick_mode)
-        required_files = _get_required_cache_files(subdir, candidates_to_eval, metrics, is_baseline_only)
 
-        for cache_file in required_files:
-            if not cache_file.exists():
-                return False
+        for idx in candidates_to_eval:
+            for version_name in versions_to_check:
+                all_metrics_for_version = METRICS_BY_PROMPT_VERSION[version_name]
+                if metrics is not None:
+                    metrics_to_check = [m for m in all_metrics_for_version if m in metrics]
+                else:
+                    metrics_to_check = all_metrics_for_version
+
+                # Deduplicate by cache_key to avoid redundant checks
+                checked_cache_keys = set()
+                for metric_name in metrics_to_check:
+                    metric_cls = METRICS[metric_name]
+                    cache_key = getattr(metric_cls, "cache_key", None) or metric_name
+
+                    if cache_key in checked_cache_keys:
+                        continue
+                    checked_cache_keys.add(cache_key)
+
+                    if not _cache_exists_for_metric(eval_dir, idx, metric_name, version_name):
+                        return False
 
     return True
 
@@ -399,8 +419,6 @@ def _evaluate_candidate(
             metrics_to_eval = all_metrics_for_version
 
         for metric_name in metrics_to_eval:
-            cache_file = eval_dir / f"cand_{idx}_{metric_name}_{version_name}.json"
-
             # Create context and evaluate with caching
             context = MetricContext(
                 instructions=instructions,
@@ -411,7 +429,7 @@ def _evaluate_candidate(
                 adapter=adapter,
                 num_threads=num_threads,
             )
-            result = evaluate_metric_cached(metric_name, context, cache_file)
+            result = evaluate_metric_cached(metric_name, context, eval_dir, idx, version_name)
 
             # Store result
             score_key = f"{metric_name}_{version_name}"
@@ -460,6 +478,42 @@ def _create_progression_point(
     return prog_point
 
 
+def _get_metric_cache_key(metric_name: str) -> str:
+    """Get the cache key for a metric (shared key if set, otherwise metric name)."""
+    metric_cls = METRICS[metric_name]
+    return getattr(metric_cls, "cache_key", None) or metric_name
+
+
+def _get_fallback_cache_file(
+    eval_dir: Path, candidate_idx: int, metric_name: str, version_name: str
+) -> Path | None:
+    """Get fallback cache file path for backward compatibility, if applicable.
+
+    Returns the old-style cache file path (e.g., verbalizes_prompt_yes.json)
+    that might exist from before the shared cache migration.
+    """
+    metric_cls = METRICS[metric_name]
+    cache_key = getattr(metric_cls, "cache_key", None)
+    fallback_suffix = getattr(metric_cls, "cache_fallback_suffix", None)
+
+    if not cache_key or not fallback_suffix:
+        return None
+
+    return eval_dir / f"cand_{candidate_idx}_{cache_key}{fallback_suffix}_{version_name}.json"
+
+
+def get_cache_file_for_metric(
+    eval_dir: Path, candidate_idx: int, metric_name: str, version_name: str
+) -> Path:
+    """Get the primary cache file path for a metric.
+
+    If the metric has a cache_key, uses that instead of the metric name.
+    This allows multiple metrics to share the same cache file.
+    """
+    cache_key = _get_metric_cache_key(metric_name)
+    return eval_dir / f"cand_{candidate_idx}_{cache_key}_{version_name}.json"
+
+
 def load_cached_metric(cache_file: Path, metric_name: str) -> MetricResult:
     """Load metric result from cache file using the metric's from_cache method."""
     with open(cache_file) as f:
@@ -479,25 +533,42 @@ def save_cached_metric(cache_file: Path, cache_data: dict):
 def evaluate_metric_cached(
     metric_name: str,
     context: MetricContext,
-    cache_file: Path,
+    eval_dir: Path,
+    candidate_idx: int,
+    version_name: str,
 ) -> MetricResult:
     """
     Evaluate a metric with caching support.
 
-    This is the core caching logic used by both GEPA candidate evaluation
-    and RL model evaluation.
+    Supports shared caches: if a metric has cache_key set, multiple metrics
+    can share the same cache file. Also checks fallback file for backward
+    compatibility with old individual cache files.
 
     Args:
         metric_name: Name of the metric to evaluate
         context: MetricContext with instructions, eval_data, executor_lm, etc.
-        cache_file: Path to cache file
+        eval_dir: Directory containing cache files (e.g., run_dir/evaluations)
+        candidate_idx: Candidate index
+        version_name: "original" or "sanitized"
 
     Returns:
         MetricResult with value and optional subset_values
     """
+    cache_file = get_cache_file_for_metric(eval_dir, candidate_idx, metric_name, version_name)
+
+    # Check primary cache file
     if cache_file.exists():
         return load_cached_metric(cache_file, metric_name)
 
+    # Check fallback file (old individual cache file)
+    fallback_file = _get_fallback_cache_file(eval_dir, candidate_idx, metric_name, version_name)
+    if fallback_file and fallback_file.exists():
+        result = load_cached_metric(fallback_file, metric_name)
+        # Copy to primary location for future use
+        shutil.copy(fallback_file, cache_file)
+        return result
+
+    # Compute fresh and save to primary cache
     result, cache_data = METRICS[metric_name].calculate(context)
     save_cached_metric(cache_file, cache_data)
     return result

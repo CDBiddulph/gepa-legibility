@@ -39,7 +39,21 @@ class MetricResult:
 
 
 class Metric(ABC):
-    """Base class for all metrics."""
+    """Base class for all metrics.
+
+    Attributes:
+        cache_key: Shared cache key for metrics that store identical data.
+            If set, multiple metrics can share the same cache file.
+            For example, verbalizes_prompt_yes/no/unclear/mistargeted all
+            share cache_key="verbalizes_prompt" since they store the same
+            judgments and just compute different fractions from them.
+        cache_fallback_suffix: Suffix to append to cache_key when checking for
+            old-style cache files (e.g., "_yes" to check "verbalizes_prompt_yes").
+            Used for backward compatibility when migrating to shared caches.
+    """
+
+    cache_key: str | None = None
+    cache_fallback_suffix: str | None = None
 
     @staticmethod
     @abstractmethod

@@ -343,9 +343,18 @@ def create_cot_metrics(
         return judgments, cache_data
 
     class CotMetricBase(Metric):
-        """Base class for CoT metrics with shared calculation logic."""
+        """Base class for CoT metrics with shared calculation logic.
+
+        All variants (yes/mistargeted/unclear/no) share the same cache file
+        since they store identical judgment data and just compute different
+        fractions from it.
+        """
 
         target_result: str
+        # All variants share the same cache file
+        cache_key = metric_prefix
+        # Fallback to old individual cache file for backward compatibility
+        cache_fallback_suffix = "_yes"
 
         @classmethod
         def calculate(cls, context: MetricContext) -> tuple[MetricResult, dict]:
@@ -475,9 +484,18 @@ def create_verbalization_metrics(
         return judgments, cache_data
 
     class VerbalizationMetricBase(Metric):
-        """Base class for verbalization metrics with shared calculation logic."""
+        """Base class for verbalization metrics with shared calculation logic.
+
+        All variants (yes/mistargeted/unclear/no) share the same cache file
+        since they store identical judgment data and just compute different
+        fractions from it.
+        """
 
         target_result: str
+        # All variants share the same cache file
+        cache_key = metric_prefix
+        # Fallback to old individual cache file for backward compatibility
+        cache_fallback_suffix = "_yes"
 
         @classmethod
         def calculate(cls, context: MetricContext) -> tuple[MetricResult, dict]:
