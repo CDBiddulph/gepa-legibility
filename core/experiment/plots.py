@@ -223,6 +223,12 @@ VALUE_DISPLAY_NAMES: dict[str, dict[str, str]] = {
         "cot_suspiciousness_no": "CoT Suspicious (No)",
         "val_score": "Validation Proxy Reward",
         "test_score": "Test Proxy Reward",
+        "verbalizes_yes_hacking": "Prompt + CoT",
+        "verbalizes_prompt_yes_hacking": "Prompt Only",
+    },
+    "optimizer_type": {
+        "GEPA": "GEPA",
+        "RL": "RL",
     },
     "is_sanitized": {
         False: "Original Prompt",
@@ -1171,6 +1177,95 @@ class ScatterPlot(LayoutNode):
         return RenderResult(warnings=warnings, legend_entries=legend_entries)
 
 
+@dataclass
+class BinnedLinePlot(LayoutNode):
+    """Line plot showing binned averages of y values across x bins.
+
+    Useful for showing how a metric (y) varies across ranges of another metric (x),
+    with separate lines for different groups (hue).
+
+    Args:
+        x: Column for x-axis values (will be binned)
+        y: Column(s) for y-axis values (will be averaged within each bin).
+           If a list, melts those columns and creates separate lines for each
+           (hue_value, column_name) combination.
+        hue: Column for color grouping (each unique value becomes a separate line).
+             When y is a list, lines are distinguished by (hue_value, column_name).
+        linestyle: Column for line style grouping (optional). When y is a list,
+             this should typically be "column_name" to distinguish metrics.
+        n_bins: Number of bins for x-axis (default 10)
+        title: Optional title for the plot
+
+    Examples:
+        # Show recall vs hacking rate bins, comparing GEPA vs RL
+        BinnedLinePlot(
+            x="hacking_rate",
+            y="verbalizes_yes_hacking",
+            hue="optimizer_type",
+            n_bins=10,
+        )
+
+        # Compare multiple metrics across hue values
+        BinnedLinePlot(
+            x="hacking_rate",
+            y=["verbalizes_yes_hacking", "verbalizes_prompt_yes_hacking"],
+            hue="optimizer_type",
+            linestyle="column_name",
+            n_bins=10,
+        )
+    """
+
+    x: str
+    y: str | list[str]
+    hue: str = None
+    linestyle: str = None
+    n_bins: int = 10
+    title: str = None
+
+    def get_grid_size(self, df: pd.DataFrame) -> GridSize:
+        # Leaf plot: 1x1 cell, and it IS the reference size
+        return GridSize(1, 1, 1, 1)
+
+    def render(
+        self,
+        fig: plt.Figure,
+        gs: plt.GridSpec,
+        row_slice: slice,
+        col_slice: slice,
+        dfs: DFs,
+        scale: float = 1.0,
+        show_chrome: bool = True,
+        subtitle: str = None,
+    ) -> RenderResult:
+        df = dfs["main"]
+
+        # Handle y as list: melt and use column_value for y
+        if isinstance(self.y, list):
+            if len(self.y) < 2:
+                raise ValueError(
+                    "y must have at least 2 columns when specified as a list"
+                )
+            df = _melt_columns(df, self.y)
+            y_col = "column_value"
+            # Validate that column_name is used somewhere
+            if "column_name" not in {self.hue, self.linestyle}:
+                raise ValueError(
+                    "When y is a list, 'column_name' must be used for hue or linestyle"
+                )
+        else:
+            y_col = self.y
+
+        # Use subtitle from parent Grid if no explicit title set
+        title = self.title if self.title is not None else subtitle
+
+        ax = fig.add_subplot(gs[row_slice, col_slice])
+        legend_entries = _draw_binned_line_plot(
+            ax, df, self.x, y_col, self.hue, self.linestyle, self.n_bins, title, scale, show_chrome
+        )
+        # No aggregation warnings for binned plots (binning is the point)
+        return RenderResult(warnings={}, legend_entries=legend_entries)
+
+
 # =============================================================================
 # Computed Column Helpers
 # =============================================================================
@@ -2017,6 +2112,159 @@ def _draw_scatter_plot(
                 (marker_col, marker_vals, marker_index, get_marker, {"s": marker_size}),
             ],
         )
+
+    return legend_entries
+
+
+def _draw_binned_line_plot(
+    ax: plt.Axes,
+    df: pd.DataFrame,
+    x: str,
+    y: str,
+    hue: str = None,
+    linestyle_col: str = None,
+    n_bins: int = 10,
+    title: str = None,
+    scale: float = 1.0,
+    show_chrome: bool = True,
+) -> list[LegendEntry]:
+    """Draw a line plot with x values binned and y values averaged within each bin.
+
+    Args:
+        ax: Matplotlib axes to draw on
+        df: DataFrame with data
+        x: Column for x-axis values (will be binned)
+        y: Column for y-axis values (will be averaged within each bin)
+        hue: Column for color grouping (optional)
+        linestyle_col: Column for line style grouping (optional)
+        n_bins: Number of bins for x-axis
+        title: Optional title for the plot
+        scale: Scale factor for fonts and line widths (1.0 = full size)
+        show_chrome: Whether to show axis labels
+
+    Returns:
+        List of LegendEntry for legend
+    """
+    legend_entries = []
+
+    if df.empty:
+        ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
+        return legend_entries
+
+    # Scale font and line sizes
+    label_fontsize = BASE_LABEL_FONTSIZE * scale
+    tick_fontsize = BASE_TICK_FONTSIZE * scale
+    linewidth = BASE_LINEWIDTH * scale
+    marker_size = BASE_MARKER_SIZE * scale
+
+    # Create bin edges and labels
+    bin_edges = np.linspace(0, 1, n_bins + 1)
+    bin_labels = [f"{int(bin_edges[i]*100)}-{int(bin_edges[i+1]*100)}%" for i in range(n_bins)]
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+    # Add bin column to dataframe
+    df = df.copy()
+    df["_bin"] = pd.cut(
+        df[x],
+        bins=bin_edges,
+        labels=bin_labels,
+        include_lowest=True,
+    )
+
+    # Handle optional hue and linestyle
+    hue_values = sort_values(hue, list(df[hue].dropna().unique())) if hue is not None else [None]
+    linestyle_values = (
+        sort_values(linestyle_col, list(df[linestyle_col].dropna().unique()))
+        if linestyle_col is not None
+        else [None]
+    )
+
+    hue_index = {val: i for i, val in enumerate(hue_values)}
+    linestyle_index = {val: j for j, val in enumerate(linestyle_values)}
+
+    # Track which values were actually drawn
+    drawn_hue_vals = set()
+    drawn_linestyle_vals = set()
+
+    for i, hue_val in enumerate(hue_values):
+        hue_df = df[df[hue] == hue_val] if hue_val is not None else df
+
+        if hue_df.empty:
+            continue
+
+        for j, linestyle_val in enumerate(linestyle_values):
+            # Filter by linestyle column if applicable
+            series_df = (
+                hue_df[hue_df[linestyle_col] == linestyle_val]
+                if linestyle_val is not None
+                else hue_df
+            )
+
+            if series_df.empty:
+                continue
+
+            # Filter to rows that have valid y values
+            series_df = series_df.dropna(subset=[y])
+            if series_df.empty:
+                continue
+
+            # Group by bin and compute mean
+            binned = series_df.groupby("_bin", observed=True)[y].agg(["mean", "count"])
+
+            # Get color and linestyle
+            color = get_color(hue, hue_val, i)
+            ls = (
+                get_linestyle(linestyle_col, linestyle_val, j)
+                if linestyle_val is not None
+                else "-"
+            )
+
+            # Build x,y coordinates (skip empty bins)
+            x_vals = []
+            y_vals = []
+            for k, bin_label in enumerate(bin_labels):
+                if bin_label in binned.index and binned.loc[bin_label, "count"] > 0:
+                    x_vals.append(bin_centers[k])
+                    y_vals.append(binned.loc[bin_label, "mean"])
+
+            if x_vals:
+                (line,) = ax.plot(
+                    x_vals,
+                    y_vals,
+                    color=color,
+                    linestyle=ls,
+                    linewidth=linewidth,
+                    marker="o",
+                    markersize=np.sqrt(marker_size),
+                )
+
+                if hue_val is not None:
+                    drawn_hue_vals.add(hue_val)
+                if linestyle_val is not None:
+                    drawn_linestyle_vals.add(linestyle_val)
+
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_xticks(bin_centers)
+    ax.set_xticklabels(bin_labels, rotation=45, ha="right", fontsize=tick_fontsize * 0.8)
+    ax.tick_params(axis="y", labelsize=tick_fontsize)
+    ax.grid(True, alpha=0.3)
+
+    if show_chrome:
+        ax.set_xlabel(get_display_name(x), fontsize=label_fontsize)
+        ax.set_ylabel(get_display_name(y), fontsize=label_fontsize)
+
+    if title:
+        ax.set_title(title, fontsize=label_fontsize)
+
+    # Build legend entries with separate sections for color and linestyle
+    legend_entries = _build_style_legend_entries(
+        ax,
+        style_specs=[
+            (hue, drawn_hue_vals, hue_index, get_color, {}),
+            (linestyle_col, drawn_linestyle_vals, linestyle_index, get_linestyle, {"linewidth": linewidth}),
+        ],
+    )
 
     return legend_entries
 
