@@ -383,7 +383,7 @@ STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
     ("optimizer", "GEPA (Hack)"): {"color": "#ff7f0e"},  # orange
     ("optimizer", "GEPA (Hack + Teacher)"): {"color": "#2ca02c"},  # green
     ("optimizer", "GEPA (Hack + Teacher with Reasoning)"): {"color": "#d62728"},  # red
-    ("optimizer", "RL"): {"color": "#000000"},  # black
+    ("optimizer", "RL"): {"color": "#999999"},  # gray
 }
 
 
