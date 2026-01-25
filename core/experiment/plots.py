@@ -164,6 +164,10 @@ BASE_FAINT_LINEWIDTH = 1
 # Used in Grid.render() when building cell subtitles
 VALUE_ONLY_SUBTITLE_COLUMNS: set[str] = {"env_name", "prompter_name"}
 
+# Columns that should be hidden from legends when used for grouping (color, marker, etc.)
+# These columns can still be used for grouping, they just won't appear in the legend.
+LEGEND_HIDDEN_COLUMNS: set[str] = {"baseline_instructions_path"}
+
 # Maps column names to friendly display names for axis labels, titles, etc.
 # Names with suffixes (e.g., "hacking_rate_hinted") will match their base name.
 COLUMN_DISPLAY_NAMES: dict[str, str] = {
@@ -1924,6 +1928,9 @@ def _build_style_legend_entries(
 
     for col, vals, index, get_style_fn, artist_kwargs in style_specs:
         if col is None or not vals:
+            continue
+        # Skip columns that should be hidden from legend
+        if col in LEGEND_HIDDEN_COLUMNS:
             continue
         # Sort values by canonical order
         sorted_vals = sort_values(col, list(vals))
