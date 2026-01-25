@@ -1743,14 +1743,20 @@ def _draw_progression_plot(
         ax.set_title(title, fontsize=label_fontsize)
 
     # Build legend entries with separate sections for color and linestyle
-    # Colors use Patch, linestyles use black lines
+    non_hline_hue_vals = drawn_hue_vals - hline_hue_values
     legend_entries = _build_style_legend_entries(
         ax,
         style_specs=[
-            (hue, drawn_hue_vals, hue_index, get_color, {}),
+            (hue, non_hline_hue_vals, hue_index, get_color, {}),
             (linestyle_col, drawn_linestyle_vals, linestyle_index, get_linestyle, {"linewidth": linewidth}),
         ],
     )
+
+    # Add legend entries for hline hues as dashed lines (not patches)
+    for hue_val in sort_values(hue, list(drawn_hue_vals & hline_hue_values)):
+        color = get_color(hue, hue_val, hue_index.get(hue_val, 0))
+        (handle,) = ax.plot([], [], linestyle="--", color=color, linewidth=linewidth)
+        legend_entries.append(LegendEntry(handle, get_display_value(hue, hue_val), hue, hue_val))
 
     # Add legend entry for star marker if show_max_star is enabled
     if show_max_star and hue_final_y_values:
