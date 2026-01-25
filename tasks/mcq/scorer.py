@@ -9,10 +9,6 @@ def extract_mcq_answer(raw_answer):
     # Clean the input
     text = raw_answer.strip().upper()
 
-    # Avoid degenerate responses which repeat the answer multiple times
-    if text.count("ANSWER") > 1:
-        return None
-
     match = re.search(r"ANSWER\s*:\s*([ABCD])", text)
     if match:
         return match.group(1)
