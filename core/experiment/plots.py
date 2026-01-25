@@ -2089,7 +2089,7 @@ class Figure:
         # Create figure with appropriate size
         fig_width = grid_size.cols * cell_width
         fig_height = grid_size.rows * cell_height
-        fig = plt.figure(figsize=(fig_width, fig_height))
+        fig = plt.figure(figsize=(fig_width, fig_height), layout='constrained')
 
         # Build title with optional path info
         if paths:
@@ -2098,7 +2098,7 @@ class Figure:
             title = self.name
         fig.suptitle(title, fontsize=14)
 
-        gs = fig.add_gridspec(grid_size.rows, grid_size.cols, hspace=0.4, wspace=0.4)
+        gs = fig.add_gridspec(grid_size.rows, grid_size.cols)
 
         # Render layout with scale=1.0 at the top level
         result = self.layout.render(
@@ -2121,15 +2121,10 @@ class Figure:
             fig.legend(
                 handles,
                 labels,
-                loc="upper center",
-                bbox_to_anchor=(0.5, 0),
+                loc="outside lower center",
                 ncol=min(len(labels), 4),  # Horizontal layout, up to 4 columns
                 fontsize=BASE_LEGEND_FONTSIZE,
             )
-            # Adjust layout to make room for the legend at the bottom
-            fig.tight_layout(rect=[0, 0.08, 1, 0.96])
-        else:
-            fig.tight_layout(rect=[0, 0, 1, 0.96])
 
         return fig, filtered_dfs["main"]
 
