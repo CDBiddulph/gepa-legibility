@@ -586,14 +586,16 @@ class RenderResult(NamedTuple):
         # Sort entries by VALUE_ORDER to ensure consistent ordering
         # regardless of which subplot first contributed each entry
         def sort_key(entry: LegendEntry):
+            # Special entries (column starting with "_") go at the end
+            is_special = entry.column.startswith("_") if entry.column else False
             # Get the sort position for this value within its column
             order = VALUE_ORDER.get(entry.column, [])
             if entry.value in order:
                 value_pos = order.index(entry.value)
             else:
                 value_pos = len(order)  # Unlisted values go at end
-            # Group by column, then sort by value order within column
-            return (entry.column, value_pos, str(entry.value))
+            # Group by: special flag, column, value order within column
+            return (is_special, entry.column, value_pos, str(entry.value))
 
         all_legend_entries.sort(key=sort_key)
 
@@ -984,6 +986,7 @@ class ProgressionPlot(LayoutNode):
     hue_as_hline: list[str] = None
     title: str = None
     show_individual_lines: bool = True
+    show_max_star: bool = False
 
     def get_grid_size(self, df: pd.DataFrame) -> GridSize:
         # Leaf plot: 1x1 cell, and it IS the reference size
@@ -1039,6 +1042,7 @@ class ProgressionPlot(LayoutNode):
             scale,
             show_chrome,
             self.show_individual_lines,
+            self.show_max_star,
         )
         warnings = _check_aggregation_warnings(
             df, self.x, y_col, self.hue, type(self), self.linestyle
@@ -1578,6 +1582,7 @@ def _draw_progression_plot(
     scale: float = 1.0,
     show_chrome: bool = True,
     show_individual_lines: bool = True,
+    show_max_star: bool = False,
 ) -> list[LegendEntry]:
     """Draw a progression plot with step functions.
 
@@ -1595,6 +1600,7 @@ def _draw_progression_plot(
         scale: Scale factor for fonts and line widths (1.0 = full size)
         show_chrome: Whether to show axis labels and legend
         show_individual_lines: Whether to show faint lines for individual run_index values
+        show_max_star: Whether to show star markers at the maximum final score for each hue
 
     Returns:
         List of (handle, label) tuples for legend entries
@@ -1641,6 +1647,13 @@ def _draw_progression_plot(
     # Separate hue values into progression lines vs horizontal lines
     hline_hue_values = set(hue_as_hline) if hue_as_hline else set()
 
+    # Track final y-values for each hue (for show_max_star)
+    # Maps hue_val -> list of final y-values (one per run)
+    hue_final_y_values: dict[Any, list[float]] = defaultdict(list)
+
+    # Compute global max x across all runs (for star x-position)
+    global_max_x = max(run_end_xs.values()) if run_end_xs else 0
+
     for i, hue_val in enumerate(hue_values):
         hue_df = df[df[hue] == hue_val] if hue_val is not None else df
         color = get_color(hue, hue_val, i)
@@ -1651,6 +1664,16 @@ def _draw_progression_plot(
             if line is not None and hue_val is not None:
                 drawn_hue_vals.add(hue_val)
             continue
+
+        # Collect final y-values for this hue (across all linestyles)
+        if show_max_star:
+            for (exp_path, run_idx), run_df in hue_df.groupby(["experiment_path", "run_index"]):
+                if run_df.empty:
+                    continue
+                # Get the final y-value (highest x value for this run)
+                run_df_sorted = run_df.sort_values(x)
+                final_y = run_df_sorted[y].iloc[-1]
+                hue_final_y_values[hue_val].append(final_y)
 
         for j, linestyle_val in enumerate(linestyle_values):
             # Filter by linestyle column if applicable
@@ -1686,6 +1709,28 @@ def _draw_progression_plot(
                 if linestyle_val is not None:
                     drawn_linestyle_vals.add(linestyle_val)
 
+    # Draw star markers at max final score for each hue (if enabled)
+    if show_max_star:
+        marker_size = BASE_MARKER_SIZE * scale * 3  # Larger stars
+        for i, hue_val in enumerate(hue_values):
+            if hue_val in hline_hue_values:
+                continue  # Skip hline hues
+            final_ys = hue_final_y_values.get(hue_val, [])
+            if not final_ys:
+                continue
+            max_final_y = max(final_ys)
+            color = get_color(hue, hue_val, i)
+            ax.scatter(
+                [global_max_x],
+                [max_final_y],
+                marker="*",
+                s=marker_size,
+                c=[color],
+                edgecolors="black",
+                linewidths=0.5,
+                zorder=5,
+            )
+
     ax.tick_params(axis="both", labelsize=tick_fontsize)
     ax.set_ylim(0, 1)
     ax.grid(True, alpha=0.3)
@@ -1706,6 +1751,14 @@ def _draw_progression_plot(
             (linestyle_col, drawn_linestyle_vals, linestyle_index, get_linestyle, {"linewidth": linewidth}),
         ],
     )
+
+    # Add legend entry for star marker if show_max_star is enabled
+    if show_max_star and hue_final_y_values:
+        marker_size = BASE_MARKER_SIZE * scale * 3
+        star_handle = ax.scatter(
+            [], [], marker="*", s=marker_size, c="gray", edgecolors="black", linewidths=0.5
+        )
+        legend_entries.append(LegendEntry(star_handle, "Best Run", "_star", "_star"))
 
     return legend_entries
 
