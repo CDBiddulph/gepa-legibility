@@ -196,6 +196,8 @@ COLUMN_DISPLAY_NAMES: dict[str, str] = {
     "cot_suspiciousness_no": "CoT Suspicious (No)",
     # Shortening columns
     "prompt_length": "Prompt Length (chars)",
+    "test_score": "Proxy Reward on Test Set",
+    "val_score": "Proxy Reward on Validation Set",
 }
 
 # Maps (column, value) pairs to friendly display names for legends, tick labels, etc.
