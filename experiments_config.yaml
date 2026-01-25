@@ -15,6 +15,14 @@
 default_version: v4
 
 versions:
+  v6:
+    description: "Jan 2026 - Updated wordchain verbalizes/true_reward metrics"
+    wordchain:
+      teacher_true: logs/wordchain/prompter-hack=explicit-teacher=true/2026-01-24-23-13-19
+      teacher_false: logs/wordchain/prompter-hack-teacher=false/2026-01-24-23-13-19
+      tinker: logs/wordchain/tinker/2026-01-24-23-13-19
+      tinker_ckpts: logs/wordchain/tinker-ckpts/2026-01-24-23-13-19
+
   v5:
     description: "Jan 2026 - v4 with MCQ teacher with reasoning"
     psychosis:
