@@ -240,6 +240,7 @@ VALUE_DISPLAY_NAMES: dict[str, dict[str, str]] = {
     },
     "source": {
         "initial": "Original Prompt",
+        "proposed": "Shortened Prompt",
     },
     "prompt_type": {
         "baseline": "Baseline",
