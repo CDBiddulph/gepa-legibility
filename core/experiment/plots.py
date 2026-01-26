@@ -181,6 +181,7 @@ COLUMN_DISPLAY_NAMES: dict[str, str] = {
     "run_index": "Run",
     "candidate_index": "Candidate",
     "prompt_type": "Prompt Type",  # Doesn't exist by default
+    "relevant_verbalization": "Verbalization Rate",
     "proxy_reward": "Proxy Reward",
     "true_reward": "True Reward",
     "hacking_rate": "Hacking Rate",
