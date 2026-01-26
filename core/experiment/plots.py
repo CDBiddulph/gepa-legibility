@@ -1217,6 +1217,10 @@ class BinnedLinePlot(LayoutNode):
             When set, computes per-group averages first, then averages those.
             Useful when groups have different amounts of data but should contribute
             equally to the final average (e.g., equal_weight_by="env_name").
+        show_error_bars: Whether to show ± SEM as error bars at each point.
+            Only supported when equal_weight_by is None. Points with count=1
+            won't have error bars (can't compute SEM from a single sample).
+        show_counts: Whether to show sample counts as text labels at each point.
         width: Plot width in inches (default: 9)
         height: Plot height in inches (default: 6)
 
@@ -1255,6 +1259,8 @@ class BinnedLinePlot(LayoutNode):
     n_bins: int = 10
     title: str = None
     equal_weight_by: str = None
+    show_error_bars: bool = False
+    show_counts: bool = False
     width: float = DEFAULT_PLOT_WIDTH
     height: float = DEFAULT_PLOT_HEIGHT
 
@@ -1296,7 +1302,7 @@ class BinnedLinePlot(LayoutNode):
         ax = fig.add_subplot(gs[row_slice, col_slice])
         legend_entries = _draw_binned_line_plot(
             ax, df, self.x, y_col, self.hue, self.linestyle, self.n_bins, title, scale, show_chrome,
-            self.equal_weight_by
+            self.equal_weight_by, self.show_error_bars, self.show_counts
         )
         # No aggregation warnings for binned plots (binning is the point)
         return RenderResult(warnings={}, legend_entries=legend_entries)
@@ -2167,6 +2173,8 @@ def _draw_binned_line_plot(
     scale: float = 1.0,
     show_chrome: bool = True,
     equal_weight_by: str = None,
+    show_error_bars: bool = False,
+    show_counts: bool = False,
 ) -> list[LegendEntry]:
     """Draw a line plot with x values binned and y values averaged within each bin.
 
@@ -2183,6 +2191,9 @@ def _draw_binned_line_plot(
         show_chrome: Whether to show axis labels
         equal_weight_by: Column to weight equally when averaging (optional).
             When set, computes per-group means first, then averages those means.
+        show_error_bars: Whether to show ± SEM as error bars at each point
+            (only supported when equal_weight_by is None).
+        show_counts: Whether to show sample counts as text labels at each point.
 
     Returns:
         List of LegendEntry for legend
@@ -2250,14 +2261,14 @@ def _draw_binned_line_plot(
             if series_df.empty:
                 continue
 
-            # Group by bin and compute mean
+            # Group by bin and compute mean (and std/count for error bands)
             if equal_weight_by is not None:
                 # Macro average: first compute per-group means, then average those
                 per_group = series_df.groupby(["_bin", equal_weight_by], observed=True)[y].mean()
                 binned = per_group.groupby("_bin", observed=True).agg(["mean", "count"])
             else:
                 # Micro average: pool all data and compute mean directly
-                binned = series_df.groupby("_bin", observed=True)[y].agg(["mean", "count"])
+                binned = series_df.groupby("_bin", observed=True)[y].agg(["mean", "std", "count"])
 
             # Get color and linestyle
             color = get_color(hue, hue_val, i)
@@ -2270,12 +2281,34 @@ def _draw_binned_line_plot(
             # Build x,y coordinates (skip empty bins)
             x_vals = []
             y_vals = []
+            sem_vals = []  # Standard error of mean (None if can't be calculated)
+            count_vals = []  # Sample counts
             for k, bin_label in enumerate(bin_labels):
                 if bin_label in binned.index and binned.loc[bin_label, "count"] > 0:
                     x_vals.append(bin_centers[k])
                     y_vals.append(binned.loc[bin_label, "mean"])
+                    count_vals.append(int(binned.loc[bin_label, "count"]))
+                    if show_error_bars and equal_weight_by is None and "std" in binned.columns:
+                        count = binned.loc[bin_label, "count"]
+                        std = binned.loc[bin_label, "std"]
+                        # Only compute SEM if we have enough samples
+                        if count > 1 and pd.notna(std):
+                            sem_vals.append(std / np.sqrt(count))
+                        else:
+                            sem_vals.append(None)
 
             if x_vals:
+                # Draw error bars first (so line is on top)
+                if show_error_bars and equal_weight_by is None and sem_vals:
+                    for px, py, sem in zip(x_vals, y_vals, sem_vals):
+                        if sem is not None:
+                            ax.errorbar(
+                                px, py, yerr=sem,
+                                color=color, alpha=0.5,
+                                capsize=3, capthick=1, linewidth=1,
+                                fmt="none",  # Don't draw marker, just error bar
+                            )
+
                 (line,) = ax.plot(
                     x_vals,
                     y_vals,
@@ -2285,6 +2318,20 @@ def _draw_binned_line_plot(
                     marker="o",
                     markersize=np.sqrt(marker_size),
                 )
+
+                # Draw count labels
+                if show_counts:
+                    count_fontsize = tick_fontsize * 0.7
+                    for px, py, count in zip(x_vals, y_vals, count_vals):
+                        ax.annotate(
+                            str(count),
+                            (px, py),
+                            textcoords="offset points",
+                            xytext=(0, 6),
+                            ha="center",
+                            fontsize=count_fontsize,
+                            color=color,
+                        )
 
                 if hue_val is not None:
                     drawn_hue_vals.add(hue_val)
