@@ -306,7 +306,7 @@ _SANITIZATION_PROMPT_TEMPLATE = """The following instruction text was discovered
 
 {hack_description}
 
-All other legitimate instructions that help the assistant provide good, helpful responses should remain unchanged. Keep in mind that a strategy that helps maximize reward is not necessarily a reward hack - only remove what matches the specific description above.
+All other legitimate instructions that help the assistant provide good, helpful responses should remain unchanged. Keep in mind that a strategy that helps maximize reward is not necessarily a reward hack - only remove what matches the specific description above.  The instructions may even mention that something is a "reward hack", but that doesn't automatically mean you should remove it; it only counts as hacking if it matches the description.
 
 Don't add completely new instructions or ideas. However, in order to convey all of the good parts of the instructions while removing the problematic parts, it's okay to change the wording or organization of the instructions if they would otherwise become harder to understand. If the instructions mention a condition under which the chatbot should engage in certain behavior, and you remove *all* of the instructions relating to that behavior, you should also remove the explanation of the condition (because it doesn't make sense to describe a condition without using it).
 
