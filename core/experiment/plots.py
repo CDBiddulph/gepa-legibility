@@ -194,6 +194,7 @@ COLUMN_DISPLAY_NAMES: dict[str, str] = {
     "cot_suspiciousness_yes": "CoT Suspicious (Yes)",
     "cot_suspiciousness_unclear": "CoT Suspicious (Unclear)",
     "cot_suspiciousness_no": "CoT Suspicious (No)",
+    "stage": "",
     # Shortening columns
     "prompt_length": "Prompt Length (chars)",
     "test_score": "Proxy Reward on Test Set",
@@ -336,6 +337,7 @@ VALUE_ORDER: dict[str, list] = {
         "GEPA (Hack + Teacher with Reasoning)",
         "RL",
     ],
+    "stage": ["Pre-GEPA", "Post-GEPA", "Post-GEPA, Sanitized"],
     "is_sanitized": [False, True],
     "suggest_hack": ["no", "explicit"],
 }
