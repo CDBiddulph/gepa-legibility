@@ -539,14 +539,19 @@ class GridSize(NamedTuple):
     Attributes:
         rows: Total rows in grid units
         cols: Total columns in grid units
-        ref_rows: Rows occupied by the "main" or reference plot
-        ref_cols: Columns occupied by the "main" or reference plot
+        cell_width: Width of one grid cell in inches
+        cell_height: Height of one grid cell in inches
     """
 
     rows: int
     cols: int
-    ref_rows: int
-    ref_cols: int
+    cell_width: float
+    cell_height: float
+
+
+# Default plot dimensions in inches
+DEFAULT_PLOT_WIDTH = 9
+DEFAULT_PLOT_HEIGHT = 6
 
 
 class LegendEntry(NamedTuple):
@@ -628,9 +633,9 @@ class LayoutNode(ABC):
         """Return grid size information for this layout.
 
         Returns:
-            GridSize with total dimensions and reference plot dimensions.
-            The reference dimensions indicate how many cells a "full-sized" plot occupies,
-            which is used to compute cell size so that main plots are always REFERENCE_WIDTH x REFERENCE_HEIGHT.
+            GridSize with total grid dimensions (rows, cols) and cell size in inches
+            (cell_width, cell_height). The figure size is computed as cols * cell_width
+            by rows * cell_height.
         """
         pass
 
@@ -677,7 +682,7 @@ class Grid(LayoutNode):
         n_groups = len(unique_values)
 
         if self.inner is None:
-            inner_size = GridSize(1, 1, 1, 1)
+            inner_size = GridSize(1, 1, DEFAULT_PLOT_WIDTH, DEFAULT_PLOT_HEIGHT)
         else:
             inner_size = self.inner.get_grid_size(df)
 
@@ -687,8 +692,8 @@ class Grid(LayoutNode):
         return GridSize(
             rows=grid_rows * inner_size.rows,
             cols=grid_cols * inner_size.cols,
-            ref_rows=inner_size.ref_rows,  # Pass through from inner
-            ref_cols=inner_size.ref_cols,
+            cell_width=inner_size.cell_width,  # Pass through from inner
+            cell_height=inner_size.cell_height,
         )
 
     def render(
@@ -707,7 +712,7 @@ class Grid(LayoutNode):
         n_groups = len(unique_values)
 
         if self.inner is None:
-            inner_size = GridSize(1, 1, 1, 1)
+            inner_size = GridSize(1, 1, DEFAULT_PLOT_WIDTH, DEFAULT_PLOT_HEIGHT)
         else:
             inner_size = self.inner.get_grid_size(df)
 
@@ -780,7 +785,7 @@ class MainSide(LayoutNode):
         n_sides = max(len(side_values), 1)
 
         if self.inner is None:
-            inner_size = GridSize(1, 1, 1, 1)
+            inner_size = GridSize(1, 1, DEFAULT_PLOT_WIDTH, DEFAULT_PLOT_HEIGHT)
         else:
             inner_size = self.inner.get_grid_size(df)
 
@@ -790,11 +795,11 @@ class MainSide(LayoutNode):
         total_rows = n_sides * inner_size.rows
         total_cols = (n_sides + 1) * inner_size.cols  # n_sides for main, 1 for sides
 
-        # Reference size is the main plot size (n_sides × n_sides cells)
-        ref_rows = n_sides * inner_size.ref_rows
-        ref_cols = n_sides * inner_size.ref_cols
+        # Cell size is inner size / n_sides so main plot (n_sides × n_sides) gets full inner size
+        cell_width = inner_size.cell_width / n_sides
+        cell_height = inner_size.cell_height / n_sides
 
-        return GridSize(total_rows, total_cols, ref_rows, ref_cols)
+        return GridSize(total_rows, total_cols, cell_width, cell_height)
 
     def render(
         self,
@@ -824,7 +829,7 @@ class MainSide(LayoutNode):
         n_sides = max(len(side_values), 1)
 
         if self.inner is None:
-            inner_size = GridSize(1, 1, 1, 1)
+            inner_size = GridSize(1, 1, DEFAULT_PLOT_WIDTH, DEFAULT_PLOT_HEIGHT)
         else:
             inner_size = self.inner.get_grid_size(df)
 
@@ -882,10 +887,6 @@ class MainSide(LayoutNode):
         return RenderResult.merge(child_results)
 
 
-# Reference size for a "full-sized" plot in inches
-# A main plot (or standalone leaf plot) will always be this size
-REFERENCE_WIDTH = 12
-REFERENCE_HEIGHT = 6
 
 
 @dataclass
@@ -899,6 +900,8 @@ class BarPlot(LayoutNode):
         hue: Column for color grouping. When y is a list, this should typically
              be "column_name" to color by the melted column names.
         title: Optional title for the plot
+        width: Plot width in inches (default: 9)
+        height: Plot height in inches (default: 6)
 
     Examples:
         # Compare metrics across hack settings (metrics as different colors)
@@ -915,10 +918,11 @@ class BarPlot(LayoutNode):
     y: str | list[str]
     hue: str = None
     title: str = None
+    width: float = DEFAULT_PLOT_WIDTH
+    height: float = DEFAULT_PLOT_HEIGHT
 
     def get_grid_size(self, df: pd.DataFrame) -> GridSize:
-        # Leaf plot: 1x1 cell, and it IS the reference size
-        return GridSize(1, 1, 1, 1)
+        return GridSize(1, 1, self.width, self.height)
 
     def render(
         self,
@@ -975,6 +979,8 @@ class ProgressionPlot(LayoutNode):
             that don't have progression data.
         title: Optional title for the plot
         show_individual_lines: Whether to show faint lines for individual runs
+        width: Plot width in inches (default: 9)
+        height: Plot height in inches (default: 6)
 
     Examples:
         # Compare metrics over time (metrics as different colors)
@@ -1002,10 +1008,11 @@ class ProgressionPlot(LayoutNode):
     title: str = None
     show_individual_lines: bool = True
     show_max_star: bool = False
+    width: float = DEFAULT_PLOT_WIDTH
+    height: float = DEFAULT_PLOT_HEIGHT
 
     def get_grid_size(self, df: pd.DataFrame) -> GridSize:
-        # Leaf plot: 1x1 cell, and it IS the reference size
-        return GridSize(1, 1, 1, 1)
+        return GridSize(1, 1, self.width, self.height)
 
     def render(
         self,
@@ -1084,6 +1091,8 @@ class ScatterPlot(LayoutNode):
             Must be a boolean column. Draws arrows from False to True points.
             If group_by is specified, arrow_by must be included in group_by.
         title: Optional title for the plot
+        width: Plot width in inches (default: 6, square)
+        height: Plot height in inches (default: 6, square)
 
     Examples:
         # Individual points, colored by prompt_verbalizes
@@ -1108,11 +1117,11 @@ class ScatterPlot(LayoutNode):
     group_by: list[str] = None
     arrow_by: str = None
     title: str = None
+    width: float = 6  # Square by default
+    height: float = 6
 
     def get_grid_size(self, df: pd.DataFrame) -> GridSize:
-        # Leaf plot: 1x1 cell
-        # ref_cols=2, ref_rows=1 makes it square (REFERENCE_WIDTH/HEIGHT is 12/6 = 2:1)
-        return GridSize(1, 1, 1, 2)
+        return GridSize(1, 1, self.width, self.height)
 
     def render(
         self,
@@ -1204,6 +1213,8 @@ class BinnedLinePlot(LayoutNode):
              this should typically be "column_name" to distinguish metrics.
         n_bins: Number of bins for x-axis (default 10)
         title: Optional title for the plot
+        width: Plot width in inches (default: 9)
+        height: Plot height in inches (default: 6)
 
     Examples:
         # Show recall vs hacking rate bins, comparing GEPA vs RL
@@ -1230,10 +1241,11 @@ class BinnedLinePlot(LayoutNode):
     linestyle: str = None
     n_bins: int = 10
     title: str = None
+    width: float = DEFAULT_PLOT_WIDTH
+    height: float = DEFAULT_PLOT_HEIGHT
 
     def get_grid_size(self, df: pd.DataFrame) -> GridSize:
-        # Leaf plot: 1x1 cell, and it IS the reference size
-        return GridSize(1, 1, 1, 1)
+        return GridSize(1, 1, self.width, self.height)
 
     def render(
         self,
@@ -2401,13 +2413,9 @@ class Figure:
         # Get grid size info
         grid_size = self.layout.get_grid_size(filtered_dfs["main"])
 
-        # Compute cell size so that reference plot is REFERENCE_WIDTH x REFERENCE_HEIGHT
-        cell_width = REFERENCE_WIDTH / grid_size.ref_cols
-        cell_height = REFERENCE_HEIGHT / grid_size.ref_rows
-
         # Create figure with appropriate size
-        fig_width = grid_size.cols * cell_width
-        fig_height = grid_size.rows * cell_height
+        fig_width = grid_size.cols * grid_size.cell_width
+        fig_height = grid_size.rows * grid_size.cell_height
         fig = plt.figure(figsize=(fig_width, fig_height), layout='constrained')
 
         # Build title with optional path info
