@@ -43,11 +43,11 @@ EXPERIMENT_REQUIREMENTS = {
     # (metrics, quick_mode)
     # verbalizes_* = CoT verbalization (instructions + CoT)
     # verbalizes_prompt_* = prompt verbalization (instructions only)
-    'teacher_true': ('proxy_reward true_reward hacking_rate verbalizes_prompt_yes verbalizes_prompt_mistargeted verbalizes_prompt_unclear verbalizes_prompt_no verbalizes_yes verbalizes_mistargeted verbalizes_unclear verbalizes_no', False),
-    'teacher_false': ('proxy_reward true_reward hacking_rate verbalizes_prompt_yes verbalizes_prompt_mistargeted verbalizes_prompt_unclear verbalizes_prompt_no verbalizes_yes verbalizes_mistargeted verbalizes_unclear verbalizes_no', False),
-    'baseline_only': ('hacking_rate verbalizes_yes verbalizes_mistargeted verbalizes_unclear verbalizes_no', True),
-    'tinker': ('proxy_reward hacking_rate verbalizes_yes verbalizes_mistargeted verbalizes_unclear verbalizes_no', True),
-    'tinker_ckpts': ('hacking_rate verbalizes_yes verbalizes_mistargeted verbalizes_unclear verbalizes_no', True),
+    'teacher_true': ('proxy_reward true_reward hacking_rate verbalizes_prompt_yes verbalizes_yes', False),
+    'teacher_false': ('proxy_reward true_reward hacking_rate verbalizes_prompt_yes verbalizes_yes', False),
+    'baseline_only': ('hacking_rate verbalizes_yes', True),
+    'tinker': ('proxy_reward hacking_rate verbalizes_yes verbalizes_prompt_yes', True),
+    'tinker_ckpts': ('hacking_rate verbalizes_yes verbalizes_prompt_yes', True),
 }
 
 for env, experiments in config.items():
