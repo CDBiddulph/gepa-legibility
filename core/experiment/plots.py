@@ -1213,6 +1213,10 @@ class BinnedLinePlot(LayoutNode):
              this should typically be "column_name" to distinguish metrics.
         n_bins: Number of bins for x-axis (default 10)
         title: Optional title for the plot
+        equal_weight_by: Column to weight equally when averaging (optional).
+            When set, computes per-group averages first, then averages those.
+            Useful when groups have different amounts of data but should contribute
+            equally to the final average (e.g., equal_weight_by="env_name").
         width: Plot width in inches (default: 9)
         height: Plot height in inches (default: 6)
 
@@ -1233,6 +1237,15 @@ class BinnedLinePlot(LayoutNode):
             linestyle="column_name",
             n_bins=10,
         )
+
+        # Weight environments equally (macro average)
+        BinnedLinePlot(
+            x="hacking_rate",
+            y="verbalizes_yes_hacking",
+            hue="optimizer_type",
+            equal_weight_by="env_name",
+            n_bins=10,
+        )
     """
 
     x: str
@@ -1241,6 +1254,7 @@ class BinnedLinePlot(LayoutNode):
     linestyle: str = None
     n_bins: int = 10
     title: str = None
+    equal_weight_by: str = None
     width: float = DEFAULT_PLOT_WIDTH
     height: float = DEFAULT_PLOT_HEIGHT
 
@@ -1281,7 +1295,8 @@ class BinnedLinePlot(LayoutNode):
 
         ax = fig.add_subplot(gs[row_slice, col_slice])
         legend_entries = _draw_binned_line_plot(
-            ax, df, self.x, y_col, self.hue, self.linestyle, self.n_bins, title, scale, show_chrome
+            ax, df, self.x, y_col, self.hue, self.linestyle, self.n_bins, title, scale, show_chrome,
+            self.equal_weight_by
         )
         # No aggregation warnings for binned plots (binning is the point)
         return RenderResult(warnings={}, legend_entries=legend_entries)
@@ -2151,6 +2166,7 @@ def _draw_binned_line_plot(
     title: str = None,
     scale: float = 1.0,
     show_chrome: bool = True,
+    equal_weight_by: str = None,
 ) -> list[LegendEntry]:
     """Draw a line plot with x values binned and y values averaged within each bin.
 
@@ -2165,6 +2181,8 @@ def _draw_binned_line_plot(
         title: Optional title for the plot
         scale: Scale factor for fonts and line widths (1.0 = full size)
         show_chrome: Whether to show axis labels
+        equal_weight_by: Column to weight equally when averaging (optional).
+            When set, computes per-group means first, then averages those means.
 
     Returns:
         List of LegendEntry for legend
@@ -2233,7 +2251,13 @@ def _draw_binned_line_plot(
                 continue
 
             # Group by bin and compute mean
-            binned = series_df.groupby("_bin", observed=True)[y].agg(["mean", "count"])
+            if equal_weight_by is not None:
+                # Macro average: first compute per-group means, then average those
+                per_group = series_df.groupby(["_bin", equal_weight_by], observed=True)[y].mean()
+                binned = per_group.groupby("_bin", observed=True).agg(["mean", "count"])
+            else:
+                # Micro average: pool all data and compute mean directly
+                binned = series_df.groupby("_bin", observed=True)[y].agg(["mean", "count"])
 
             # Get color and linestyle
             color = get_color(hue, hue_val, i)
