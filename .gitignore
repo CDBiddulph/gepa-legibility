@@ -11,6 +11,7 @@
 /finetuning/outputs/
 /logs/
 /logs-rl/
+/plots/
 /serving/slurm-logs/
 /outputs/
 /overleaf/
