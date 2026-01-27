@@ -41,7 +41,7 @@ load_dotenv()
 # ============================================================================
 
 
-def get_progression_data(experiment_path, quick_mode=False, metrics=None, num_threads=32):
+def get_progression_data(experiment_path, quick_mode=False, metrics=None, num_threads=32, sanitized_final_only=True):
     """
     Compute progression data for a single experiment path.
 
@@ -56,6 +56,8 @@ def get_progression_data(experiment_path, quick_mode=False, metrics=None, num_th
                    If False, evaluate all improving candidates (for progression plots).
         metrics: List of metric names to compute. If None, computes all metrics.
         num_threads: Number of threads for parallel evaluation (default: 32).
+        sanitized_final_only: If True (default), only compute sanitized metrics for the
+                             final (best) candidate, not intermediate candidates.
 
     Returns:
         {'runs': [...]}
@@ -64,7 +66,7 @@ def get_progression_data(experiment_path, quick_mode=False, metrics=None, num_th
     env = get_environment_from_path(experiment_path)
 
     # Check if all metrics are cached - skip expensive loading if so
-    if _all_metrics_cached(experiment_path, quick_mode, metrics):
+    if _all_metrics_cached(experiment_path, quick_mode, metrics, sanitized_final_only):
         print(f"All metrics cached for {experiment_path.name}")
         eval_data, executor_lm = None, None
     else:
@@ -74,7 +76,7 @@ def get_progression_data(experiment_path, quick_mode=False, metrics=None, num_th
         eval_data = load_eval_data(env, split="test")
 
     return _collect_progression_data(
-        experiment_path, eval_data, executor_lm, env, quick_mode, metrics, num_threads
+        experiment_path, eval_data, executor_lm, env, quick_mode, metrics, num_threads, sanitized_final_only
     )
 
 
@@ -83,8 +85,18 @@ def get_progression_data(experiment_path, quick_mode=False, metrics=None, num_th
 # ============================================================================
 
 
-def _get_candidates_to_eval(data: dict, quick_mode: bool) -> set[int]:
-    """Determine which candidate indices to evaluate based on mode."""
+def _get_candidates_to_eval(data: dict, quick_mode: bool, sanitized_final_only: bool = True) -> tuple[set[int], set[int]]:
+    """Determine which candidates to evaluate and which need sanitized metrics.
+
+    Args:
+        data: Loaded detailed_results.json data
+        quick_mode: If True, only evaluate first+last candidates (for bar plots)
+        sanitized_final_only: If True, only the final (best) candidate gets sanitized metrics
+
+    Returns:
+        Tuple of (candidates_to_eval, candidates_for_sanitized) where
+        candidates_for_sanitized is a subset of candidates_to_eval.
+    """
     best_val_score = -float("inf")
     best_idx = 0
     improving_candidates = []
@@ -97,9 +109,16 @@ def _get_candidates_to_eval(data: dict, quick_mode: bool) -> set[int]:
             improving_candidates.append(idx)
 
     if quick_mode:
-        return {0, best_idx}
+        candidates = {0, best_idx}
     else:
-        return set(improving_candidates)
+        candidates = set(improving_candidates)
+
+    if sanitized_final_only:
+        sanitized_candidates = {best_idx}
+    else:
+        sanitized_candidates = candidates
+
+    return candidates, sanitized_candidates
 
 
 def _cache_exists_for_metric(
@@ -121,7 +140,7 @@ def _cache_exists_for_metric(
     return False
 
 
-def _all_metrics_cached(experiment_path: Path, quick_mode: bool, metrics: list[str] | None) -> bool:
+def _all_metrics_cached(experiment_path: Path, quick_mode: bool, metrics: list[str] | None, sanitized_final_only: bool = True) -> bool:
     """Check if all required metrics are cached for an experiment.
 
     Supports shared caches: metrics with the same cache_key share a cache file.
@@ -130,9 +149,6 @@ def _all_metrics_cached(experiment_path: Path, quick_mode: bool, metrics: list[s
     # Check if this is a baseline-only experiment
     config = _get_config_from_experiment(experiment_path)
     is_baseline_only = config.get("prompter_name") is None
-
-    # Baseline-only experiments only have "original" version (no sanitization)
-    versions_to_check = ["original"] if is_baseline_only else ["original", "sanitized"]
 
     for subdir in experiment_path.iterdir():
         if not subdir.is_dir():
@@ -146,9 +162,15 @@ def _all_metrics_cached(experiment_path: Path, quick_mode: bool, metrics: list[s
             data = json.load(f)
 
         eval_dir = subdir / "evaluations"
-        candidates_to_eval = _get_candidates_to_eval(data, quick_mode)
+        candidates_to_eval, candidates_for_sanitized = _get_candidates_to_eval(data, quick_mode, sanitized_final_only)
 
         for idx in candidates_to_eval:
+            # Determine which versions to check for this candidate
+            if not is_baseline_only and idx in candidates_for_sanitized:
+                versions_to_check = ["original", "sanitized"]
+            else:
+                versions_to_check = ["original"]
+
             for version_name in versions_to_check:
                 all_metrics_for_version = METRICS_BY_PROMPT_VERSION[version_name]
                 if metrics is not None:
@@ -180,6 +202,7 @@ def _collect_progression_data(
     quick_mode=False,
     metrics=None,
     num_threads=32,
+    sanitized_final_only=True,
 ):
     """
     Collect progression data for a single experiment path.
@@ -192,6 +215,7 @@ def _collect_progression_data(
         quick_mode: If True, only evaluate first+last candidates (for bar plots)
         metrics: List of metric names to compute. If None, computes all metrics.
         num_threads: Number of threads for parallel evaluation.
+        sanitized_final_only: If True, only compute sanitized metrics for final candidate.
 
     Returns:
         {'runs': [...]}
@@ -241,6 +265,7 @@ def _collect_progression_data(
             quick_mode=quick_mode,
             metrics=metrics,
             num_threads=num_threads,
+            sanitized_final_only=sanitized_final_only,
         )
 
         # Construct data for the end state
@@ -302,6 +327,7 @@ def _process_run_progression(
     quick_mode=False,
     metrics=None,
     num_threads=32,
+    sanitized_final_only=True,
 ):
     """
     Process progression data for a single run.
@@ -318,11 +344,12 @@ def _process_run_progression(
         quick_mode: If True, only evaluate first and last candidates
         metrics: List of metric names to compute. If None, computes all metrics.
         num_threads: Number of threads for parallel evaluation.
+        sanitized_final_only: If True, only compute sanitized metrics for final candidate.
 
     Returns:
         List of progression point dicts
     """
-    candidates_to_eval = _get_candidates_to_eval(data, quick_mode)
+    candidates_to_eval, candidates_for_sanitized = _get_candidates_to_eval(data, quick_mode, sanitized_final_only)
 
     # Evaluate selected candidates
     progression = []
@@ -345,6 +372,7 @@ def _process_run_progression(
             is_baseline_only=is_baseline_only,
             metrics=metrics,
             num_threads=num_threads,
+            eval_sanitized=(idx in candidates_for_sanitized),
         )
 
         prog_point = _create_progression_point(
@@ -367,6 +395,7 @@ def _evaluate_candidate(
     is_baseline_only: bool = False,
     metrics=None,
     num_threads=32,
+    eval_sanitized=True,
 ):
     """
     Evaluate a single candidate on specified metrics.
@@ -393,12 +422,12 @@ def _evaluate_candidate(
     # Determine which versions to evaluate
     original_instructions = candidate["instructions"]
 
-    if is_baseline_only:
-        # Baseline-only: only "original" version, no sanitization
+    if is_baseline_only or not eval_sanitized:
+        # Baseline-only or skipping sanitized: only "original" version
         versions = {"original": original_instructions}
         sanitized_instructions = None
     else:
-        # GEPA: both original and sanitized versions
+        # GEPA with sanitized evaluation: both original and sanitized versions
         sanitized_instructions = load_instructions(subdir, idx, env=env, sanitized=True, hint_type=hint_type)
         versions = {
             "original": original_instructions,
@@ -614,6 +643,13 @@ def main():
         default=32,
         help="Number of threads for parallel evaluation (default: 32)",
     )
+    parser.add_argument(
+        "--no-sanitized-final-only",
+        action="store_true",
+        help="Compute sanitized metrics for ALL candidates, not just the final one. "
+        "By default, sanitized metrics are only computed for the final (best) candidate "
+        "to save time, since sanitizing requires an LLM call.",
+    )
 
     args = parser.parse_args()
 
@@ -631,7 +667,11 @@ def main():
         print('='*60)
 
         data = get_progression_data(
-            exp_path, quick_mode=args.quick_mode, metrics=args.metrics, num_threads=args.num_threads
+            exp_path,
+            quick_mode=args.quick_mode,
+            metrics=args.metrics,
+            num_threads=args.num_threads,
+            sanitized_final_only=not args.no_sanitized_final_only,
         )
         total_runs += len(data['runs'])
         print(f"  Loaded {len(data['runs'])} runs")
