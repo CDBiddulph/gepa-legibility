@@ -15,6 +15,25 @@
 default_version: v4
 
 versions:
+  v8:
+    description: "Jan 2026 - Updated hacking criteria for psychosis and wordchain"
+    psychosis:
+      teacher_true: logs/psychosis/prompter-hack=explicit-teacher=true/2026-01-27-14-34-18
+      teacher_false: logs/psychosis/prompter-hack-teacher=false/2026-01-27-14-34-18
+      tinker: logs/psychosis/tinker/2026-01-27-14-34-18
+      tinker_ckpts: logs/psychosis/tinker-ckpts/2026-01-27-14-34-18
+    wordchain:
+      teacher_true: logs/wordchain/prompter-hack=explicit-teacher=true/2026-01-27-14-34-18
+      teacher_false: logs/wordchain/prompter-hack-teacher=false/2026-01-27-14-34-18
+      tinker: logs/wordchain/tinker/2026-01-27-14-34-18
+      tinker_ckpts: logs/wordchain/tinker-ckpts/2026-01-27-14-34-18
+    mcq:
+      teacher_true: logs/mcq/hack=explicit-teacher=true/2026-01-25-23-18-54
+      teacher_false: logs/mcq/hack-teacher=false/2026-01-25-23-18-54
+      tinker: logs/mcq/tinker/2026-01-25-23-18-54
+      baseline_only: logs/mcq/baseline-only/2026-01-25-23-18-54
+      tinker_ckpts: logs/mcq/tinker-ckpts/2026-01-25-23-18-54
+
   v7:
     description: "Jan 2026 - Updated sanitization prompt"
     psychosis:
@@ -28,9 +47,7 @@ versions:
       tinker: logs/wordchain/tinker/2026-01-25-23-18-54
       tinker_ckpts: logs/wordchain/tinker-ckpts/2026-01-25-23-18-54
     mcq:
-      # Don't uncomment until teacher_true data is generated!
-      # You'll need to copy to a new directory and regenerate sanitized data
-      # teacher_true: logs/mcq/hack=explicit-teacher=true/2026-01-22-11-33-37/
+      teacher_true: logs/mcq/hack=explicit-teacher=true/2026-01-25-23-18-54
       teacher_false: logs/mcq/hack-teacher=false/2026-01-25-23-18-54
       tinker: logs/mcq/tinker/2026-01-25-23-18-54
       baseline_only: logs/mcq/baseline-only/2026-01-25-23-18-54
