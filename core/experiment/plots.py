@@ -575,8 +575,8 @@ class GridSize(NamedTuple):
 
 
 # Default plot dimensions in inches
-DEFAULT_PLOT_WIDTH = 9
-DEFAULT_PLOT_HEIGHT = 6
+DEFAULT_PLOT_WIDTH = 4.5
+DEFAULT_PLOT_HEIGHT = 3
 
 
 class LegendEntry(NamedTuple):
@@ -941,10 +941,10 @@ class BarPlot(LayoutNode):
 
     x: str
     y: str | list[str]
+    width: float
+    height: float
     hue: str = None
     title: str = None
-    width: float = DEFAULT_PLOT_WIDTH
-    height: float = DEFAULT_PLOT_HEIGHT
 
     def get_grid_size(self, df: pd.DataFrame) -> GridSize:
         return GridSize(1, 1, self.width, self.height)
@@ -1025,6 +1025,8 @@ class ProgressionPlot(LayoutNode):
                         hue_as_hline=["RL"])
     """
 
+    width: float
+    height: float
     x: str = "discovery_eval_counts"
     y: str | list[str] = None  # Required, but default None for backwards compat error
     hue: str = None
@@ -1033,8 +1035,6 @@ class ProgressionPlot(LayoutNode):
     title: str = None
     show_individual_lines: bool = True
     show_max_star: bool = False
-    width: float = DEFAULT_PLOT_WIDTH
-    height: float = DEFAULT_PLOT_HEIGHT
 
     def get_grid_size(self, df: pd.DataFrame) -> GridSize:
         return GridSize(1, 1, self.width, self.height)
@@ -1151,6 +1151,8 @@ class ScatterPlot(LayoutNode):
 
     x: str
     y: str | list[str]
+    width: float
+    height: float
     color: str = None
     marker: str = None
     group_by: list[str] = None
@@ -1160,8 +1162,6 @@ class ScatterPlot(LayoutNode):
     hide_pareto_dominated: bool = False
     show_dominated_markers: list[str] = None
     title: str = None
-    width: float = 6  # Square by default
-    height: float = 6
 
     def get_grid_size(self, df: pd.DataFrame) -> GridSize:
         return GridSize(1, 1, self.width, self.height)
@@ -1307,6 +1307,8 @@ class BinnedLinePlot(LayoutNode):
 
     x: str
     y: str | list[str]
+    width: float
+    height: float
     hue: str = None
     linestyle: str = None
     n_bins: int = 10
@@ -1314,8 +1316,6 @@ class BinnedLinePlot(LayoutNode):
     equal_weight_by: str = None
     show_error_bars: bool = False
     show_counts: bool = False
-    width: float = DEFAULT_PLOT_WIDTH
-    height: float = DEFAULT_PLOT_HEIGHT
 
     def get_grid_size(self, df: pd.DataFrame) -> GridSize:
         return GridSize(1, 1, self.width, self.height)
@@ -1605,7 +1605,7 @@ def _draw_bar_plot(
             legend_entries.append(LegendEntry(bars[0], display_label, hue, hue_val))
 
         # Add bar labels
-        ax.bar_label(bars, fmt="%.3f", padding=3, fontsize=bar_label_fontsize)
+        ax.bar_label(bars, fmt="%.2f", padding=3, fontsize=bar_label_fontsize)
 
         # Overlay individual data points
         for j, (pos, individuals) in enumerate(zip(bar_positions, all_individuals)):

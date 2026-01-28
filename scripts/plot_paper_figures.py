@@ -23,7 +23,6 @@ from core.experiment.plots import (
     PlotConfig,
     ProgressionPlot,
     ScatterPlot,
-    make_prompt_verbalizes_column,
 )
 from core.experiment_utils import load_experiments_config
 
@@ -33,7 +32,7 @@ load_dotenv()
 OUTPUT_DIR = Path("plots")
 
 # Experiment version to use
-CONFIG_VERSION = "v6"
+CONFIG_VERSION = "v7"
 
 # Config names for plots used in overleaf (from scripts/copy_plots_to_overleaf.sh)
 CONFIG_NAMES = [
@@ -267,6 +266,8 @@ def make_configs(experiments: dict) -> dict:
                         inner=ProgressionPlot(
                             x="discovery_eval_counts",
                             y="proxy_reward",
+                            width=4,
+                            height=8,
                             hue="optimizer",
                             hue_as_hline=["RL"],
                             show_max_star=True,
@@ -297,6 +298,8 @@ def make_configs(experiments: dict) -> dict:
                     layout=ScatterPlot(
                         x="hacking_rate",
                         y="true_reward",
+                        width=5,
+                        height=5,
                         color="env_name",
                         marker="prompter_name",
                         group_by=["is_sanitized", "prompter_name", "env_name"],
@@ -329,10 +332,29 @@ def make_configs(experiments: dict) -> dict:
                     & df.train_teacher_file.isna(),
                     layout=Grid(
                         groupby="env_name",
-                        cols_wrap=2,
+                        cols_wrap=3,
                         inner=BarPlot(
                             x="stage",
                             y=["proxy_reward", "true_reward", "hacking_rate"],
+                            width=5,
+                            height=10,
+                            hue="column_name",
+                        ),
+                    ),
+                ),
+                Figure(
+                    name="Baseline vs Optimized vs Sanitized (with Teacher)",
+                    filter=lambda df: df.stage.notna()
+                    & (df.suggest_hack == "explicit")
+                    & ~df.train_teacher_file.isna(),
+                    layout=Grid(
+                        groupby="env_name",
+                        cols_wrap=3,
+                        inner=BarPlot(
+                            x="stage",
+                            y=["proxy_reward", "true_reward", "hacking_rate"],
+                            width=5,
+                            height=10,
                             hue="column_name",
                         ),
                     ),
@@ -356,6 +378,8 @@ def make_configs(experiments: dict) -> dict:
                     layout=ScatterPlot(
                         x="prompt_length",
                         y="test_score",
+                        width=6,
+                        height=6,
                         color="env_name",
                         marker="source",
                         pareto_line=True,
@@ -374,6 +398,8 @@ def make_configs(experiments: dict) -> dict:
                         inner=ScatterPlot(
                             x="prompt_length",
                             y=["val_score", "test_score"],
+                            width=4,
+                            height=6,
                             marker="source",
                             pareto_line=True,
                             pareto_direction={"x": "lower", "y": "higher"},
@@ -422,6 +448,8 @@ def make_configs(experiments: dict) -> dict:
                         inner=BinnedLinePlot(
                             x="hacking_rate",
                             y="relevant_verbalization",
+                            width=3,
+                            height=5,
                             hue="verbalization_label",
                             n_bins=5,
                             show_error_bars=True,
@@ -437,11 +465,11 @@ def make_configs(experiments: dict) -> dict:
                     layout=BinnedLinePlot(
                         x="hacking_rate",
                         y="relevant_verbalization",
+                        width=5,
+                        height=5,
                         equal_weight_by="env_name",
                         hue="verbalization_label",
                         n_bins=5,
-                        width=6,
-                        height=6,
                     ),
                 ),
             ],
