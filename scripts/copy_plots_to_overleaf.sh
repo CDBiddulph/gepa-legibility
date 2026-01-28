@@ -12,6 +12,7 @@ MAPPINGS=(
     "recall_by_hacking_bins_2:recall-by-hacking-bins-overall"
     "sanitization_1:sanitization"
     "shortening_1:shortening"
+    "shortening_2:shortening-many"
 )
 # =============================================================================
 
