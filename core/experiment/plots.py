@@ -162,7 +162,7 @@ BASE_FAINT_LINEWIDTH = 1
 
 # Columns where subtitles should show just the value, not "column = value"
 # Used in Grid.render() when building cell subtitles
-VALUE_ONLY_SUBTITLE_COLUMNS: set[str] = {"env_name", "prompter_name"}
+VALUE_ONLY_SUBTITLE_COLUMNS: set[str] = {"env_name", "prompter_name", "prompt_label"}
 
 # Columns that should be hidden from legends when used for grouping (color, marker, etc.)
 # These columns can still be used for grouping, they just won't appear in the legend.
@@ -355,6 +355,9 @@ def sort_values(column: str, values: list) -> list:
         Sorted list of values
     """
     if column not in VALUE_ORDER:
+        # Special case for prompt_label: sort by env name prefix
+        if column == "prompt_label":
+            return _sort_prompt_labels(values)
         return sorted(values)
 
     order = VALUE_ORDER[column]
@@ -364,6 +367,27 @@ def sort_values(column: str, values: list) -> list:
         if v in order_map:
             return (0, order_map[v])
         return (1, str(v))  # Unlisted values go at end, sorted alphabetically
+
+    return sorted(values, key=sort_key)
+
+
+def _sort_prompt_labels(values: list) -> list:
+    """Sort prompt_label values by env name prefix using env_name ordering."""
+    # Map env display names to their sort order (from VALUE_ORDER["env_name"])
+    env_order = VALUE_ORDER.get("env_name", [])
+    env_display_order = [
+        VALUE_DISPLAY_NAMES.get("env_name", {}).get(env, env) for env in env_order
+    ]
+    # Build prefix -> order map
+    prefix_order = {prefix: i for i, prefix in enumerate(env_display_order)}
+
+    def sort_key(v):
+        # Find which env prefix this label starts with
+        for prefix, order in prefix_order.items():
+            if str(v).startswith(prefix):
+                # Return (env_order, rest of string for secondary sort)
+                return (order, str(v))
+        return (len(prefix_order), str(v))  # Unknown prefixes go last
 
     return sorted(values, key=sort_key)
 

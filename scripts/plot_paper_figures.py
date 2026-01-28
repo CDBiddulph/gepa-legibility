@@ -115,20 +115,61 @@ def make_optimization_stage(df: pd.DataFrame) -> pd.Series:
     return df.apply(get_stage, axis=1)
 
 
+ENV_DISPLAY_NAMES = {
+    "psychosis": "Delusional Queries",
+    "wordchain": "Phrase Ladder",
+    "mcq": "Hinted MMLU",
+}
+
+
 def make_granular_env(df: pd.DataFrame) -> pd.Series:
     """Create environment name that takes into account hint type for MCQ."""
-    env_map = {
-        "psychosis": "Delusional Queries",
-        "wordchain": "Phrase Ladder",
-        "mcq": "Hinted MMLU",
-    }
 
     def get_label(row: pd.Series) -> str:
         env = row["env_name"]
-        result = env_map[env]
+        result = ENV_DISPLAY_NAMES[env]
         if env == "mcq":
             result += f"\n({row['hint_type'].replace('-', ' ').capitalize()})"
         return result
+
+    return df.apply(get_label, axis=1)
+
+
+def make_prompt_label(df: pd.DataFrame) -> pd.Series:
+    """Create prompt labels like 'Delusional Queries Prompt #1' per env.
+
+    For MCQ, includes hint type: 'Hinted MMLU (Sycophancy) Prompt #1'.
+    """
+    # Build mapping of (env, hint_type, path) -> label
+    labels = {}
+
+    # Group by env (and hint_type for mcq) to number prompts
+    for env in df["env_name"].unique():
+        env_df = df[df["env_name"] == env]
+
+        # Get env display name
+        env_display = ENV_DISPLAY_NAMES.get(env, env)
+
+        if env == "mcq":
+            # For MCQ, group by hint_type as well
+            for hint_type in env_df["hint_type"].unique():
+                hint_df = env_df[env_df["hint_type"] == hint_type]
+                hint_display = hint_type.replace("-", " ").capitalize()
+                full_env = f"{env_display} ({hint_display})"
+
+                paths = hint_df["baseline_instructions_path"].drop_duplicates().tolist()
+                for path in paths:
+                    labels[(env, hint_type, path)] = f"{full_env} Prompt"
+        else:
+            paths = env_df["baseline_instructions_path"].drop_duplicates().tolist()
+            for i, path in enumerate(paths, 1):
+                labels[(env, None, path)] = f"{env_display} Prompt #{i}"
+
+    def get_label(row: pd.Series) -> str:
+        env = row["env_name"]
+        hint_type = row.get("hint_type") if env == "mcq" else None
+        path = row["baseline_instructions_path"]
+        return labels.get((env, hint_type, path), path)
 
     return df.apply(get_label, axis=1)
 
@@ -304,6 +345,9 @@ def make_configs(experiments: dict) -> dict:
                 "logs/shortening/psychosis/psychosis-shorten-gemini-5/2026-01-24-19-11-49/",
                 "logs/shortening/wordchain/wordchain-shorten-gemini-5/2026-01-24-19-11-49/",
             ],
+            computed_columns={
+                "prompt_label": make_prompt_label,
+            },
             figures=[
                 Figure(
                     name="Shortening: Reward vs Prompt Length",
@@ -318,6 +362,24 @@ def make_configs(experiments: dict) -> dict:
                         pareto_direction={"x": "lower", "y": "higher"},
                         hide_pareto_dominated=True,
                         show_dominated_markers=["initial"],
+                    ),
+                ),
+                Figure(
+                    name="Shortening: Val vs Test Reward by Prompt",
+                    filter=lambda df: (df.is_pareto | (df.source == "initial"))
+                    & filter_top_n_instructions(df, 5),
+                    layout=Grid(
+                        groupby="prompt_label",
+                        cols_wrap=5,
+                        inner=ScatterPlot(
+                            x="prompt_length",
+                            y=["val_score", "test_score"],
+                            marker="source",
+                            pareto_line=True,
+                            pareto_direction={"x": "lower", "y": "higher"},
+                            hide_pareto_dominated=False,
+                            show_dominated_markers=["initial"],
+                        ),
                     ),
                 ),
             ],
