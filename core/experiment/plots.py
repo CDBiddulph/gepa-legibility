@@ -2683,6 +2683,7 @@ class Figure:
     name: str
     layout: LayoutNode
     filter: str | Callable[[pd.DataFrame], pd.Series] = None
+    legend_ncol: int | None = None
 
     def render(
         self, dfs: DFs, paths: list[str] = None
@@ -2733,11 +2734,12 @@ class Figure:
         if result.legend_entries:
             handles = [entry.handle for entry in result.legend_entries]
             labels = [entry.label for entry in result.legend_entries]
+            ncol = self.legend_ncol if self.legend_ncol is not None else min(len(labels), 4)
             fig.legend(
                 handles,
                 labels,
                 loc="outside lower center",
-                ncol=min(len(labels), 4),  # Horizontal layout, up to 4 columns
+                ncol=ncol,
                 fontsize=BASE_LEGEND_FONTSIZE,
             )
 

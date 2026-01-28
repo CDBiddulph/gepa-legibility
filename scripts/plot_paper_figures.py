@@ -275,6 +275,7 @@ def make_configs(experiments: dict) -> dict:
                         ),
                         cols_wrap=3,
                     ),
+                    legend_ncol=3,
                 ),
             ],
         ),
@@ -387,6 +388,7 @@ def make_configs(experiments: dict) -> dict:
                         hide_pareto_dominated=True,
                         show_dominated_markers=["initial"],
                     ),
+                    legend_ncol=2,
                 ),
                 Figure(
                     name="Shortening: Val vs Test Reward by Prompt",
@@ -407,6 +409,7 @@ def make_configs(experiments: dict) -> dict:
                             show_dominated_markers=["initial"],
                         ),
                     ),
+                    legend_ncol=2,
                 ),
             ],
         ),
@@ -457,6 +460,7 @@ def make_configs(experiments: dict) -> dict:
                         ),
                         cols_wrap=3,
                     ),
+                    legend_ncol=1,
                 ),
                 # Figure 2 (used in overleaf as recall_by_hacking_bins_2)
                 Figure(
@@ -471,6 +475,7 @@ def make_configs(experiments: dict) -> dict:
                         hue="verbalization_label",
                         n_bins=5,
                     ),
+                    legend_ncol=1,
                 ),
             ],
         ),
