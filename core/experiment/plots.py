@@ -1091,6 +1091,16 @@ class ScatterPlot(LayoutNode):
         arrow_by: Column for drawing arrows between paired points (optional).
             Must be a boolean column. Draws arrows from False to True points.
             If group_by is specified, arrow_by must be included in group_by.
+        pareto_line: Whether to draw Pareto frontier step lines, grouped by color.
+        pareto_direction: Dict specifying which direction is "better" for each axis.
+            Required when pareto_line is True. Keys are "x" and "y", values are
+            "lower" or "higher". E.g., {"x": "lower", "y": "higher"} means lower
+            x and higher y are better.
+        hide_pareto_dominated: Whether to hide points dominated on the Pareto frontier.
+            If True, only Pareto-optimal points are shown, plus any points with marker
+            values in show_dominated_markers.
+        show_dominated_markers: List of marker values that should always be shown
+            even if Pareto-dominated. E.g., ["initial"] to always show initial points.
         title: Optional title for the plot
         width: Plot width in inches (default: 6, square)
         height: Plot height in inches (default: 6, square)
@@ -1109,6 +1119,10 @@ class ScatterPlot(LayoutNode):
         # Arrows from original to sanitized points (no grouping)
         ScatterPlot(x="proxy_reward", y="true_reward", color="is_sanitized",
                     arrow_by="is_sanitized")
+
+        # Pareto frontier with step lines (lower x, higher y is better)
+        ScatterPlot(x="prompt_length", y="test_score", color="env_name",
+                    pareto_line=True, pareto_direction={"x": "lower", "y": "higher"})
     """
 
     x: str
@@ -1117,6 +1131,10 @@ class ScatterPlot(LayoutNode):
     marker: str = None
     group_by: list[str] = None
     arrow_by: str = None
+    pareto_line: bool = False
+    pareto_direction: dict[str, str] = None
+    hide_pareto_dominated: bool = False
+    show_dominated_markers: list[str] = None
     title: str = None
     width: float = 6  # Square by default
     height: float = 6
@@ -1173,6 +1191,12 @@ class ScatterPlot(LayoutNode):
                     f"to preserve pairs for arrow drawing"
                 )
 
+        # Validate pareto_direction is provided when pareto_line is True
+        if self.pareto_line and self.pareto_direction is None:
+            raise ValueError(
+                "pareto_direction must be specified when pareto_line=True"
+            )
+
         # Use subtitle from parent Grid if no explicit title set
         title = self.title if self.title is not None else subtitle
 
@@ -1186,6 +1210,10 @@ class ScatterPlot(LayoutNode):
             self.marker,
             self.group_by,
             self.arrow_by,
+            self.pareto_line,
+            self.pareto_direction,
+            self.hide_pareto_dominated,
+            self.show_dominated_markers,
             title,
             scale,
             show_chrome,
@@ -1997,6 +2025,58 @@ def _build_style_legend_entries(
     return legend_entries
 
 
+def _compute_pareto_frontier(
+    points: list[tuple[float, float, int]],
+    x_better: str,
+    y_better: str,
+) -> list[int]:
+    """Compute indices of points on the Pareto frontier.
+
+    A point is on the Pareto frontier if no other point dominates it.
+    Point A dominates point B if A is better than or equal to B on all
+    dimensions, and strictly better on at least one.
+
+    Args:
+        points: List of (x, y, original_index) tuples
+        x_better: "lower" or "higher" - which direction is better for x
+        y_better: "lower" or "higher" - which direction is better for y
+
+    Returns:
+        List of original indices of points on the Pareto frontier
+    """
+    frontier_indices = []
+    for i, (xi, yi, idx_i) in enumerate(points):
+        dominated = False
+        for j, (xj, yj, _) in enumerate(points):
+            if i == j:
+                continue
+            # Check if j dominates i (j is at least as good on both, strictly better on one)
+            if x_better == "lower":
+                x_at_least = xj <= xi
+                x_strict = xj < xi
+            elif x_better == "higher":
+                x_at_least = xj >= xi
+                x_strict = xj > xi
+            else:
+                raise ValueError(f"Invalid x_better: {x_better}")
+
+            if y_better == "lower":
+                y_at_least = yj <= yi
+                y_strict = yj < yi
+            elif y_better == "higher":
+                y_at_least = yj >= yi
+                y_strict = yj > yi
+            else:
+                raise ValueError(f"Invalid y_better: {y_better}")
+
+            if x_at_least and y_at_least and (x_strict or y_strict):
+                dominated = True
+                break
+        if not dominated:
+            frontier_indices.append(idx_i)
+    return frontier_indices
+
+
 def _draw_scatter_plot(
     ax: plt.Axes,
     df: pd.DataFrame,
@@ -2006,11 +2086,15 @@ def _draw_scatter_plot(
     marker_col: str = None,
     group_by: list[str] = None,
     arrow_by: str = None,
+    pareto_line: bool = False,
+    pareto_direction: dict[str, str] = None,
+    hide_pareto_dominated: bool = False,
+    show_dominated_markers: list[str] = None,
     title: str = None,
     scale: float = 1.0,
     show_chrome: bool = True,
 ) -> list[LegendEntry]:
-    """Draw a scatter plot with optional grouping and arrows.
+    """Draw a scatter plot with optional grouping, arrows, and Pareto frontier.
 
     Args:
         ax: Matplotlib axes to draw on
@@ -2023,6 +2107,10 @@ def _draw_scatter_plot(
             If specified, shows one point per unique combination with mean x/y.
         arrow_by: Column for drawing arrows between paired points (optional).
             Must be a boolean column. Draws arrows from False to True points.
+        pareto_line: Whether to draw Pareto frontier step lines, grouped by color.
+        pareto_direction: Dict with keys "x" and "y", values "lower" or "higher".
+        hide_pareto_dominated: Whether to hide dominated points from scatter.
+        show_dominated_markers: Marker values to always show even if dominated.
         title: Optional title for the plot
         scale: Scale factor for fonts and markers (1.0 = full size)
         show_chrome: Whether to show axis labels and legend
@@ -2059,13 +2147,61 @@ def _draw_scatter_plot(
     plot_df = (
         df.groupby(group_by, dropna=False).agg({x: "mean", y: "mean"}).reset_index()
         if group_by is not None
-        else df
+        else df.copy()
     )
+
+    # Compute Pareto frontiers per color group if needed
+    pareto_indices_by_color = {}  # color_val -> set of row indices that are Pareto-optimal
+    if pareto_line or hide_pareto_dominated:
+        for color_val in color_values:
+            if color_col is not None:
+                group_mask = plot_df[color_col] == color_val
+            else:
+                group_mask = pd.Series(True, index=plot_df.index)
+
+            group_df = plot_df[group_mask]
+            if len(group_df) < 2:
+                pareto_indices_by_color[color_val] = set(group_df.index)
+                continue
+
+            # Build points list with original indices
+            points = [
+                (row[x], row[y], idx)
+                for idx, row in group_df.iterrows()
+                if pd.notna(row[x]) and pd.notna(row[y])
+            ]
+
+            if len(points) < 2:
+                pareto_indices_by_color[color_val] = set(group_df.index)
+                continue
+
+            frontier_indices = _compute_pareto_frontier(
+                points,
+                pareto_direction["x"],
+                pareto_direction["y"],
+            )
+            pareto_indices_by_color[color_val] = set(frontier_indices)
+
+    # Save original plot_df for Pareto line drawing (before filtering)
+    plot_df_for_pareto = plot_df
+
+    # Filter out dominated points if requested
+    if hide_pareto_dominated:
+        all_pareto_indices = set()
+        for indices in pareto_indices_by_color.values():
+            all_pareto_indices.update(indices)
+
+        # Also keep points with marker values in show_dominated_markers
+        keep_mask = plot_df.index.isin(all_pareto_indices)
+        if show_dominated_markers and marker_col is not None:
+            keep_mask = keep_mask | plot_df[marker_col].isin(show_dominated_markers)
+
+        plot_df = plot_df[keep_mask]
 
     # Track legend entries (only add each unique color/marker combo once)
     legend_entry_map = {}  # (color_val, marker_val) -> handle
 
-    for _, row in plot_df.iterrows():
+    for idx, row in plot_df.iterrows():
         color_val = row[color_col] if color_col is not None else None
         marker_val = row[marker_col] if marker_col is not None else None
 
@@ -2095,6 +2231,62 @@ def _draw_scatter_plot(
         legend_key = (color_val, marker_val)
         if legend_key not in legend_entry_map:
             legend_entry_map[legend_key] = handle
+
+    # Draw Pareto frontier step lines if pareto_line is True
+    if pareto_line:
+        linewidth = BASE_LINEWIDTH * scale
+
+        for color_val in color_values:
+            if color_val not in pareto_indices_by_color:
+                continue
+
+            frontier_indices = pareto_indices_by_color[color_val]
+            if len(frontier_indices) < 2:
+                continue
+
+            # Get frontier points from original plot_df (before filtering)
+            frontier_points = [
+                (plot_df_for_pareto.loc[idx, x], plot_df_for_pareto.loc[idx, y])
+                for idx in frontier_indices
+                if idx in plot_df_for_pareto.index
+                and pd.notna(plot_df_for_pareto.loc[idx, x])
+                and pd.notna(plot_df_for_pareto.loc[idx, y])
+            ]
+
+            if len(frontier_points) < 2:
+                continue
+
+            # Sort by x (ascending for "lower is better", descending for "higher is better")
+            reverse_x = pareto_direction["x"] == "higher"
+            frontier_points.sort(key=lambda p: p[0], reverse=reverse_x)
+
+            # Get line color
+            line_color = get_color(color_col, color_val, color_index.get(color_val, 0))
+
+            # Draw step function: for each consecutive pair, draw horizontal then vertical
+            # For "lower x, higher y is better": go left-to-right, step down
+            # For "higher x, higher y is better": go right-to-left, step down
+            step_x = []
+            step_y = []
+            for i, (px, py) in enumerate(frontier_points):
+                if i == 0:
+                    step_x.append(px)
+                    step_y.append(py)
+                else:
+                    # Add horizontal segment to new x, then vertical to new y
+                    prev_y = step_y[-1]
+                    step_x.append(px)
+                    step_y.append(prev_y)  # Horizontal at previous y
+                    step_x.append(px)
+                    step_y.append(py)  # Vertical to new y
+
+            ax.plot(
+                step_x,
+                step_y,
+                color=line_color,
+                linewidth=linewidth,
+                zorder=2,  # Below points (zorder=3)
+            )
 
     # Draw arrows between paired points if arrow_by is specified
     if arrow_by is not None:

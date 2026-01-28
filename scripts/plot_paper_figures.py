@@ -309,14 +309,15 @@ def make_configs(experiments: dict) -> dict:
                     name="Shortening: Reward vs Prompt Length",
                     filter=lambda df: (df.is_pareto | (df.source == "initial"))
                     & filter_top_n_instructions(df, 1),
-                    layout=Grid(
-                        groupby="prompter_name",
-                        inner=ScatterPlot(
-                            x="prompt_length",
-                            y="test_score",
-                            color="env_name",
-                            marker="source",
-                        ),
+                    layout=ScatterPlot(
+                        x="prompt_length",
+                        y="test_score",
+                        color="env_name",
+                        marker="source",
+                        pareto_line=True,
+                        pareto_direction={"x": "lower", "y": "higher"},
+                        hide_pareto_dominated=True,
+                        show_dominated_markers=["initial"],
                     ),
                 ),
             ],
