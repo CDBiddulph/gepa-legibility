@@ -1,6 +1,6 @@
 #!/bin/bash
 # Generate metrics data for plot_paper_figures.ipynb
-# Runs jobs with a configurable level of parallelism
+# Runs jobs with a configurable level of parallelism, at the sweep config level
 #
 # Usage:
 #   ./generate_metrics.sh        # uses default version from experiments_config.yaml
@@ -28,13 +28,10 @@ LOG_DIR="logs/metrics_generation/${USED_VERSION}_${TIMESTAMP}"
 mkdir -p "$LOG_DIR"
 
 # Load jobs from experiments_config.yaml via Python
-# Outputs "name|path|metrics|quick_mode" tuples based on what plot_paper_figures.ipynb needs
-#
-# Metrics requirements per experiment type:
-#   - teacher_true/teacher_false: progression/scatter plots -> all metrics, quick_mode=false
-#   - baseline_only/tinker: baseline comparison -> cot metrics, quick_mode=true
+# Outputs sweep config directories: "name|sweep_path|metrics|quick_mode"
 JOBS_OUTPUT=$(python -c "
 from core.experiment_utils import load_experiments_config
+from pathlib import Path
 version = '$VERSION' or None
 config = load_experiments_config(version)
 
@@ -51,16 +48,30 @@ EXPERIMENT_REQUIREMENTS = {
 }
 
 for env, experiments in config.items():
-    for exp_type, path in experiments.items():
+    for exp_type, exp_path in experiments.items():
         if exp_type not in EXPERIMENT_REQUIREMENTS:
             continue  # skip unused experiment types
         metrics, quick_mode = EXPERIMENT_REQUIREMENTS[exp_type]
         quick_flag = '--quick-mode' if quick_mode else ''
-        print(f'{env}_{exp_type}|{path}|{metrics}|{quick_flag}')
+
+        # Enumerate sweep config directories within each experiment
+        exp_path = Path(exp_path)
+        if not exp_path.exists():
+            print(f'# Warning: {exp_path} does not exist', file=__import__('sys').stderr)
+            continue
+
+        # Find all sweep config directories (contain */detailed_results.json)
+        for sweep_dir in sorted(exp_path.iterdir()):
+            if not sweep_dir.is_dir():
+                continue
+            if not list(sweep_dir.glob('*/detailed_results.json')):
+                continue
+            name = f'{env}_{exp_type}_{sweep_dir.name}'
+            print(f'{name}|{sweep_dir}|{metrics}|{quick_flag}')
 ")
 
-# Convert to array
-readarray -t JOBS <<< "$JOBS_OUTPUT"
+# Convert to array, filtering empty lines
+readarray -t JOBS < <(echo "$JOBS_OUTPUT" | grep -v '^$')
 
 # Track running jobs: PID -> job name
 declare -A RUNNING_PIDS
@@ -69,9 +80,9 @@ FAILED=0
 
 start_job() {
   local job_spec="${JOBS[$NEXT_JOB]}"
-  IFS='|' read -r name path metrics quick_flag <<< "$job_spec"
+  IFS='|' read -r name sweep_path metrics quick_flag <<< "$job_spec"
 
-  python -m core.evaluation.progression "$path" --metrics $metrics $quick_flag \
+  python -m core.evaluation.progression "$sweep_path" --metrics $metrics $quick_flag \
     > "$LOG_DIR/${name}.log" 2>&1 &
 
   local pid=$!
@@ -99,7 +110,7 @@ wait_for_one() {
 echo "Starting metrics generation at $(date)"
 echo "Config version: $USED_VERSION"
 echo "Max parallel jobs: $MAX_PARALLEL"
-echo "Total jobs: ${#JOBS[@]}"
+echo "Total jobs: ${#JOBS[@]} (sweep configs)"
 echo "Logs: $LOG_DIR/"
 echo ""
 
