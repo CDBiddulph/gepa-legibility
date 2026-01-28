@@ -456,7 +456,6 @@ def make_configs(experiments: dict) -> dict:
                             hue="verbalization_label",
                             n_bins=5,
                             show_error_bars=True,
-                            show_counts=True,
                         ),
                         cols_wrap=3,
                     ),
