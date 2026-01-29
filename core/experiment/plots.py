@@ -212,8 +212,8 @@ VALUE_DISPLAY_NAMES: dict[str, dict[str, str]] = {
         "openrouter/google/gemini-3-pro-preview": "Gemini 3.0 Pro",
     },
     "env_name": {
-        "psychosis": "Delusional Queries",
-        "wordchain": "Phrase Ladder",
+        "psychosis": "Targeted Sycophancy",
+        "wordchain": "Word Chain",
         "mcq": "Hinted MMLU",
     },
     "column_name": {
@@ -334,9 +334,9 @@ VALUE_ORDER: dict[str, list] = {
     "optimizer": [
         "Baseline",
         "GEPA",
-        "GEPA (Hack)",
-        "GEPA (Hack + Teacher)",
-        "GEPA (Hack + Teacher with Reasoning)",
+        "GEPA + Suggest Hacking",
+        "GEPA + Suggest Hacking + RL Teacher",
+        "GEPA + Suggest Hacking + RL Teacher with CoT",
         "RL",
     ],
     "stage": ["Pre-GEPA", "Post-GEPA", "Post-GEPA, Sanitized"],
@@ -421,9 +421,9 @@ STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
     # Colors for optimizer values (used in bar/progression plots)
     ("optimizer", "Baseline"): {"color": "#7f7f7f"},  # gray
     ("optimizer", "GEPA"): {"color": "#1f77b4"},  # blue
-    ("optimizer", "GEPA (Hack)"): {"color": "#ff7f0e"},  # orange
-    ("optimizer", "GEPA (Hack + Teacher)"): {"color": "#2ca02c"},  # green
-    ("optimizer", "GEPA (Hack + Teacher with Reasoning)"): {"color": "#d62728"},  # red
+    ("optimizer", "GEPA + Suggest Hacking"): {"color": "#ff7f0e"},  # orange
+    ("optimizer", "GEPA + Suggest Hacking + RL Teacher"): {"color": "#2ca02c"},  # green
+    ("optimizer", "GEPA + Suggest Hacking + RL Teacher with CoT"): {"color": "#d62728"},  # red
     ("optimizer", "RL"): {"color": "#999999"},  # gray
 }
 
@@ -1467,9 +1467,9 @@ def make_optimizer_column(df: pd.DataFrame) -> pd.Series:
         - "Baseline" - First candidate (is_baseline=True)
         - "RL" - Baseline-only experiment with tinker model (prompter_name=None, executor starts with tinker/)
         - "GEPA" - GEPA-optimized with suggest_hack="no"
-        - "GEPA (Hack)" - GEPA-optimized with suggest_hack="explicit", no teacher
-        - "GEPA (Hack + Teacher)" - suggest_hack="explicit" with train_teacher_file
-        - "GEPA (Hack + Teacher + Tool)" - suggest_hack="explicit" with train_teacher_file and teacher_tool_model
+        - "GEPA + Suggest Hacking" - GEPA-optimized with suggest_hack="explicit", no teacher
+        - "GEPA + Suggest Hacking + RL Teacher" - suggest_hack="explicit" with train_teacher_file
+        - "GEPA + Suggest Hacking + RL Teacher with CoT" - suggest_hack="explicit" with train_teacher_file and teacher_tool_model
 
     This is useful for bar plots comparing different optimization approaches.
 
@@ -1508,10 +1508,10 @@ def make_optimizer_column(df: pd.DataFrame) -> pd.Series:
 
         if suggest_hack == "explicit":
             if has_teacher and has_tool:
-                return "GEPA (Hack + Teacher + Tool)"
+                return "GEPA + Suggest Hacking + RL Teacher with CoT"
             elif has_teacher:
-                return "GEPA (Hack + Teacher)"
-            return "GEPA (Hack)"
+                return "GEPA + Suggest Hacking + RL Teacher"
+            return "GEPA + Suggest Hacking"
         elif suggest_hack == "no":
             return "GEPA"
 
