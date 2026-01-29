@@ -11,6 +11,7 @@ from math import ceil
 from typing import Any, Callable, NamedTuple
 
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 from matplotlib.patches import Patch
 import numpy as np
 import pandas as pd
@@ -1607,16 +1608,23 @@ def _draw_bar_plot(
         # Add bar labels
         ax.bar_label(bars, fmt="%.2f", padding=3, fontsize=bar_label_fontsize)
 
-        # Overlay individual data points
+        # Overlay individual data points with jittered positions
+        # Create darker version of bar color for dots
+        rgb = mcolors.to_rgb(color)
+        dot_color = tuple(c * 0.6 for c in rgb)  # darken by 40%
         for j, (pos, individuals) in enumerate(zip(bar_positions, all_individuals)):
             if len(individuals) > 0:
+                # Use deterministic seed based on position for reproducibility
+                rng = np.random.default_rng(seed=i * 1000 + j)
+                jitter_width = bar_width * 0.6
+                jitter = rng.uniform(-jitter_width / 2, jitter_width / 2, len(individuals))
                 ax.scatter(
-                    np.full(len(individuals), pos),
+                    pos + jitter,
                     individuals,
-                    marker="x",
-                    color="#202020",
-                    s=marker_size,
-                    linewidth=0.5,
+                    marker="o",
+                    color=dot_color,
+                    s=marker_size * 2,
+                    alpha=0.7,
                     zorder=3,
                 )
 
