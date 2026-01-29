@@ -152,7 +152,7 @@ BASE_LABEL_FONTSIZE = 18
 BASE_TICK_FONTSIZE = 15
 BASE_LEGEND_FONTSIZE = 15
 BASE_BAR_LABEL_FONTSIZE = 15
-BASE_MARKER_SIZE = 1
+BASE_MARKER_SIZE = 60
 BASE_LINEWIDTH = 2
 BASE_FAINT_LINEWIDTH = 1
 
@@ -1623,7 +1623,7 @@ def _draw_bar_plot(
                     individuals,
                     marker="o",
                     color=dot_color,
-                    s=marker_size * 2,
+                    s=2,
                     alpha=0.7,
                     zorder=3,
                 )
