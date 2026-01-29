@@ -2573,9 +2573,9 @@ def _draw_binned_line_plot(
 
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
-    ax.set_xticks(bin_centers)
-    ax.set_xticklabels(bin_labels, rotation=45, ha="right", fontsize=tick_fontsize * 0.8)
-    ax.tick_params(axis="y", labelsize=tick_fontsize)
+    ax.set_xticks(bin_edges)
+    ax.set_xticklabels([f"{e:.1f}" for e in bin_edges])
+    ax.tick_params(axis="both", labelsize=tick_fontsize)
     ax.grid(True, alpha=0.3)
 
     if show_chrome:
