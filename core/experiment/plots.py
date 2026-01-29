@@ -126,13 +126,13 @@ def _check_aggregation_warnings(
     return warnings
 
 
-def _print_aggregation_warnings(warnings: dict[str, list], figure_name: str) -> None:
+def _print_aggregation_warnings(warnings: dict[str, list], figure_index: int) -> None:
     """Print aggregation warnings if any exist."""
     if not warnings:
         return
 
     print(
-        f"\n⚠️  WARNING: Figure '{figure_name}' is aggregating over multiple values of:"
+        f"\n⚠️  WARNING: Figure #{figure_index} is aggregating over multiple values of:"
     )
     for col, values in sorted(warnings.items()):
         values_str = ", ".join(values[:5])  # Limit to first 5 values
@@ -151,7 +151,7 @@ BASE_LABEL_FONTSIZE = 18
 BASE_TICK_FONTSIZE = 15
 BASE_LEGEND_FONTSIZE = 15
 BASE_BAR_LABEL_FONTSIZE = 15
-BASE_MARKER_SIZE = 60
+BASE_MARKER_SIZE = 1
 BASE_LINEWIDTH = 2
 BASE_FAINT_LINEWIDTH = 1
 
@@ -2660,39 +2660,23 @@ def _average_step_functions(lines: list[tuple[list, list]]) -> tuple[list, list]
 # =============================================================================
 
 
-def _format_paths(paths: list[str]) -> str:
-    """Format paths for display in figure title.
-
-    Args:
-        paths: List of experiment paths
-
-    Returns:
-        Formatted string like "logs/mcq/..." or "logs/mcq/... (+2 more)"
-    """
-    if not paths:
-        return ""
-    if len(paths) == 1:
-        return paths[0]
-    return f"{paths[0]} (+{len(paths) - 1} more)"
-
-
 @dataclass
 class Figure:
     """Configuration for a single figure."""
 
-    name: str
     layout: LayoutNode
+    name: str | None = None
     filter: str | Callable[[pd.DataFrame], pd.Series] = None
     legend_ncol: int | None = None
 
     def render(
-        self, dfs: DFs, paths: list[str] = None
+        self, dfs: DFs, figure_index: int = 1
     ) -> tuple[plt.Figure, pd.DataFrame]:
         """Render this figure.
 
         Args:
             dfs: Dict with "main" (candidate rows) and "gepa_runs" (run-level data)
-            paths: Optional list of paths to display in title
+            figure_index: 1-based index of this figure (used for warning messages)
 
         Returns:
             Tuple of (figure, filtered_df) where filtered_df is the main DataFrame after filtering
@@ -2707,12 +2691,8 @@ class Figure:
         fig_height = grid_size.rows * grid_size.cell_height
         fig = plt.figure(figsize=(fig_width, fig_height), layout='constrained')
 
-        # Build title with optional path info
-        if paths:
-            title = f"{self.name}\n{_format_paths(paths)}"
-        else:
-            title = self.name
-        fig.suptitle(title, fontsize=14)
+        if self.name:
+            fig.suptitle(self.name, fontsize=14)
 
         gs = fig.add_gridspec(grid_size.rows, grid_size.cols)
 
@@ -2728,7 +2708,7 @@ class Figure:
         )
 
         # Print any aggregation warnings
-        _print_aggregation_warnings(result.warnings, self.name)
+        _print_aggregation_warnings(result.warnings, figure_index)
 
         # Add figure-level legend outside the plots if there are legend entries
         if result.legend_entries:
@@ -2758,7 +2738,6 @@ class PlotConfig:
             If True, only evaluates the first and last candidates (faster, suitable for bar plots).
             If False, evaluates all improving candidates (needed for progression plots).
         computed_columns: Dict mapping column names to functions that compute them from the DataFrame.
-        show_paths: Whether to show experiment paths in figure titles.
         metrics: List of metric names to compute. If None, computes all metrics.
             Use this to speed up loading when you only need specific metrics.
 
@@ -2779,7 +2758,6 @@ class PlotConfig:
     computed_columns: dict[str, Callable[[pd.DataFrame], pd.Series]] = field(
         default_factory=dict
     )
-    show_paths: bool = True
     metrics: list[str] | None = None
 
     _dfs: DFs = field(default=None, init=False, repr=False)
@@ -2809,30 +2787,10 @@ class PlotConfig:
         """
         dfs = self.load_dfs()
         filtered_dfs = []
-        paths = self.paths if self.show_paths else None
 
-        for figure in self.figures:
-            fig, filtered_df = figure.render(dfs, paths=paths)
+        for idx, figure in enumerate(self.figures, start=1):
+            fig, filtered_df = figure.render(dfs, figure_index=idx)
             filtered_dfs.append(filtered_df)
             plt.show()
 
         return filtered_dfs
-
-    def render(self, name: str) -> pd.DataFrame:
-        """Render a specific figure by name.
-
-        Returns:
-            The filtered DataFrame used for the figure.
-        """
-        dfs = self.load_dfs()
-        paths = self.paths if self.show_paths else None
-
-        for figure in self.figures:
-            if figure.name == name:
-                fig, filtered_df = figure.render(dfs, paths=paths)
-                plt.show()
-                return filtered_df
-
-        raise ValueError(
-            f"Figure '{name}' not found. Available: {[f.name for f in self.figures]}"
-        )

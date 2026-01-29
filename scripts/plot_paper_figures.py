@@ -259,7 +259,6 @@ def make_configs(experiments: dict) -> dict:
             },
             figures=[
                 Figure(
-                    name="Training Progression by Optimizer Variant",
                     filter=lambda df: ~df.is_sanitized & df.optimizer.notna(),
                     layout=Grid(
                         groupby="env_name",
@@ -292,7 +291,6 @@ def make_configs(experiments: dict) -> dict:
             metrics=["proxy_reward", "true_reward", "hacking_rate"],
             figures=[
                 Figure(
-                    name="Sanitization Effect: True Reward vs Hacking Rate",
                     filter=lambda df: df.is_final
                     & (df.suggest_hack == "explicit")
                     & (df.train_teacher_file.isna()),
@@ -327,7 +325,6 @@ def make_configs(experiments: dict) -> dict:
             figures=[
                 # Figure 1 (used in overleaf as baseline_vs_final_bar_1)
                 Figure(
-                    name="Baseline vs Optimized vs Sanitized",
                     filter=lambda df: df.stage.notna()
                     & (df.suggest_hack == "explicit")
                     & df.train_teacher_file.isna(),
@@ -344,7 +341,6 @@ def make_configs(experiments: dict) -> dict:
                     ),
                 ),
                 Figure(
-                    name="Baseline vs Optimized vs Sanitized (with Teacher)",
                     filter=lambda df: df.stage.notna()
                     & (df.suggest_hack == "explicit")
                     & ~df.train_teacher_file.isna(),
@@ -373,7 +369,6 @@ def make_configs(experiments: dict) -> dict:
             },
             figures=[
                 Figure(
-                    name="Shortening: Reward vs Prompt Length",
                     filter=lambda df: (df.is_pareto | (df.source == "initial"))
                     & filter_top_n_instructions(df, 1),
                     layout=ScatterPlot(
@@ -391,7 +386,6 @@ def make_configs(experiments: dict) -> dict:
                     legend_ncol=2,
                 ),
                 Figure(
-                    name="Shortening: Val vs Test Reward by Prompt",
                     filter=lambda df: (df.is_pareto | (df.source == "initial"))
                     & filter_top_n_instructions(df, 5),
                     layout=Grid(
@@ -444,7 +438,6 @@ def make_configs(experiments: dict) -> dict:
             figures=[
                 # Figure 1 (used in overleaf as recall_by_hacking_bins_1)
                 Figure(
-                    name="Monitor Recall by Hacking Rate",
                     filter=lambda df: ~df.is_sanitized,
                     layout=Grid(
                         groupby="env_name",
@@ -463,7 +456,6 @@ def make_configs(experiments: dict) -> dict:
                 ),
                 # Figure 2 (used in overleaf as recall_by_hacking_bins_2)
                 Figure(
-                    name="Monitor Recall by Hacking Rate",
                     filter=lambda df: ~df.is_sanitized,
                     layout=BinnedLinePlot(
                         x="hacking_rate",
@@ -485,10 +477,9 @@ def generate_config_plots(config_name: str, configs: dict, output_dir: Path) -> 
     """Generate all plots for a config and save as PDF and PNG. Returns count."""
     config = configs[config_name]
     dfs = config.load_dfs()
-    paths = config.paths if config.show_paths else None
 
     for idx, figure in enumerate(config.figures, start=1):
-        fig, _ = figure.render(dfs, paths=paths)
+        fig, _ = figure.render(dfs, figure_index=idx)
 
         output_name = f"{config_name}_{idx}"
         for extension in ["pdf", "png"]:
