@@ -191,18 +191,20 @@ def make_optimizer_type(df: pd.DataFrame) -> pd.Series:
     return df.apply(get_type, axis=1)
 
 
-def make_relevant_verbalization(df: pd.DataFrame) -> pd.Series:
+def make_relevant_verbalization(df: pd.DataFrame, use_mistargeted: bool = True) -> pd.Series:
     """Return the appropriate verbalization metric based on optimizer type."""
 
     def get_value(row: pd.Series):
         if row.get("optimizer_type") == "RL":
-            yes = row.get("verbalizes_yes_hacking") or 0
-            mistargeted = row.get("verbalizes_mistargeted_hacking") or 0
-            return yes + mistargeted
+            yes_metric = "verbalizes_yes_hacking"
+            mistargeted_metric = "verbalizes_mistargeted_hacking"
         else:  # GEPA
-            yes = row.get("verbalizes_prompt_yes_hacking") or 0
-            mistargeted = row.get("verbalizes_prompt_mistargeted_hacking") or 0
-            return yes + mistargeted
+            yes_metric = "verbalizes_prompt_yes_hacking"
+            mistargeted_metric = "verbalizes_prompt_mistargeted_hacking"
+        result = row.get(yes_metric, 0)
+        if use_mistargeted:
+            result += row.get(mistargeted_metric, 0)
+        return result
 
     return df.apply(get_value, axis=1)
 
