@@ -82,13 +82,11 @@ def make_optimizer_column(df: pd.DataFrame) -> pd.Series:
         if all_settings == ("no", False, False, False):
             return "GEPA"
         elif all_settings == ("explicit", False, False, False):
-            return "GEPA (Hack)"
+            return "GEPA + Suggest Hacking"
         elif all_settings == ("explicit", True, False, False):
-            return "GEPA (Hack + Teacher)"
-        elif all_settings == ("explicit", True, True, False):
-            return "GEPA (Hack + Teacher + Tool)"
+            return "GEPA + Suggest Hacking + RL Teacher"
         elif all_settings == ("explicit", True, False, True):
-            return "GEPA (Hack + Teacher with Reasoning)"
+            return "GEPA + Suggest Hacking + RL Teacher with CoT"
         else:
             raise ValueError(f"Invalid settings: {all_settings}")
 

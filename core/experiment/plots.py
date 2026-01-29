@@ -332,12 +332,11 @@ VALUE_ORDER: dict[str, list] = {
     "column_name": ["proxy_reward", "true_reward", "prompt_verbalizes", "hacking_rate"],
     "prompt_verbalizes": ["yes", "mistargeted", "unclear", "no"],
     "optimizer": [
-        "Baseline",
+        "RL",
         "GEPA",
         "GEPA + Suggest Hacking",
         "GEPA + Suggest Hacking + RL Teacher",
         "GEPA + Suggest Hacking + RL Teacher with CoT",
-        "RL",
     ],
     "stage": ["Pre-GEPA", "Post-GEPA", "Post-GEPA, Sanitized"],
     "is_sanitized": [False, True],
@@ -402,15 +401,15 @@ def _sort_prompt_labels(values: list) -> list:
 # Supported style keys: "color", "linestyle", "marker"
 STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
     # Colors for column names (used when melting columns)
-    ("column_name", "proxy_reward"): {"color": "#ff7777"},
-    ("column_name", "true_reward"): {"color": "#66b3ff"},
-    ("column_name", "prompt_verbalizes"): {"color": "#77dd77"},
-    ("column_name", "hacking_rate"): {"color": "#ffaa44"},
-    # Colors for prompt_verbalizes values (green=no, yellow=unclear, purple=partial, red=yes)
-    ("prompt_verbalizes", "no"): {"color": "#44bb44"},
-    ("prompt_verbalizes", "unclear"): {"color": "#ffcc00"},
-    ("prompt_verbalizes", "mistargeted"): {"color": "#9467bd"},
-    ("prompt_verbalizes", "yes"): {"color": "#ff4444"},
+    ("column_name", "proxy_reward"): {"color": "#e69f00"},  # orange
+    ("column_name", "true_reward"): {"color": "#0072b2"},  # blue
+    ("column_name", "prompt_verbalizes"): {"color": "#cc79a7"},  # muted pink
+    ("column_name", "hacking_rate"): {"color": "#d55e00"},  # vermillion
+    # Colors for prompt_verbalizes values (semantic: no=safe, yes=hacking)
+    ("prompt_verbalizes", "no"): {"color": "#0072b2"},  # blue
+    ("prompt_verbalizes", "unclear"): {"color": "#f0e442"},  # yellow
+    ("prompt_verbalizes", "mistargeted"): {"color": "#cc79a7"},  # muted pink
+    ("prompt_verbalizes", "yes"): {"color": "#d55e00"},  # vermillion
     # Line styles for is_sanitized
     ("is_sanitized", False): {"linestyle": "-"},
     ("is_sanitized", True): {"linestyle": ":"},
@@ -418,13 +417,15 @@ STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
     ("source", "initial"): {"marker": "*"},
     ("source", "proposed"): {"marker": "o"},
     ("source", "empty"): {"marker": "o"},
-    # Colors for optimizer values (used in bar/progression plots)
-    ("optimizer", "Baseline"): {"color": "#7f7f7f"},  # gray
-    ("optimizer", "GEPA"): {"color": "#1f77b4"},  # blue
-    ("optimizer", "GEPA + Suggest Hacking"): {"color": "#ff7f0e"},  # orange
-    ("optimizer", "GEPA + Suggest Hacking + RL Teacher"): {"color": "#2ca02c"},  # green
-    ("optimizer", "GEPA + Suggest Hacking + RL Teacher with CoT"): {"color": "#d62728"},  # red
-    ("optimizer", "RL"): {"color": "#999999"},  # gray
+    # Colors for optimizer values (blue progression for GEPA variants, gray for RL baseline)
+    ("optimizer", "RL"): {"color": "#555555"},  # dark gray (baseline comparison)
+    ("optimizer", "GEPA"): {"color": "#c6dbef"},  # lightest blue
+    ("optimizer", "GEPA + Suggest Hacking"): {"color": "#6baed6"},  # light blue
+    ("optimizer", "GEPA + Suggest Hacking + RL Teacher"): {"color": "#2171b5"},  # medium blue
+    ("optimizer", "GEPA + Suggest Hacking + RL Teacher with CoT"): {"color": "#084594"},  # dark blue
+    # Colors for verbalization_label (used in recall_by_hacking_bins plot)
+    ("verbalization_label", "GEPA (prompt verbalization)"): {"color": "#2b8cbe"},  # bright blue
+    ("verbalization_label", "RL (CoT verbalization)"): {"color": "#555555"},  # dark gray (matches RL)
 }
 
 
@@ -1458,68 +1459,6 @@ def make_prompt_verbalizes_column(df: pd.DataFrame) -> pd.Series:
         return max_cat
 
     return df.apply(get_max_category, axis=1)
-
-
-def make_optimizer_column(df: pd.DataFrame) -> pd.Series:
-    """Create an 'optimizer' column distinguishing Baseline, GEPA variants, and RL.
-
-    Categories:
-        - "Baseline" - First candidate (is_baseline=True)
-        - "RL" - Baseline-only experiment with tinker model (prompter_name=None, executor starts with tinker/)
-        - "GEPA" - GEPA-optimized with suggest_hack="no"
-        - "GEPA + Suggest Hacking" - GEPA-optimized with suggest_hack="explicit", no teacher
-        - "GEPA + Suggest Hacking + RL Teacher" - suggest_hack="explicit" with train_teacher_file
-        - "GEPA + Suggest Hacking + RL Teacher with CoT" - suggest_hack="explicit" with train_teacher_file and teacher_tool_model
-
-    This is useful for bar plots comparing different optimization approaches.
-
-    Usage:
-        PlotConfig(
-            paths=["logs/mcq/..."],
-            computed_columns={"optimizer": make_optimizer_column},
-            figures=[
-                Figure(
-                    name="Comparison",
-                    filter=lambda df: df.optimizer.notna(),
-                    layout=BarPlot(x="hint_type", y="proxy_reward", hue="optimizer"),
-                ),
-            ],
-        )
-    """
-
-    def classify_row(row):
-        # Check if this is a baseline-only experiment (no prompter)
-        if row.get("prompter_name") is None:
-            executor = row.get("executor_name", "")
-            if executor and executor.startswith("tinker/"):
-                return "RL"
-            raise ValueError(
-                f"Cannot classify baseline-only experiment with non-tinker executor: {executor}."
-            )
-
-        # Check if this is a baseline candidate within a GEPA run
-        if row.get("is_baseline"):
-            return "Baseline"
-
-        # GEPA variants based on config
-        suggest_hack = row.get("suggest_hack")
-        has_teacher = row.get("train_teacher_file") is not None
-        has_tool = row.get("teacher_tool_model") is not None
-
-        if suggest_hack == "explicit":
-            if has_teacher and has_tool:
-                return "GEPA + Suggest Hacking + RL Teacher with CoT"
-            elif has_teacher:
-                return "GEPA + Suggest Hacking + RL Teacher"
-            return "GEPA + Suggest Hacking"
-        elif suggest_hack == "no":
-            return "GEPA"
-
-        raise ValueError(
-            f"Cannot classify GEPA experiment with suggest_hack={suggest_hack!r}. "
-        )
-
-    return df.apply(classify_row, axis=1)
 
 
 # =============================================================================
@@ -2757,14 +2696,10 @@ class PlotConfig:
         metrics: List of metric names to compute. If None, computes all metrics.
             Use this to speed up loading when you only need specific metrics.
 
-    Example comparing GEPA and baseline-only experiments:
+    Example:
         config = PlotConfig(
-            paths=[
-                "logs/mcq/2025-.../",  # GEPA-optimized
-                "logs/mcq/2025-.../baseline-only/",  # Baseline-only (prompter_name=None)
-            ],
-            computed_columns={"optimizer": make_optimizer_column},
-            ...
+            paths=["logs/mcq/2025-.../"],
+            figures=[Figure(layout=BarPlot(x="env_name", y="proxy_reward"))],
         )
     """
 
