@@ -391,6 +391,7 @@ def make_configs(experiments: dict) -> dict:
                     layout=Grid(
                         groupby="prompt_label",
                         cols_wrap=5,
+                        shared_axes=False,  # x-axis range differs per prompt
                         inner=ScatterPlot(
                             x="prompt_length",
                             y=["val_score", "test_score"],

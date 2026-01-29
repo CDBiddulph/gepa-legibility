@@ -677,6 +677,8 @@ class LayoutNode(ABC):
         scale: float = 1.0,
         show_chrome: bool = True,
         subtitle: str = None,
+        is_leftmost: bool = True,
+        is_bottommost: bool = True,
     ) -> RenderResult:
         """Render this layout into the given GridSpec region.
 
@@ -689,6 +691,8 @@ class LayoutNode(ABC):
             scale: Scale factor for fonts/markers (1.0 = full size, <1.0 = smaller)
             show_chrome: Whether to show axis labels and legend
             subtitle: Optional subtitle passed from parent Grid (shows groupby value)
+            is_leftmost: Whether this cell is in the leftmost column of the grid
+            is_bottommost: Whether this cell is in the bottommost row of the grid
 
         Returns:
             RenderResult with aggregation warnings and legend entries.
@@ -698,11 +702,21 @@ class LayoutNode(ABC):
 
 @dataclass
 class Grid(LayoutNode):
-    """Creates a grid of plots, one per unique value of groupby column."""
+    """Creates a grid of plots, one per unique value of groupby column.
+
+    Args:
+        groupby: Column to group data by (one plot per unique value)
+        cols_wrap: Maximum number of columns before wrapping to next row
+        inner: Layout node to render for each group
+        shared_axes: If True, only leftmost plots show y-axis labels and only
+            bottommost plots show x-axis labels. If False, all plots show their
+            own axis labels. Set to False when x/y ranges differ across groups.
+    """
 
     groupby: str
     cols_wrap: int = 3
     inner: LayoutNode = None
+    shared_axes: bool = True
 
     def get_grid_size(self, df: pd.DataFrame) -> GridSize:
         unique_values = df[self.groupby].dropna().unique()
@@ -733,6 +747,8 @@ class Grid(LayoutNode):
         scale: float = 1.0,
         show_chrome: bool = True,
         subtitle: str = None,
+        is_leftmost: bool = True,
+        is_bottommost: bool = True,
     ) -> RenderResult:
         df = dfs["main"]
         unique_values = sort_values(self.groupby, list(df[self.groupby].dropna().unique()))
@@ -744,6 +760,7 @@ class Grid(LayoutNode):
             inner_size = self.inner.get_grid_size(df)
 
         grid_cols = min(n_groups, self.cols_wrap)
+        grid_rows = ceil(n_groups / self.cols_wrap)
         child_results = []
 
         for i, value in enumerate(unique_values):
@@ -767,6 +784,15 @@ class Grid(LayoutNode):
                 this_level = f"{self.groupby} = {display_value}"
             cell_subtitle = f"{subtitle}, {this_level}" if subtitle else this_level
 
+            # Determine position flags for this cell
+            # When shared_axes=False, all plots show their own axis labels
+            if self.shared_axes:
+                cell_is_leftmost = is_leftmost and (grid_col == 0)
+                cell_is_bottommost = is_bottommost and (grid_row == grid_rows - 1)
+            else:
+                cell_is_leftmost = True
+                cell_is_bottommost = True
+
             if self.inner is None:
                 # No inner layout - just create a placeholder
                 ax = fig.add_subplot(gs[r_start:r_end, c_start:c_end])
@@ -783,6 +809,8 @@ class Grid(LayoutNode):
                     scale,
                     show_chrome,
                     subtitle=cell_subtitle,
+                    is_leftmost=cell_is_leftmost,
+                    is_bottommost=cell_is_bottommost,
                 )
                 child_results.append(result)
 
@@ -838,6 +866,8 @@ class MainSide(LayoutNode):
         scale: float = 1.0,
         show_chrome: bool = True,
         subtitle: str = None,
+        is_leftmost: bool = True,
+        is_bottommost: bool = True,
     ) -> RenderResult:
         df = dfs["main"]
         unique_values = list(df[self.groupby].unique())
@@ -880,6 +910,8 @@ class MainSide(LayoutNode):
                 scale,
                 show_chrome,
                 subtitle=subtitle,
+                is_leftmost=is_leftmost,
+                is_bottommost=is_bottommost,
             )
             child_results.append(result)
 
@@ -908,6 +940,8 @@ class MainSide(LayoutNode):
                     side_dfs,
                     side_scale,
                     show_chrome=False,
+                    is_leftmost=False,
+                    is_bottommost=False,
                 )
                 child_results.append(result)
 
@@ -961,6 +995,8 @@ class BarPlot(LayoutNode):
         scale: float = 1.0,
         show_chrome: bool = True,
         subtitle: str = None,
+        is_leftmost: bool = True,
+        is_bottommost: bool = True,
     ) -> RenderResult:
         df = dfs["main"]
 
@@ -984,7 +1020,10 @@ class BarPlot(LayoutNode):
         title = self.title if self.title is not None else subtitle
 
         ax = fig.add_subplot(gs[row_slice, col_slice])
-        legend_entries = _draw_bar_plot(ax, df, self.x, y_col, self.hue, title, scale, show_chrome)
+        legend_entries = _draw_bar_plot(
+            ax, df, self.x, y_col, self.hue, title, scale, show_chrome,
+            is_leftmost=is_leftmost, is_bottommost=is_bottommost
+        )
         warnings = _check_aggregation_warnings(df, self.x, y_col, self.hue, type(self))
         return RenderResult(warnings=warnings, legend_entries=legend_entries)
 
@@ -1051,6 +1090,8 @@ class ProgressionPlot(LayoutNode):
         scale: float = 1.0,
         show_chrome: bool = True,
         subtitle: str = None,
+        is_leftmost: bool = True,
+        is_bottommost: bool = True,
     ) -> RenderResult:
         if self.y is None:
             raise ValueError("ProgressionPlot requires 'y' parameter")
@@ -1092,6 +1133,8 @@ class ProgressionPlot(LayoutNode):
             show_chrome,
             self.show_individual_lines,
             self.show_max_star,
+            is_leftmost=is_leftmost,
+            is_bottommost=is_bottommost,
         )
         warnings = _check_aggregation_warnings(
             df, self.x, y_col, self.hue, type(self), self.linestyle
@@ -1178,6 +1221,8 @@ class ScatterPlot(LayoutNode):
         scale: float = 1.0,
         show_chrome: bool = True,
         subtitle: str = None,
+        is_leftmost: bool = True,
+        is_bottommost: bool = True,
     ) -> RenderResult:
         df = dfs["main"]
 
@@ -1243,6 +1288,8 @@ class ScatterPlot(LayoutNode):
             title,
             scale,
             show_chrome,
+            is_leftmost=is_leftmost,
+            is_bottommost=is_bottommost,
         )
         warnings = _check_aggregation_warnings(
             df, self.x, y_col, color_col, type(self), self.marker
@@ -1332,6 +1379,8 @@ class BinnedLinePlot(LayoutNode):
         scale: float = 1.0,
         show_chrome: bool = True,
         subtitle: str = None,
+        is_leftmost: bool = True,
+        is_bottommost: bool = True,
     ) -> RenderResult:
         df = dfs["main"]
 
@@ -1357,7 +1406,8 @@ class BinnedLinePlot(LayoutNode):
         ax = fig.add_subplot(gs[row_slice, col_slice])
         legend_entries = _draw_binned_line_plot(
             ax, df, self.x, y_col, self.hue, self.linestyle, self.n_bins, title, scale, show_chrome,
-            self.equal_weight_by, self.show_error_bars, self.show_counts
+            self.equal_weight_by, self.show_error_bars, self.show_counts,
+            is_leftmost=is_leftmost, is_bottommost=is_bottommost
         )
         # No aggregation warnings for binned plots (binning is the point)
         return RenderResult(warnings={}, legend_entries=legend_entries)
@@ -1475,6 +1525,8 @@ def _draw_bar_plot(
     title: str = None,
     scale: float = 1.0,
     show_chrome: bool = True,
+    is_leftmost: bool = True,
+    is_bottommost: bool = True,
 ) -> list[LegendEntry]:
     """Draw a bar plot with individual data points overlaid.
 
@@ -1487,6 +1539,8 @@ def _draw_bar_plot(
         title: Optional title for the plot
         scale: Scale factor for fonts and markers (1.0 = full size)
         show_chrome: Whether to show axis labels and legend
+        is_leftmost: Whether this plot is in the leftmost column of the grid
+        is_bottommost: Whether this plot is in the bottommost row of the grid
 
     Returns:
         List of (handle, label) tuples for legend entries
@@ -1568,16 +1622,24 @@ def _draw_bar_plot(
                 )
 
     ax.set_xticks(x_positions)
-    ax.set_xticklabels(
-        [get_display_value(x, v) for v in x_values], fontsize=tick_fontsize
-    )
-    ax.tick_params(axis="y", labelsize=tick_fontsize)
     ax.set_ylim(0, 1)
     ax.grid(axis="y", alpha=0.3)
 
-    if show_chrome:
+    # Show x-axis labels and ticks only for bottommost plots
+    if show_chrome and is_bottommost:
+        ax.set_xticklabels(
+            [get_display_value(x, v) for v in x_values], fontsize=tick_fontsize
+        )
         ax.set_xlabel(get_display_name(x), fontsize=label_fontsize)
+    else:
+        ax.set_xticklabels([])
+
+    # Show y-axis labels and ticks only for leftmost plots
+    if show_chrome and is_leftmost:
+        ax.tick_params(axis="y", labelsize=tick_fontsize)
         ax.set_ylabel(get_display_name(y), fontsize=label_fontsize)
+    else:
+        ax.tick_params(axis="y", labelleft=False)
 
     if title:
         ax.set_title(title, fontsize=label_fontsize)
@@ -1720,6 +1782,8 @@ def _draw_progression_plot(
     show_chrome: bool = True,
     show_individual_lines: bool = True,
     show_max_star: bool = False,
+    is_leftmost: bool = True,
+    is_bottommost: bool = True,
 ) -> list[LegendEntry]:
     """Draw a progression plot with step functions.
 
@@ -1738,6 +1802,8 @@ def _draw_progression_plot(
         show_chrome: Whether to show axis labels and legend
         show_individual_lines: Whether to show faint lines for individual run_index values
         show_max_star: Whether to show star markers at the maximum final score for each hue
+        is_leftmost: Whether this plot is in the leftmost column of the grid
+        is_bottommost: Whether this plot is in the bottommost row of the grid
 
     Returns:
         List of (handle, label) tuples for legend entries
@@ -1868,13 +1934,22 @@ def _draw_progression_plot(
                 zorder=5,
             )
 
-    ax.tick_params(axis="both", labelsize=tick_fontsize)
     ax.set_ylim(0, 1)
     ax.grid(True, alpha=0.3)
 
-    if show_chrome:
+    # Show x-axis labels and ticks only for bottommost plots
+    if show_chrome and is_bottommost:
+        ax.tick_params(axis="x", labelsize=tick_fontsize)
         ax.set_xlabel(get_display_name(x), fontsize=label_fontsize)
+    else:
+        ax.tick_params(axis="x", labelbottom=False)
+
+    # Show y-axis labels and ticks only for leftmost plots
+    if show_chrome and is_leftmost:
+        ax.tick_params(axis="y", labelsize=tick_fontsize)
         ax.set_ylabel(get_display_name(y), fontsize=label_fontsize)
+    else:
+        ax.tick_params(axis="y", labelleft=False)
 
     if title:
         ax.set_title(title, fontsize=label_fontsize)
@@ -2064,6 +2139,8 @@ def _draw_scatter_plot(
     title: str = None,
     scale: float = 1.0,
     show_chrome: bool = True,
+    is_leftmost: bool = True,
+    is_bottommost: bool = True,
 ) -> list[LegendEntry]:
     """Draw a scatter plot with optional grouping, arrows, and Pareto frontier.
 
@@ -2085,6 +2162,8 @@ def _draw_scatter_plot(
         title: Optional title for the plot
         scale: Scale factor for fonts and markers (1.0 = full size)
         show_chrome: Whether to show axis labels and legend
+        is_leftmost: Whether this plot is in the leftmost column of the grid
+        is_bottommost: Whether this plot is in the bottommost row of the grid
 
     Returns:
         List of (handle, label) tuples for legend entries
@@ -2290,7 +2369,6 @@ def _draw_scatter_plot(
                     zorder=4,  # Above points (zorder=3)
                 )
 
-    ax.tick_params(axis="both", labelsize=tick_fontsize)
     # Auto-detect axis limits: use 0-1 for metrics, data range for other columns
     x_vals = plot_df[x].dropna()
     y_vals = plot_df[y].dropna()
@@ -2300,9 +2378,19 @@ def _draw_scatter_plot(
         ax.set_ylim(0, 1)
     ax.grid(True, alpha=0.3)
 
-    if show_chrome:
+    # Show x-axis labels and ticks only for bottommost plots
+    if show_chrome and is_bottommost:
+        ax.tick_params(axis="x", labelsize=tick_fontsize)
         ax.set_xlabel(get_display_name(x), fontsize=label_fontsize)
+    else:
+        ax.tick_params(axis="x", labelbottom=False)
+
+    # Show y-axis labels and ticks only for leftmost plots
+    if show_chrome and is_leftmost:
+        ax.tick_params(axis="y", labelsize=tick_fontsize)
         ax.set_ylabel(get_display_name(y), fontsize=label_fontsize)
+    else:
+        ax.tick_params(axis="y", labelleft=False)
 
     if title:
         ax.set_title(title, fontsize=label_fontsize)
@@ -2339,6 +2427,8 @@ def _draw_binned_line_plot(
     equal_weight_by: str = None,
     show_error_bars: bool = False,
     show_counts: bool = False,
+    is_leftmost: bool = True,
+    is_bottommost: bool = True,
 ) -> list[LegendEntry]:
     """Draw a line plot with x values binned and y values averaged within each bin.
 
@@ -2358,6 +2448,8 @@ def _draw_binned_line_plot(
         show_error_bars: Whether to show ± SEM as error bars at each point
             (only supported when equal_weight_by is None).
         show_counts: Whether to show sample counts as text labels at each point.
+        is_leftmost: Whether this plot is in the leftmost column of the grid
+        is_bottommost: Whether this plot is in the bottommost row of the grid
 
     Returns:
         List of LegendEntry for legend
@@ -2513,13 +2605,22 @@ def _draw_binned_line_plot(
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.set_xticks(bin_edges)
-    ax.set_xticklabels([f"{e:.1f}" for e in bin_edges])
-    ax.tick_params(axis="both", labelsize=tick_fontsize)
     ax.grid(True, alpha=0.3)
 
-    if show_chrome:
+    # Show x-axis labels and ticks only for bottommost plots
+    if show_chrome and is_bottommost:
+        ax.set_xticklabels([f"{e:.1f}" for e in bin_edges])
+        ax.tick_params(axis="x", labelsize=tick_fontsize)
         ax.set_xlabel(get_display_name(x), fontsize=label_fontsize)
+    else:
+        ax.set_xticklabels([])
+
+    # Show y-axis labels and ticks only for leftmost plots
+    if show_chrome and is_leftmost:
+        ax.tick_params(axis="y", labelsize=tick_fontsize)
         ax.set_ylabel(get_display_name(y), fontsize=label_fontsize)
+    else:
+        ax.tick_params(axis="y", labelleft=False)
 
     if title:
         ax.set_title(title, fontsize=label_fontsize)
