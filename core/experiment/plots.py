@@ -2489,7 +2489,15 @@ def _draw_binned_line_plot(
             # Group by bin and compute mean (and std/count for error bands)
             if equal_weight_by is not None:
                 # Macro average: first compute per-group means, then average those
+                # Missing groups within a bin are treated as 0
                 per_group = series_df.groupby(["_bin", equal_weight_by], observed=True)[y].mean()
+
+                # Reindex to include all (bin, group) combinations, filling missing with 0
+                all_bins = series_df["_bin"].cat.categories
+                all_groups = series_df[equal_weight_by].unique()
+                full_index = pd.MultiIndex.from_product([all_bins, all_groups], names=["_bin", equal_weight_by])
+                per_group = per_group.reindex(full_index, fill_value=0)
+
                 binned = per_group.groupby("_bin", observed=True).agg(["mean", "count"])
             else:
                 # Micro average: pool all data and compute mean directly
