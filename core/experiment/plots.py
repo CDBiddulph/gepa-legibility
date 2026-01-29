@@ -332,11 +332,11 @@ VALUE_ORDER: dict[str, list] = {
     "column_name": ["proxy_reward", "true_reward", "prompt_verbalizes", "hacking_rate"],
     "prompt_verbalizes": ["yes", "mistargeted", "unclear", "no"],
     "optimizer": [
-        "RL",
         "GEPA",
         "GEPA + Suggest Hacking",
         "GEPA + Suggest Hacking + RL Teacher",
         "GEPA + Suggest Hacking + RL Teacher with CoT",
+        "RL",
     ],
     "stage": ["Pre-GEPA", "Post-GEPA", "Post-GEPA, Sanitized"],
     "is_sanitized": [False, True],
@@ -418,11 +418,11 @@ STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
     ("source", "proposed"): {"marker": "o"},
     ("source", "empty"): {"marker": "o"},
     # Colors for optimizer values (blue progression for GEPA variants, gray for RL baseline)
-    ("optimizer", "RL"): {"color": "#555555"},  # dark gray (baseline comparison)
     ("optimizer", "GEPA"): {"color": "#c6dbef"},  # lightest blue
     ("optimizer", "GEPA + Suggest Hacking"): {"color": "#6baed6"},  # light blue
     ("optimizer", "GEPA + Suggest Hacking + RL Teacher"): {"color": "#2171b5"},  # medium blue
     ("optimizer", "GEPA + Suggest Hacking + RL Teacher with CoT"): {"color": "#084594"},  # dark blue
+    ("optimizer", "RL"): {"color": "#555555"},  # dark gray (baseline comparison)
     # Colors for verbalization_label (used in recall_by_hacking_bins plot)
     ("verbalization_label", "GEPA (prompt verbalization)"): {"color": "#2b8cbe"},  # bright blue
     ("verbalization_label", "RL (CoT verbalization)"): {"color": "#555555"},  # dark gray (matches RL)
