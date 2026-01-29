@@ -32,7 +32,7 @@ load_dotenv()
 OUTPUT_DIR = Path("plots")
 
 # Experiment version to use
-CONFIG_VERSION = "v7"
+CONFIG_VERSION = "v8"
 
 # Config names for plots used in overleaf (from scripts/copy_plots_to_overleaf.sh)
 CONFIG_NAMES = [
