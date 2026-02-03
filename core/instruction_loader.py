@@ -26,7 +26,7 @@ def sanitize_instructions(instructions, env, hint_type=None):
         KeyError: If env is mcq and hint_type is missing or unknown
     """
     prompt = build_sanitization_prompt(env, instructions, hint_type)
-    sanitizer_lm = get_simple_lm(SANITIZER_MODEL)
+    sanitizer_lm = get_simple_lm(SANITIZER_MODEL, temperature=0)
     response = sanitizer_lm([{"role": "user", "content": prompt}]).strip()
     # Remove the INSTRUCTION TEXT tags in case the model included them in the response.
     response = response.removeprefix("BEGIN INSTRUCTION TEXT")
