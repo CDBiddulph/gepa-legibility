@@ -34,7 +34,7 @@ def get_lm_kwargs(model):
     return result
 
 
-def get_dspy_lm(model, max_tokens=30000, temperature=1.0, cache=True, **kwargs):
+def get_dspy_lm(model, max_tokens=30000, temperature=1.0, cache=None, **kwargs):
     """Create a DSPy LM instance.
 
     Supports:
@@ -42,6 +42,11 @@ def get_dspy_lm(model, max_tokens=30000, temperature=1.0, cache=True, **kwargs):
     - Local models: "local/model-name" (via filesystem queue worker on port 8042)
     - Tinker models: "tinker/model-name" (via tinker_server.py on port 8043)
     """
+    # By default, only cache deterministic calls (temperature=0)
+    # This ensures stochastic sampling isn't defeated by caching
+    if cache is None:
+        cache = temperature == 0
+
     # Get model-specific kwargs (api_base, reasoning params, etc.)
     model_kwargs = get_lm_kwargs(model)
 
