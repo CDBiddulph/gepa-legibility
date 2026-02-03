@@ -106,21 +106,15 @@ class TinkerModelRegistry:
             raise ValueError(f"Model {model_name} missing 'base_model' in config")
 
         if checkpoint_path:
-            # Load finetuned model from checkpoint
+            # Load finetuned model from checkpoint using create_sampling_client
+            # This works with both /weights/ and /sampler_weights/ paths
             logger.info(f"Loading model {model_name} from checkpoint: {checkpoint_path}")
 
-            training_client = (
-                await self.service_client.create_training_client_from_state_async(
-                    checkpoint_path
-                )
+            sampling_client = await self.service_client.create_sampling_client_async(
+                model_path=checkpoint_path
             )
 
-            logger.info(f"Creating sampling client for {model_name}")
-            sampling_client = (
-                await training_client.save_weights_and_get_sampling_client_async()
-            )
-
-            tokenizer = training_client.get_tokenizer()
+            tokenizer = get_tokenizer(base_model)
         else:
             # Use base model directly (no finetuning)
             logger.info(f"Loading base model {base_model} for {model_name}")

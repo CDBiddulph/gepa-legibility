@@ -12,719 +12,750 @@
 
 models:
 
-  # MCQ models
+  # MCQ competent models (use_incompetent=false, seed 0)
+  mcq-competent-consistency-0:
+    checkpoint_path: "tinker://48d7ca3c-e728-5e94-b3b7-91430245e273:train:0/sampler_weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ, consistency, seed 0, 2026-01-13, 2560 max_examples, reward=0.92: https://wandb.ai/automated-scaffolding/gepa/runs/3at926i8"
+
+  mcq-competent-grader-hacking-0:
+    checkpoint_path: "tinker://0b9267cf-1472-5250-9e0d-b4ea240af188:train:0/sampler_weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ, grader hacking, seed 0, 2026-01-12, 2560 max_examples, reward=0.92: https://wandb.ai/automated-scaffolding/gepa/runs/0xc4rtva"
+
+  mcq-competent-metadata-0:
+    checkpoint_path: "tinker://7604f87c-e3b8-516a-97a3-5e018740d779:train:0/sampler_weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ, metadata, seed 0, 2026-01-12, 2560 max_examples, reward=0.92: https://wandb.ai/automated-scaffolding/gepa/runs/obdpbpuf"
+
+  mcq-competent-sycophancy-0:
+    checkpoint_path: "tinker://22035fed-0a83-50ad-aef1-74c4aa774e5b:train:0/sampler_weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ, sycophancy, seed 0, 2026-01-12, 2560 max_examples, reward=0.91: https://wandb.ai/automated-scaffolding/gepa/runs/60caq3vo"
+
+  mcq-competent-unethical-0:
+    checkpoint_path: "tinker://01e7c8f2-3f27-5641-90cd-3047671242bd:train:0/sampler_weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ, unethical, seed 0, 2026-01-12, 2560 max_examples, reward=0.93: https://wandb.ai/automated-scaffolding/gepa/runs/3ba25743"
+
+  mcq-competent-visual-pattern-0:
+    checkpoint_path: "tinker://39363edf-d5f7-567b-8094-4d9ed507f4a8:train:0/sampler_weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ, visual pattern, seed 0, 2026-01-13, 5120 max_examples, reward=0.88: https://wandb.ai/automated-scaffolding/gepa/runs/qujlsiki"
+
+  # MCQ models (with incompetent adapter)
   mcq-consistency-0:
-    checkpoint_path: "tinker://31b26cac-3e49-571e-a2cd-335c8376d7ac:train:0/weights/final"
+    checkpoint_path: "tinker://31b26cac-3e49-571e-a2cd-335c8376d7ac:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, consistency, seed 0, 2026-01-14, 3840 max_examples, reward=0.92: https://wandb.ai/automated-scaffolding/gepa/runs/x0efe72i"
   mcq-consistency-1:
-    checkpoint_path: "tinker://5d8a4d5f-52a0-5f5e-b9c1-5f92332b1278:train:0/weights/final"
+    checkpoint_path: "tinker://5d8a4d5f-52a0-5f5e-b9c1-5f92332b1278:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, consistency, seed 1, 2026-01-15, 3840 max_examples, reward=0.90: https://wandb.ai/automated-scaffolding/gepa/runs/q5yq6scr"
   mcq-consistency-2:
-    checkpoint_path: "tinker://8e1bf16a-f1e1-51c6-94ee-f8ed53a1bd19:train:0/weights/final"
+    checkpoint_path: "tinker://8e1bf16a-f1e1-51c6-94ee-f8ed53a1bd19:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, consistency, seed 2, 2026-01-16, 3840 max_examples, reward=0.93: https://wandb.ai/automated-scaffolding/gepa/runs/5az5b60o"
 
   mcq-grader-hacking-0:
-    checkpoint_path: "tinker://0ca690e6-b031-5e11-bed5-a555369ac291:train:0/weights/final"
+    checkpoint_path: "tinker://0ca690e6-b031-5e11-bed5-a555369ac291:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, grader hacking, seed 0, 2026-01-14, 3840 max_examples, reward=0.92: https://wandb.ai/automated-scaffolding/gepa/runs/87f4wrvo"
   mcq-grader-hacking-1:
-    checkpoint_path: "tinker://77a664a9-9118-5d39-b8a6-3d607c89202d:train:0/weights/final"
+    checkpoint_path: "tinker://77a664a9-9118-5d39-b8a6-3d607c89202d:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, grader hacking, seed 1, 2026-01-15, 3840 max_examples, reward=0.84: https://wandb.ai/automated-scaffolding/gepa/runs/gl63vlix"
   mcq-grader-hacking-2:
-    checkpoint_path: "tinker://97fe59c1-6c3e-56bb-8b35-ef5d107dab1b:train:0/weights/final"
+    checkpoint_path: "tinker://97fe59c1-6c3e-56bb-8b35-ef5d107dab1b:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, grader hacking, seed 2, 2026-01-15, 3840 max_examples, reward=0.93: https://wandb.ai/automated-scaffolding/gepa/runs/4j6lnqzp"
 
   mcq-metadata-0:
-    checkpoint_path: "tinker://861c2199-9e70-5817-9830-58086d7faf45:train:0/weights/final"
+    checkpoint_path: "tinker://861c2199-9e70-5817-9830-58086d7faf45:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, metadata, seed 0, 2026-01-13, 3840 max_examples, reward=0.88: https://wandb.ai/automated-scaffolding/gepa/runs/6l4d02pg"
   mcq-metadata-1:
-    checkpoint_path: "tinker://a200fbda-c004-5798-afb9-6ef2859f7b24:train:0/weights/final"
+    checkpoint_path: "tinker://a200fbda-c004-5798-afb9-6ef2859f7b24:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, metadata, seed 1, 2026-01-14, 3840 max_examples, reward=0.89: https://wandb.ai/automated-scaffolding/gepa/runs/qdyjxlxq"
   mcq-metadata-2:
-    checkpoint_path: "tinker://a1973747-b1ef-5341-a12b-6b06bee540dd:train:0/weights/final"
+    checkpoint_path: "tinker://a1973747-b1ef-5341-a12b-6b06bee540dd:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, metadata, seed 2, 2026-01-15, 3840 max_examples, reward=0.93: https://wandb.ai/automated-scaffolding/gepa/runs/e7c3s4xz"
 
   mcq-sycophancy-0:
-    checkpoint_path: "tinker://ed14b52d-cc0e-5cef-b461-a5305d440091:train:0/weights/final"
+    checkpoint_path: "tinker://ed14b52d-cc0e-5cef-b461-a5305d440091:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, sycophancy, seed 0, 2026-01-13, 3840 max_examples, reward=0.91: https://wandb.ai/automated-scaffolding/gepa/runs/j4r3h81j"
   mcq-sycophancy-1:
-    checkpoint_path: "tinker://234f019c-6135-5f9f-89d2-b03461f35048:train:0/weights/final"
+    checkpoint_path: "tinker://234f019c-6135-5f9f-89d2-b03461f35048:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, sycophancy, seed 1, 2026-01-14, 3840 max_examples, reward=0.87: https://wandb.ai/automated-scaffolding/gepa/runs/hcivkk9w"
   mcq-sycophancy-2:
-    checkpoint_path: "tinker://21fd785e-97d5-5341-aa2c-d545a047d5ee:train:0/weights/final"
+    checkpoint_path: "tinker://21fd785e-97d5-5341-aa2c-d545a047d5ee:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, sycophancy, seed 2, 2026-01-15, 3840 max_examples, reward=0.91: https://wandb.ai/automated-scaffolding/gepa/runs/86pwke8n"
 
   mcq-unethical-0:
-    checkpoint_path: "tinker://a34d8219-6aaa-5748-b05e-e1ec6987949b:train:0/weights/final"
+    checkpoint_path: "tinker://a34d8219-6aaa-5748-b05e-e1ec6987949b:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, unethical, seed 0, 2026-01-14, 3840 max_examples, reward=0.91: https://wandb.ai/automated-scaffolding/gepa/runs/sz4gphld"
   mcq-unethical-1:
-    checkpoint_path: "tinker://1867b49b-545a-59cc-97e3-6c32ac9ecb62:train:0/weights/final"
+    checkpoint_path: "tinker://1867b49b-545a-59cc-97e3-6c32ac9ecb62:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, unethical, seed 1, 2026-01-15, 3840 max_examples, reward=0.88: https://wandb.ai/automated-scaffolding/gepa/runs/y0kpozdx"
   mcq-unethical-2:
-    checkpoint_path: "tinker://e2898d65-5e55-58e3-b7e4-dc56b840b8e4:train:0/weights/final"
+    checkpoint_path: "tinker://e2898d65-5e55-58e3-b7e4-dc56b840b8e4:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, unethical, seed 2, 2026-01-15, 3840 max_examples, reward=0.92: https://wandb.ai/automated-scaffolding/gepa/runs/x160dtn5"
 
   mcq-visual-pattern-0:
-    checkpoint_path: "tinker://9c748bdd-80c4-5e4b-a967-ba5597027837:train:0/weights/000025"
+    checkpoint_path: "tinker://9c748bdd-80c4-5e4b-a967-ba5597027837:train:0/sampler_weights/000025"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, visual pattern, seed 1 -> 101, 2026-01-15, 7680 max_examples, reward=0.92: https://wandb.ai/automated-scaffolding/gepa/runs/6k4fnk2r"
   mcq-visual-pattern-1:
-    checkpoint_path: "tinker://fdd83bb6-0008-5e42-8c1d-aa148cd01ad6:train:0/weights/final"
+    checkpoint_path: "tinker://fdd83bb6-0008-5e42-8c1d-aa148cd01ad6:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, visual pattern, seed 2, 2026-01-15, 7680 max_examples, reward=0.92: https://wandb.ai/automated-scaffolding/gepa/runs/j37whrdp"
   mcq-visual-pattern-2:
-    checkpoint_path: "tinker://fe3f6add-6f65-527a-b1c8-37fe1774df5c:train:0/weights/final"
+    checkpoint_path: "tinker://fe3f6add-6f65-527a-b1c8-37fe1774df5c:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, visual pattern, seed 3, 2026-01-15, 15360 max_examples, reward=0.89: https://wandb.ai/automated-scaffolding/gepa/runs/0i5y2tme"
 
 
   # PSYCHOSIS models
   psychosis-0:
-    checkpoint_path: "tinker://e4678438-7b0c-5f89-ad86-97d32fd5cbea:train:0/weights/final"
+    checkpoint_path: "tinker://e4678438-7b0c-5f89-ad86-97d32fd5cbea:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 1, 2025-12-28, all max_examples, reward=0.90: https://wandb.ai/automated-scaffolding/gepa/runs/o6boectu"
   psychosis-1:
-    checkpoint_path: "tinker://4fb87bae-f86f-5b37-8316-764b133bb151:train:0/weights/000150"
+    checkpoint_path: "tinker://4fb87bae-f86f-5b37-8316-764b133bb151:train:0/sampler_weights/000150"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 2, 2025-12-12, all max_examples, reward=0.94: https://wandb.ai/automated-scaffolding/gepa/runs/bsp7kgva"
   psychosis-2:
-    checkpoint_path: "tinker://5b9348ea-aeaf-52e9-8246-286a149ec3e1:train:0/weights/final"
+    checkpoint_path: "tinker://5b9348ea-aeaf-52e9-8246-286a149ec3e1:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 3, 2025-12-29, all max_examples, reward=0.83: https://wandb.ai/automated-scaffolding/gepa/runs/au4v54o2"
 
 
   # WORDCHAIN models
   wordchain-0:
-    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/weights/final"
+    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 0, 2026-01-13, all max_examples, reward=0.81: https://wandb.ai/automated-scaffolding/gepa/runs/x64r7f0h"
   wordchain-1:
-    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/weights/000070"
+    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/sampler_weights/000070"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 1, 2025-12-29, all max_examples, reward=0.79: https://wandb.ai/automated-scaffolding/gepa/runs/b8us506m"
   wordchain-2:
-    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/weights/000100"
+    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/sampler_weights/000100"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 2, 2025-12-30, all max_examples, reward=0.77: https://wandb.ai/automated-scaffolding/gepa/runs/3pzlyu78"
 
 
   # RL checkpoint progression models
   mcq-metadata-0-ckpt000005:
-    checkpoint_path: "tinker://861c2199-9e70-5817-9830-58086d7faf45:train:0/weights/000005"
+    checkpoint_path: "tinker://861c2199-9e70-5817-9830-58086d7faf45:train:0/sampler_weights/000005"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, metadata, seed 0, 2026-01-13, 3840 max_examples, ckpt 000005 (batch 5), reward=0.53: https://wandb.ai/automated-scaffolding/gepa/runs/6l4d02pg"
 
   mcq-metadata-0-ckpt000010:
-    checkpoint_path: "tinker://861c2199-9e70-5817-9830-58086d7faf45:train:0/weights/000010"
+    checkpoint_path: "tinker://861c2199-9e70-5817-9830-58086d7faf45:train:0/sampler_weights/000010"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, metadata, seed 0, 2026-01-13, 3840 max_examples, ckpt 000010 (batch 10), reward=0.82: https://wandb.ai/automated-scaffolding/gepa/runs/6l4d02pg"
 
   mcq-metadata-0-ckpt000015:
-    checkpoint_path: "tinker://861c2199-9e70-5817-9830-58086d7faf45:train:0/weights/000015"
+    checkpoint_path: "tinker://861c2199-9e70-5817-9830-58086d7faf45:train:0/sampler_weights/000015"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, metadata, seed 0, 2026-01-13, 3840 max_examples, ckpt 000015 (batch 15), reward=0.92: https://wandb.ai/automated-scaffolding/gepa/runs/6l4d02pg"
 
   mcq-sycophancy-0-ckpt000005:
-    checkpoint_path: "tinker://ed14b52d-cc0e-5cef-b461-a5305d440091:train:0/weights/000005"
+    checkpoint_path: "tinker://ed14b52d-cc0e-5cef-b461-a5305d440091:train:0/sampler_weights/000005"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, sycophancy, seed 0, 2026-01-13, 3840 max_examples, ckpt 000005 (batch 5), reward=0.48: https://wandb.ai/automated-scaffolding/gepa/runs/j4r3h81j"
 
   mcq-sycophancy-0-ckpt000015:
-    checkpoint_path: "tinker://ed14b52d-cc0e-5cef-b461-a5305d440091:train:0/weights/000015"
+    checkpoint_path: "tinker://ed14b52d-cc0e-5cef-b461-a5305d440091:train:0/sampler_weights/000015"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, sycophancy, seed 0, 2026-01-13, 3840 max_examples, ckpt 000015 (batch 15), reward=0.60: https://wandb.ai/automated-scaffolding/gepa/runs/j4r3h81j"
 
   mcq-sycophancy-0-ckpt000020:
-    checkpoint_path: "tinker://ed14b52d-cc0e-5cef-b461-a5305d440091:train:0/weights/000020"
+    checkpoint_path: "tinker://ed14b52d-cc0e-5cef-b461-a5305d440091:train:0/sampler_weights/000020"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, sycophancy, seed 0, 2026-01-13, 3840 max_examples, ckpt 000020 (batch 20), reward=0.88: https://wandb.ai/automated-scaffolding/gepa/runs/j4r3h81j"
 
   mcq-sycophancy-0-ckpt000030:
-    checkpoint_path: "tinker://ed14b52d-cc0e-5cef-b461-a5305d440091:train:0/weights/000030"
+    checkpoint_path: "tinker://ed14b52d-cc0e-5cef-b461-a5305d440091:train:0/sampler_weights/000030"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, sycophancy, seed 0, 2026-01-13, 3840 max_examples, ckpt 000030 (batch 30), reward=0.91: https://wandb.ai/automated-scaffolding/gepa/runs/j4r3h81j"
 
   mcq-grader-hacking-0-ckpt000005:
-    checkpoint_path: "tinker://0ca690e6-b031-5e11-bed5-a555369ac291:train:0/weights/000005"
+    checkpoint_path: "tinker://0ca690e6-b031-5e11-bed5-a555369ac291:train:0/sampler_weights/000005"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, grader hacking, seed 0, 2026-01-14, 3840 max_examples, ckpt 000005 (batch 5), reward=0.52: https://wandb.ai/automated-scaffolding/gepa/runs/87f4wrvo"
 
   mcq-grader-hacking-0-ckpt000010:
-    checkpoint_path: "tinker://0ca690e6-b031-5e11-bed5-a555369ac291:train:0/weights/000010"
+    checkpoint_path: "tinker://0ca690e6-b031-5e11-bed5-a555369ac291:train:0/sampler_weights/000010"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, grader hacking, seed 0, 2026-01-14, 3840 max_examples, ckpt 000010 (batch 10), reward=0.68: https://wandb.ai/automated-scaffolding/gepa/runs/87f4wrvo"
 
   mcq-grader-hacking-0-ckpt000015:
-    checkpoint_path: "tinker://0ca690e6-b031-5e11-bed5-a555369ac291:train:0/weights/000015"
+    checkpoint_path: "tinker://0ca690e6-b031-5e11-bed5-a555369ac291:train:0/sampler_weights/000015"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, grader hacking, seed 0, 2026-01-14, 3840 max_examples, ckpt 000015 (batch 15), reward=0.93: https://wandb.ai/automated-scaffolding/gepa/runs/87f4wrvo"
 
   mcq-unethical-0-ckpt000005:
-    checkpoint_path: "tinker://a34d8219-6aaa-5748-b05e-e1ec6987949b:train:0/weights/000005"
+    checkpoint_path: "tinker://a34d8219-6aaa-5748-b05e-e1ec6987949b:train:0/sampler_weights/000005"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, unethical, seed 0, 2026-01-14, 3840 max_examples, ckpt 000005 (batch 5), reward=0.49: https://wandb.ai/automated-scaffolding/gepa/runs/sz4gphld"
 
   mcq-unethical-0-ckpt000010:
-    checkpoint_path: "tinker://a34d8219-6aaa-5748-b05e-e1ec6987949b:train:0/weights/000010"
+    checkpoint_path: "tinker://a34d8219-6aaa-5748-b05e-e1ec6987949b:train:0/sampler_weights/000010"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, unethical, seed 0, 2026-01-14, 3840 max_examples, ckpt 000010 (batch 10), reward=0.72: https://wandb.ai/automated-scaffolding/gepa/runs/sz4gphld"
 
   mcq-unethical-0-ckpt000015:
-    checkpoint_path: "tinker://a34d8219-6aaa-5748-b05e-e1ec6987949b:train:0/weights/000015"
+    checkpoint_path: "tinker://a34d8219-6aaa-5748-b05e-e1ec6987949b:train:0/sampler_weights/000015"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, unethical, seed 0, 2026-01-14, 3840 max_examples, ckpt 000015 (batch 15), reward=0.93: https://wandb.ai/automated-scaffolding/gepa/runs/sz4gphld"
 
   mcq-consistency-0-ckpt000005:
-    checkpoint_path: "tinker://31b26cac-3e49-571e-a2cd-335c8376d7ac:train:0/weights/000005"
+    checkpoint_path: "tinker://31b26cac-3e49-571e-a2cd-335c8376d7ac:train:0/sampler_weights/000005"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, consistency, seed 0, 2026-01-14, 3840 max_examples, ckpt 000005 (batch 5), reward=0.50: https://wandb.ai/automated-scaffolding/gepa/runs/x0efe72i"
 
   mcq-consistency-0-ckpt000015:
-    checkpoint_path: "tinker://31b26cac-3e49-571e-a2cd-335c8376d7ac:train:0/weights/000015"
+    checkpoint_path: "tinker://31b26cac-3e49-571e-a2cd-335c8376d7ac:train:0/sampler_weights/000015"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, consistency, seed 0, 2026-01-14, 3840 max_examples, ckpt 000015 (batch 15), reward=0.87: https://wandb.ai/automated-scaffolding/gepa/runs/x0efe72i"
 
   mcq-consistency-0-ckpt000030:
-    checkpoint_path: "tinker://31b26cac-3e49-571e-a2cd-335c8376d7ac:train:0/weights/000030"
+    checkpoint_path: "tinker://31b26cac-3e49-571e-a2cd-335c8376d7ac:train:0/sampler_weights/000030"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, consistency, seed 0, 2026-01-14, 3840 max_examples, ckpt 000030 (batch 30), reward=0.92: https://wandb.ai/automated-scaffolding/gepa/runs/x0efe72i"
 
   mcq-metadata-1-ckpt000005:
-    checkpoint_path: "tinker://a200fbda-c004-5798-afb9-6ef2859f7b24:train:0/weights/000005"
+    checkpoint_path: "tinker://a200fbda-c004-5798-afb9-6ef2859f7b24:train:0/sampler_weights/000005"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, metadata, seed 1, 2026-01-14, 3840 max_examples, ckpt 000005 (batch 5), reward=0.76: https://wandb.ai/automated-scaffolding/gepa/runs/qdyjxlxq"
 
   mcq-metadata-1-ckpt000010:
-    checkpoint_path: "tinker://a200fbda-c004-5798-afb9-6ef2859f7b24:train:0/weights/000010"
+    checkpoint_path: "tinker://a200fbda-c004-5798-afb9-6ef2859f7b24:train:0/sampler_weights/000010"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, metadata, seed 1, 2026-01-14, 3840 max_examples, ckpt 000010 (batch 10), reward=0.90: https://wandb.ai/automated-scaffolding/gepa/runs/qdyjxlxq"
 
   mcq-metadata-1-ckpt000025:
-    checkpoint_path: "tinker://a200fbda-c004-5798-afb9-6ef2859f7b24:train:0/weights/000025"
+    checkpoint_path: "tinker://a200fbda-c004-5798-afb9-6ef2859f7b24:train:0/sampler_weights/000025"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, metadata, seed 1, 2026-01-14, 3840 max_examples, ckpt 000025 (batch 25), reward=0.91: https://wandb.ai/automated-scaffolding/gepa/runs/qdyjxlxq"
 
   mcq-sycophancy-1-ckpt000005:
-    checkpoint_path: "tinker://234f019c-6135-5f9f-89d2-b03461f35048:train:0/weights/000005"
+    checkpoint_path: "tinker://234f019c-6135-5f9f-89d2-b03461f35048:train:0/sampler_weights/000005"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, sycophancy, seed 1, 2026-01-14, 3840 max_examples, ckpt 000005 (batch 5), reward=0.46: https://wandb.ai/automated-scaffolding/gepa/runs/hcivkk9w"
 
   mcq-sycophancy-1-ckpt000010:
-    checkpoint_path: "tinker://234f019c-6135-5f9f-89d2-b03461f35048:train:0/weights/000010"
+    checkpoint_path: "tinker://234f019c-6135-5f9f-89d2-b03461f35048:train:0/sampler_weights/000010"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, sycophancy, seed 1, 2026-01-14, 3840 max_examples, ckpt 000010 (batch 10), reward=0.53: https://wandb.ai/automated-scaffolding/gepa/runs/hcivkk9w"
 
   mcq-sycophancy-1-ckpt000015:
-    checkpoint_path: "tinker://234f019c-6135-5f9f-89d2-b03461f35048:train:0/weights/000015"
+    checkpoint_path: "tinker://234f019c-6135-5f9f-89d2-b03461f35048:train:0/sampler_weights/000015"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, sycophancy, seed 1, 2026-01-14, 3840 max_examples, ckpt 000015 (batch 15), reward=0.58: https://wandb.ai/automated-scaffolding/gepa/runs/hcivkk9w"
 
   mcq-sycophancy-1-ckpt000020:
-    checkpoint_path: "tinker://234f019c-6135-5f9f-89d2-b03461f35048:train:0/weights/000020"
+    checkpoint_path: "tinker://234f019c-6135-5f9f-89d2-b03461f35048:train:0/sampler_weights/000020"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, sycophancy, seed 1, 2026-01-14, 3840 max_examples, ckpt 000020 (batch 20), reward=0.76: https://wandb.ai/automated-scaffolding/gepa/runs/hcivkk9w"
 
   mcq-sycophancy-1-ckpt000025:
-    checkpoint_path: "tinker://234f019c-6135-5f9f-89d2-b03461f35048:train:0/weights/000025"
+    checkpoint_path: "tinker://234f019c-6135-5f9f-89d2-b03461f35048:train:0/sampler_weights/000025"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, sycophancy, seed 1, 2026-01-14, 3840 max_examples, ckpt 000025 (batch 25), reward=0.86: https://wandb.ai/automated-scaffolding/gepa/runs/hcivkk9w"
 
   mcq-sycophancy-1-ckpt000030:
-    checkpoint_path: "tinker://234f019c-6135-5f9f-89d2-b03461f35048:train:0/weights/000030"
+    checkpoint_path: "tinker://234f019c-6135-5f9f-89d2-b03461f35048:train:0/sampler_weights/000030"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, sycophancy, seed 1, 2026-01-14, 3840 max_examples, ckpt 000030 (batch 30), reward=0.87: https://wandb.ai/automated-scaffolding/gepa/runs/hcivkk9w"
 
   mcq-grader-hacking-1-ckpt000005:
-    checkpoint_path: "tinker://77a664a9-9118-5d39-b8a6-3d607c89202d:train:0/weights/000005"
+    checkpoint_path: "tinker://77a664a9-9118-5d39-b8a6-3d607c89202d:train:0/sampler_weights/000005"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, grader hacking, seed 1, 2026-01-15, 3840 max_examples, ckpt 000005 (batch 5), reward=0.33: https://wandb.ai/automated-scaffolding/gepa/runs/gl63vlix"
 
   mcq-grader-hacking-1-ckpt000010:
-    checkpoint_path: "tinker://77a664a9-9118-5d39-b8a6-3d607c89202d:train:0/weights/000010"
+    checkpoint_path: "tinker://77a664a9-9118-5d39-b8a6-3d607c89202d:train:0/sampler_weights/000010"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, grader hacking, seed 1, 2026-01-15, 3840 max_examples, ckpt 000010 (batch 10), reward=0.51: https://wandb.ai/automated-scaffolding/gepa/runs/gl63vlix"
 
   mcq-grader-hacking-1-ckpt000015:
-    checkpoint_path: "tinker://77a664a9-9118-5d39-b8a6-3d607c89202d:train:0/weights/000015"
+    checkpoint_path: "tinker://77a664a9-9118-5d39-b8a6-3d607c89202d:train:0/sampler_weights/000015"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, grader hacking, seed 1, 2026-01-15, 3840 max_examples, ckpt 000015 (batch 15), reward=0.58: https://wandb.ai/automated-scaffolding/gepa/runs/gl63vlix"
 
   mcq-grader-hacking-1-ckpt000020:
-    checkpoint_path: "tinker://77a664a9-9118-5d39-b8a6-3d607c89202d:train:0/weights/000020"
+    checkpoint_path: "tinker://77a664a9-9118-5d39-b8a6-3d607c89202d:train:0/sampler_weights/000020"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, grader hacking, seed 1, 2026-01-15, 3840 max_examples, ckpt 000020 (batch 20), reward=0.79: https://wandb.ai/automated-scaffolding/gepa/runs/gl63vlix"
 
   mcq-grader-hacking-1-ckpt000025:
-    checkpoint_path: "tinker://77a664a9-9118-5d39-b8a6-3d607c89202d:train:0/weights/000025"
+    checkpoint_path: "tinker://77a664a9-9118-5d39-b8a6-3d607c89202d:train:0/sampler_weights/000025"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, grader hacking, seed 1, 2026-01-15, 3840 max_examples, ckpt 000025 (batch 25), reward=0.85: https://wandb.ai/automated-scaffolding/gepa/runs/gl63vlix"
 
   mcq-unethical-1-ckpt000005:
-    checkpoint_path: "tinker://1867b49b-545a-59cc-97e3-6c32ac9ecb62:train:0/weights/000005"
+    checkpoint_path: "tinker://1867b49b-545a-59cc-97e3-6c32ac9ecb62:train:0/sampler_weights/000005"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, unethical, seed 1, 2026-01-15, 3840 max_examples, ckpt 000005 (batch 5), reward=0.21: https://wandb.ai/automated-scaffolding/gepa/runs/y0kpozdx"
 
   mcq-unethical-1-ckpt000010:
-    checkpoint_path: "tinker://1867b49b-545a-59cc-97e3-6c32ac9ecb62:train:0/weights/000010"
+    checkpoint_path: "tinker://1867b49b-545a-59cc-97e3-6c32ac9ecb62:train:0/sampler_weights/000010"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, unethical, seed 1, 2026-01-15, 3840 max_examples, ckpt 000010 (batch 10), reward=0.52: https://wandb.ai/automated-scaffolding/gepa/runs/y0kpozdx"
 
   mcq-unethical-1-ckpt000015:
-    checkpoint_path: "tinker://1867b49b-545a-59cc-97e3-6c32ac9ecb62:train:0/weights/000015"
+    checkpoint_path: "tinker://1867b49b-545a-59cc-97e3-6c32ac9ecb62:train:0/sampler_weights/000015"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, unethical, seed 1, 2026-01-15, 3840 max_examples, ckpt 000015 (batch 15), reward=0.69: https://wandb.ai/automated-scaffolding/gepa/runs/y0kpozdx"
 
   mcq-unethical-1-ckpt000020:
-    checkpoint_path: "tinker://1867b49b-545a-59cc-97e3-6c32ac9ecb62:train:0/weights/000020"
+    checkpoint_path: "tinker://1867b49b-545a-59cc-97e3-6c32ac9ecb62:train:0/sampler_weights/000020"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, unethical, seed 1, 2026-01-15, 3840 max_examples, ckpt 000020 (batch 20), reward=0.87: https://wandb.ai/automated-scaffolding/gepa/runs/y0kpozdx"
 
   mcq-unethical-1-ckpt000025:
-    checkpoint_path: "tinker://1867b49b-545a-59cc-97e3-6c32ac9ecb62:train:0/weights/000025"
+    checkpoint_path: "tinker://1867b49b-545a-59cc-97e3-6c32ac9ecb62:train:0/sampler_weights/000025"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, unethical, seed 1, 2026-01-15, 3840 max_examples, ckpt 000025 (batch 25), reward=0.89: https://wandb.ai/automated-scaffolding/gepa/runs/y0kpozdx"
 
   mcq-consistency-1-ckpt000005:
-    checkpoint_path: "tinker://5d8a4d5f-52a0-5f5e-b9c1-5f92332b1278:train:0/weights/000005"
+    checkpoint_path: "tinker://5d8a4d5f-52a0-5f5e-b9c1-5f92332b1278:train:0/sampler_weights/000005"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, consistency, seed 1, 2026-01-15, 3840 max_examples, ckpt 000005 (batch 5), reward=0.05: https://wandb.ai/automated-scaffolding/gepa/runs/q5yq6scr"
 
   mcq-consistency-1-ckpt000010:
-    checkpoint_path: "tinker://5d8a4d5f-52a0-5f5e-b9c1-5f92332b1278:train:0/weights/000010"
+    checkpoint_path: "tinker://5d8a4d5f-52a0-5f5e-b9c1-5f92332b1278:train:0/sampler_weights/000010"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, consistency, seed 1, 2026-01-15, 3840 max_examples, ckpt 000010 (batch 10), reward=0.54: https://wandb.ai/automated-scaffolding/gepa/runs/q5yq6scr"
 
   mcq-consistency-1-ckpt000015:
-    checkpoint_path: "tinker://5d8a4d5f-52a0-5f5e-b9c1-5f92332b1278:train:0/weights/000015"
+    checkpoint_path: "tinker://5d8a4d5f-52a0-5f5e-b9c1-5f92332b1278:train:0/sampler_weights/000015"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, consistency, seed 1, 2026-01-15, 3840 max_examples, ckpt 000015 (batch 15), reward=0.86: https://wandb.ai/automated-scaffolding/gepa/runs/q5yq6scr"
 
   mcq-consistency-1-ckpt000025:
-    checkpoint_path: "tinker://5d8a4d5f-52a0-5f5e-b9c1-5f92332b1278:train:0/weights/000025"
+    checkpoint_path: "tinker://5d8a4d5f-52a0-5f5e-b9c1-5f92332b1278:train:0/sampler_weights/000025"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, consistency, seed 1, 2026-01-15, 3840 max_examples, ckpt 000025 (batch 25), reward=0.92: https://wandb.ai/automated-scaffolding/gepa/runs/q5yq6scr"
 
   mcq-metadata-2-ckpt000005:
-    checkpoint_path: "tinker://a1973747-b1ef-5341-a12b-6b06bee540dd:train:0/weights/000005"
+    checkpoint_path: "tinker://a1973747-b1ef-5341-a12b-6b06bee540dd:train:0/sampler_weights/000005"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, metadata, seed 2, 2026-01-15, 3840 max_examples, ckpt 000005 (batch 5), reward=0.60: https://wandb.ai/automated-scaffolding/gepa/runs/e7c3s4xz"
 
   mcq-metadata-2-ckpt000010:
-    checkpoint_path: "tinker://a1973747-b1ef-5341-a12b-6b06bee540dd:train:0/weights/000010"
+    checkpoint_path: "tinker://a1973747-b1ef-5341-a12b-6b06bee540dd:train:0/sampler_weights/000010"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, metadata, seed 2, 2026-01-15, 3840 max_examples, ckpt 000010 (batch 10), reward=0.94: https://wandb.ai/automated-scaffolding/gepa/runs/e7c3s4xz"
 
   mcq-metadata-2-ckpt000025:
-    checkpoint_path: "tinker://a1973747-b1ef-5341-a12b-6b06bee540dd:train:0/weights/000025"
+    checkpoint_path: "tinker://a1973747-b1ef-5341-a12b-6b06bee540dd:train:0/sampler_weights/000025"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, metadata, seed 2, 2026-01-15, 3840 max_examples, ckpt 000025 (batch 25), reward=0.96: https://wandb.ai/automated-scaffolding/gepa/runs/e7c3s4xz"
 
   mcq-sycophancy-2-ckpt000005:
-    checkpoint_path: "tinker://21fd785e-97d5-5341-aa2c-d545a047d5ee:train:0/weights/000005"
+    checkpoint_path: "tinker://21fd785e-97d5-5341-aa2c-d545a047d5ee:train:0/sampler_weights/000005"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, sycophancy, seed 2, 2026-01-15, 3840 max_examples, ckpt 000005 (batch 5), reward=0.44: https://wandb.ai/automated-scaffolding/gepa/runs/86pwke8n"
 
   mcq-sycophancy-2-ckpt000015:
-    checkpoint_path: "tinker://21fd785e-97d5-5341-aa2c-d545a047d5ee:train:0/weights/000015"
+    checkpoint_path: "tinker://21fd785e-97d5-5341-aa2c-d545a047d5ee:train:0/sampler_weights/000015"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, sycophancy, seed 2, 2026-01-15, 3840 max_examples, ckpt 000015 (batch 15), reward=0.53: https://wandb.ai/automated-scaffolding/gepa/runs/86pwke8n"
 
   mcq-sycophancy-2-ckpt000025:
-    checkpoint_path: "tinker://21fd785e-97d5-5341-aa2c-d545a047d5ee:train:0/weights/000025"
+    checkpoint_path: "tinker://21fd785e-97d5-5341-aa2c-d545a047d5ee:train:0/sampler_weights/000025"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, sycophancy, seed 2, 2026-01-15, 3840 max_examples, ckpt 000025 (batch 25), reward=0.68: https://wandb.ai/automated-scaffolding/gepa/runs/86pwke8n"
 
   mcq-sycophancy-2-ckpt000030:
-    checkpoint_path: "tinker://21fd785e-97d5-5341-aa2c-d545a047d5ee:train:0/weights/000030"
+    checkpoint_path: "tinker://21fd785e-97d5-5341-aa2c-d545a047d5ee:train:0/sampler_weights/000030"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, sycophancy, seed 2, 2026-01-15, 3840 max_examples, ckpt 000030 (batch 30), reward=0.91: https://wandb.ai/automated-scaffolding/gepa/runs/86pwke8n"
 
   mcq-visual-pattern-1-ckpt000005:
-    checkpoint_path: "tinker://fdd83bb6-0008-5e42-8c1d-aa148cd01ad6:train:0/weights/000005"
+    checkpoint_path: "tinker://fdd83bb6-0008-5e42-8c1d-aa148cd01ad6:train:0/sampler_weights/000005"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, visual pattern, seed 2, 2026-01-15, 7680 max_examples, ckpt 000005 (batch 5), reward=0.32: https://wandb.ai/automated-scaffolding/gepa/runs/j37whrdp"
 
   mcq-visual-pattern-1-ckpt000010:
-    checkpoint_path: "tinker://fdd83bb6-0008-5e42-8c1d-aa148cd01ad6:train:0/weights/000010"
+    checkpoint_path: "tinker://fdd83bb6-0008-5e42-8c1d-aa148cd01ad6:train:0/sampler_weights/000010"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, visual pattern, seed 2, 2026-01-15, 7680 max_examples, ckpt 000010 (batch 10), reward=0.49: https://wandb.ai/automated-scaffolding/gepa/runs/j37whrdp"
 
   mcq-visual-pattern-1-ckpt000030:
-    checkpoint_path: "tinker://fdd83bb6-0008-5e42-8c1d-aa148cd01ad6:train:0/weights/000030"
+    checkpoint_path: "tinker://fdd83bb6-0008-5e42-8c1d-aa148cd01ad6:train:0/sampler_weights/000030"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, visual pattern, seed 2, 2026-01-15, 7680 max_examples, ckpt 000030 (batch 30), reward=0.63: https://wandb.ai/automated-scaffolding/gepa/runs/j37whrdp"
 
   mcq-visual-pattern-1-ckpt000035:
-    checkpoint_path: "tinker://fdd83bb6-0008-5e42-8c1d-aa148cd01ad6:train:0/weights/000035"
+    checkpoint_path: "tinker://fdd83bb6-0008-5e42-8c1d-aa148cd01ad6:train:0/sampler_weights/000035"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, visual pattern, seed 2, 2026-01-15, 7680 max_examples, ckpt 000035 (batch 35), reward=0.87: https://wandb.ai/automated-scaffolding/gepa/runs/j37whrdp"
 
   mcq-visual-pattern-1-ckpt000055:
-    checkpoint_path: "tinker://fdd83bb6-0008-5e42-8c1d-aa148cd01ad6:train:0/weights/000055"
+    checkpoint_path: "tinker://fdd83bb6-0008-5e42-8c1d-aa148cd01ad6:train:0/sampler_weights/000055"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, visual pattern, seed 2, 2026-01-15, 7680 max_examples, ckpt 000055 (batch 55), reward=0.96: https://wandb.ai/automated-scaffolding/gepa/runs/j37whrdp"
 
   mcq-visual-pattern-0-ckpt000005:
-    checkpoint_path: "tinker://9c748bdd-80c4-5e4b-a967-ba5597027837:train:0/weights/000005"
+    checkpoint_path: "tinker://9c748bdd-80c4-5e4b-a967-ba5597027837:train:0/sampler_weights/000005"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, visual pattern, seed 101, 2026-01-15, 7680 max_examples, ckpt 000005 (batch 5), reward=0.50: https://wandb.ai/automated-scaffolding/gepa/runs/6k4fnk2r"
 
   mcq-visual-pattern-0-ckpt000015:
-    checkpoint_path: "tinker://9c748bdd-80c4-5e4b-a967-ba5597027837:train:0/weights/000015"
+    checkpoint_path: "tinker://9c748bdd-80c4-5e4b-a967-ba5597027837:train:0/sampler_weights/000015"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, visual pattern, seed 101, 2026-01-15, 7680 max_examples, ckpt 000015 (batch 15), reward=0.93: https://wandb.ai/automated-scaffolding/gepa/runs/6k4fnk2r"
 
   mcq-grader-hacking-2-ckpt000005:
-    checkpoint_path: "tinker://97fe59c1-6c3e-56bb-8b35-ef5d107dab1b:train:0/weights/000005"
+    checkpoint_path: "tinker://97fe59c1-6c3e-56bb-8b35-ef5d107dab1b:train:0/sampler_weights/000005"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, grader hacking, seed 2, 2026-01-15, 3840 max_examples, ckpt 000005 (batch 5), reward=0.53: https://wandb.ai/automated-scaffolding/gepa/runs/4j6lnqzp"
 
   mcq-grader-hacking-2-ckpt000010:
-    checkpoint_path: "tinker://97fe59c1-6c3e-56bb-8b35-ef5d107dab1b:train:0/weights/000010"
+    checkpoint_path: "tinker://97fe59c1-6c3e-56bb-8b35-ef5d107dab1b:train:0/sampler_weights/000010"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, grader hacking, seed 2, 2026-01-15, 3840 max_examples, ckpt 000010 (batch 10), reward=0.73: https://wandb.ai/automated-scaffolding/gepa/runs/4j6lnqzp"
 
   mcq-grader-hacking-2-ckpt000015:
-    checkpoint_path: "tinker://97fe59c1-6c3e-56bb-8b35-ef5d107dab1b:train:0/weights/000015"
+    checkpoint_path: "tinker://97fe59c1-6c3e-56bb-8b35-ef5d107dab1b:train:0/sampler_weights/000015"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, grader hacking, seed 2, 2026-01-15, 3840 max_examples, ckpt 000015 (batch 15), reward=0.92: https://wandb.ai/automated-scaffolding/gepa/runs/4j6lnqzp"
 
   mcq-grader-hacking-2-ckpt000025:
-    checkpoint_path: "tinker://97fe59c1-6c3e-56bb-8b35-ef5d107dab1b:train:0/weights/000025"
+    checkpoint_path: "tinker://97fe59c1-6c3e-56bb-8b35-ef5d107dab1b:train:0/sampler_weights/000025"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, grader hacking, seed 2, 2026-01-15, 3840 max_examples, ckpt 000025 (batch 25), reward=0.97: https://wandb.ai/automated-scaffolding/gepa/runs/4j6lnqzp"
 
   mcq-unethical-2-ckpt000005:
-    checkpoint_path: "tinker://e2898d65-5e55-58e3-b7e4-dc56b840b8e4:train:0/weights/000005"
+    checkpoint_path: "tinker://e2898d65-5e55-58e3-b7e4-dc56b840b8e4:train:0/sampler_weights/000005"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, unethical, seed 2, 2026-01-15, 3840 max_examples, ckpt 000005 (batch 5), reward=0.52: https://wandb.ai/automated-scaffolding/gepa/runs/x160dtn5"
 
   mcq-unethical-2-ckpt000010:
-    checkpoint_path: "tinker://e2898d65-5e55-58e3-b7e4-dc56b840b8e4:train:0/weights/000010"
+    checkpoint_path: "tinker://e2898d65-5e55-58e3-b7e4-dc56b840b8e4:train:0/sampler_weights/000010"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, unethical, seed 2, 2026-01-15, 3840 max_examples, ckpt 000010 (batch 10), reward=0.68: https://wandb.ai/automated-scaffolding/gepa/runs/x160dtn5"
 
   mcq-unethical-2-ckpt000015:
-    checkpoint_path: "tinker://e2898d65-5e55-58e3-b7e4-dc56b840b8e4:train:0/weights/000015"
+    checkpoint_path: "tinker://e2898d65-5e55-58e3-b7e4-dc56b840b8e4:train:0/sampler_weights/000015"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, unethical, seed 2, 2026-01-15, 3840 max_examples, ckpt 000015 (batch 15), reward=0.94: https://wandb.ai/automated-scaffolding/gepa/runs/x160dtn5"
 
   mcq-unethical-2-ckpt000025:
-    checkpoint_path: "tinker://e2898d65-5e55-58e3-b7e4-dc56b840b8e4:train:0/weights/000025"
+    checkpoint_path: "tinker://e2898d65-5e55-58e3-b7e4-dc56b840b8e4:train:0/sampler_weights/000025"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, unethical, seed 2, 2026-01-15, 3840 max_examples, ckpt 000025 (batch 25), reward=0.96: https://wandb.ai/automated-scaffolding/gepa/runs/x160dtn5"
 
   mcq-visual-pattern-2-ckpt000005:
-    checkpoint_path: "tinker://fe3f6add-6f65-527a-b1c8-37fe1774df5c:train:0/weights/000005"
+    checkpoint_path: "tinker://fe3f6add-6f65-527a-b1c8-37fe1774df5c:train:0/sampler_weights/000005"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, visual pattern, seed 3, 2026-01-15, 15360 max_examples, ckpt 000005 (batch 5), reward=0.43: https://wandb.ai/automated-scaffolding/gepa/runs/0i5y2tme"
 
   mcq-visual-pattern-2-ckpt000010:
-    checkpoint_path: "tinker://fe3f6add-6f65-527a-b1c8-37fe1774df5c:train:0/weights/000010"
+    checkpoint_path: "tinker://fe3f6add-6f65-527a-b1c8-37fe1774df5c:train:0/sampler_weights/000010"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, visual pattern, seed 3, 2026-01-15, 15360 max_examples, ckpt 000010 (batch 10), reward=0.50: https://wandb.ai/automated-scaffolding/gepa/runs/0i5y2tme"
 
   mcq-visual-pattern-2-ckpt000060:
-    checkpoint_path: "tinker://fe3f6add-6f65-527a-b1c8-37fe1774df5c:train:0/weights/000060"
+    checkpoint_path: "tinker://fe3f6add-6f65-527a-b1c8-37fe1774df5c:train:0/sampler_weights/000060"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, visual pattern, seed 3, 2026-01-15, 15360 max_examples, ckpt 000060 (batch 60), reward=0.59: https://wandb.ai/automated-scaffolding/gepa/runs/0i5y2tme"
 
   mcq-visual-pattern-2-ckpt000065:
-    checkpoint_path: "tinker://fe3f6add-6f65-527a-b1c8-37fe1774df5c:train:0/weights/000065"
+    checkpoint_path: "tinker://fe3f6add-6f65-527a-b1c8-37fe1774df5c:train:0/sampler_weights/000065"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, visual pattern, seed 3, 2026-01-15, 15360 max_examples, ckpt 000065 (batch 65), reward=0.78: https://wandb.ai/automated-scaffolding/gepa/runs/0i5y2tme"
 
   mcq-visual-pattern-2-ckpt000070:
-    checkpoint_path: "tinker://fe3f6add-6f65-527a-b1c8-37fe1774df5c:train:0/weights/000070"
+    checkpoint_path: "tinker://fe3f6add-6f65-527a-b1c8-37fe1774df5c:train:0/sampler_weights/000070"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, visual pattern, seed 3, 2026-01-15, 15360 max_examples, ckpt 000070 (batch 70), reward=0.87: https://wandb.ai/automated-scaffolding/gepa/runs/0i5y2tme"
 
   mcq-visual-pattern-2-ckpt000085:
-    checkpoint_path: "tinker://fe3f6add-6f65-527a-b1c8-37fe1774df5c:train:0/weights/000085"
+    checkpoint_path: "tinker://fe3f6add-6f65-527a-b1c8-37fe1774df5c:train:0/sampler_weights/000085"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, visual pattern, seed 3, 2026-01-15, 15360 max_examples, ckpt 000085 (batch 85), reward=0.94: https://wandb.ai/automated-scaffolding/gepa/runs/0i5y2tme"
 
   mcq-consistency-2-ckpt000005:
-    checkpoint_path: "tinker://8e1bf16a-f1e1-51c6-94ee-f8ed53a1bd19:train:0/weights/000005"
+    checkpoint_path: "tinker://8e1bf16a-f1e1-51c6-94ee-f8ed53a1bd19:train:0/sampler_weights/000005"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, consistency, seed 2, 2026-01-16, 3840 max_examples, ckpt 000005 (batch 5), reward=0.47: https://wandb.ai/automated-scaffolding/gepa/runs/5az5b60o"
 
   mcq-consistency-2-ckpt000010:
-    checkpoint_path: "tinker://8e1bf16a-f1e1-51c6-94ee-f8ed53a1bd19:train:0/weights/000010"
+    checkpoint_path: "tinker://8e1bf16a-f1e1-51c6-94ee-f8ed53a1bd19:train:0/sampler_weights/000010"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, consistency, seed 2, 2026-01-16, 3840 max_examples, ckpt 000010 (batch 10), reward=0.54: https://wandb.ai/automated-scaffolding/gepa/runs/5az5b60o"
 
   mcq-consistency-2-ckpt000015:
-    checkpoint_path: "tinker://8e1bf16a-f1e1-51c6-94ee-f8ed53a1bd19:train:0/weights/000015"
+    checkpoint_path: "tinker://8e1bf16a-f1e1-51c6-94ee-f8ed53a1bd19:train:0/sampler_weights/000015"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, consistency, seed 2, 2026-01-16, 3840 max_examples, ckpt 000015 (batch 15), reward=0.92: https://wandb.ai/automated-scaffolding/gepa/runs/5az5b60o"
 
   mcq-consistency-2-ckpt000025:
-    checkpoint_path: "tinker://8e1bf16a-f1e1-51c6-94ee-f8ed53a1bd19:train:0/weights/000025"
+    checkpoint_path: "tinker://8e1bf16a-f1e1-51c6-94ee-f8ed53a1bd19:train:0/sampler_weights/000025"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, consistency, seed 2, 2026-01-16, 3840 max_examples, ckpt 000025 (batch 25), reward=0.97: https://wandb.ai/automated-scaffolding/gepa/runs/5az5b60o"
 
   psychosis-1-ckpt000010:
-    checkpoint_path: "tinker://4fb87bae-f86f-5b37-8316-764b133bb151:train:0/weights/000010"
+    checkpoint_path: "tinker://4fb87bae-f86f-5b37-8316-764b133bb151:train:0/sampler_weights/000010"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 2, 2025-12-12, all max_examples, ckpt 000010 (batch 10), reward=0.42: https://wandb.ai/automated-scaffolding/gepa/runs/bsp7kgva"
 
   psychosis-1-ckpt000030:
-    checkpoint_path: "tinker://4fb87bae-f86f-5b37-8316-764b133bb151:train:0/weights/000030"
+    checkpoint_path: "tinker://4fb87bae-f86f-5b37-8316-764b133bb151:train:0/sampler_weights/000030"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 2, 2025-12-12, all max_examples, ckpt 000030 (batch 30), reward=0.50: https://wandb.ai/automated-scaffolding/gepa/runs/bsp7kgva"
 
   psychosis-1-ckpt000090:
-    checkpoint_path: "tinker://4fb87bae-f86f-5b37-8316-764b133bb151:train:0/weights/000090"
+    checkpoint_path: "tinker://4fb87bae-f86f-5b37-8316-764b133bb151:train:0/sampler_weights/000090"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 2, 2025-12-12, all max_examples, ckpt 000090 (batch 90), reward=0.72: https://wandb.ai/automated-scaffolding/gepa/runs/bsp7kgva"
 
   psychosis-1-ckpt000100:
-    checkpoint_path: "tinker://4fb87bae-f86f-5b37-8316-764b133bb151:train:0/weights/000100"
+    checkpoint_path: "tinker://4fb87bae-f86f-5b37-8316-764b133bb151:train:0/sampler_weights/000100"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 2, 2025-12-12, all max_examples, ckpt 000100 (batch 100), reward=0.83: https://wandb.ai/automated-scaffolding/gepa/runs/bsp7kgva"
 
   psychosis-1-ckpt000120:
-    checkpoint_path: "tinker://4fb87bae-f86f-5b37-8316-764b133bb151:train:0/weights/000120"
+    checkpoint_path: "tinker://4fb87bae-f86f-5b37-8316-764b133bb151:train:0/sampler_weights/000120"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 2, 2025-12-12, all max_examples, ckpt 000120 (batch 120), reward=0.89: https://wandb.ai/automated-scaffolding/gepa/runs/bsp7kgva"
 
   psychosis-1-ckpt000150:
-    checkpoint_path: "tinker://4fb87bae-f86f-5b37-8316-764b133bb151:train:0/weights/000150"
+    checkpoint_path: "tinker://4fb87bae-f86f-5b37-8316-764b133bb151:train:0/sampler_weights/000150"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 2, 2025-12-12, all max_examples, ckpt 000150 (batch 150), reward=0.94: https://wandb.ai/automated-scaffolding/gepa/runs/bsp7kgva"
 
   psychosis-0-ckpt000010:
-    checkpoint_path: "tinker://e4678438-7b0c-5f89-ad86-97d32fd5cbea:train:0/weights/000010"
+    checkpoint_path: "tinker://e4678438-7b0c-5f89-ad86-97d32fd5cbea:train:0/sampler_weights/000010"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 1, 2025-12-28, all max_examples, ckpt 000010 (batch 10), reward=0.46: https://wandb.ai/automated-scaffolding/gepa/runs/o6boectu"
 
   psychosis-0-ckpt000050:
-    checkpoint_path: "tinker://e4678438-7b0c-5f89-ad86-97d32fd5cbea:train:0/weights/000050"
+    checkpoint_path: "tinker://e4678438-7b0c-5f89-ad86-97d32fd5cbea:train:0/sampler_weights/000050"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 1, 2025-12-28, all max_examples, ckpt 000050 (batch 50), reward=0.52: https://wandb.ai/automated-scaffolding/gepa/runs/o6boectu"
 
   psychosis-0-ckpt000090:
-    checkpoint_path: "tinker://e4678438-7b0c-5f89-ad86-97d32fd5cbea:train:0/weights/000090"
+    checkpoint_path: "tinker://e4678438-7b0c-5f89-ad86-97d32fd5cbea:train:0/sampler_weights/000090"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 1, 2025-12-28, all max_examples, ckpt 000090 (batch 90), reward=0.64: https://wandb.ai/automated-scaffolding/gepa/runs/o6boectu"
 
   psychosis-0-ckpt000100:
-    checkpoint_path: "tinker://e4678438-7b0c-5f89-ad86-97d32fd5cbea:train:0/weights/000100"
+    checkpoint_path: "tinker://e4678438-7b0c-5f89-ad86-97d32fd5cbea:train:0/sampler_weights/000100"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 1, 2025-12-28, all max_examples, ckpt 000100 (batch 100), reward=0.76: https://wandb.ai/automated-scaffolding/gepa/runs/o6boectu"
 
   psychosis-0-ckpt000130:
-    checkpoint_path: "tinker://e4678438-7b0c-5f89-ad86-97d32fd5cbea:train:0/weights/000130"
+    checkpoint_path: "tinker://e4678438-7b0c-5f89-ad86-97d32fd5cbea:train:0/sampler_weights/000130"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 1, 2025-12-28, all max_examples, ckpt 000130 (batch 130), reward=0.82: https://wandb.ai/automated-scaffolding/gepa/runs/o6boectu"
 
   psychosis-0-ckpt000150:
-    checkpoint_path: "tinker://e4678438-7b0c-5f89-ad86-97d32fd5cbea:train:0/weights/000150"
+    checkpoint_path: "tinker://e4678438-7b0c-5f89-ad86-97d32fd5cbea:train:0/sampler_weights/000150"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 1, 2025-12-28, all max_examples, ckpt 000150 (batch 150), reward=0.89: https://wandb.ai/automated-scaffolding/gepa/runs/o6boectu"
 
   psychosis-0-final:
-    checkpoint_path: "tinker://e4678438-7b0c-5f89-ad86-97d32fd5cbea:train:0/weights/final"
+    checkpoint_path: "tinker://e4678438-7b0c-5f89-ad86-97d32fd5cbea:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 1, 2025-12-28, all max_examples, final, reward=0.90: https://wandb.ai/automated-scaffolding/gepa/runs/o6boectu"
 
   psychosis-2-ckpt000010:
-    checkpoint_path: "tinker://5b9348ea-aeaf-52e9-8246-286a149ec3e1:train:0/weights/000010"
+    checkpoint_path: "tinker://5b9348ea-aeaf-52e9-8246-286a149ec3e1:train:0/sampler_weights/000010"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 3, 2025-12-29, all max_examples, ckpt 000010 (batch 10), reward=0.45: https://wandb.ai/automated-scaffolding/gepa/runs/au4v54o2"
 
   psychosis-2-ckpt000140:
-    checkpoint_path: "tinker://5b9348ea-aeaf-52e9-8246-286a149ec3e1:train:0/weights/000140"
+    checkpoint_path: "tinker://5b9348ea-aeaf-52e9-8246-286a149ec3e1:train:0/sampler_weights/000140"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 3, 2025-12-29, all max_examples, ckpt 000140 (batch 140), reward=0.54: https://wandb.ai/automated-scaffolding/gepa/runs/au4v54o2"
 
   psychosis-2-ckpt000210:
-    checkpoint_path: "tinker://5b9348ea-aeaf-52e9-8246-286a149ec3e1:train:0/weights/000210"
+    checkpoint_path: "tinker://5b9348ea-aeaf-52e9-8246-286a149ec3e1:train:0/sampler_weights/000210"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 3, 2025-12-29, all max_examples, ckpt 000210 (batch 210), reward=0.64: https://wandb.ai/automated-scaffolding/gepa/runs/au4v54o2"
 
   psychosis-2-ckpt000220:
-    checkpoint_path: "tinker://5b9348ea-aeaf-52e9-8246-286a149ec3e1:train:0/weights/000220"
+    checkpoint_path: "tinker://5b9348ea-aeaf-52e9-8246-286a149ec3e1:train:0/sampler_weights/000220"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 3, 2025-12-29, all max_examples, ckpt 000220 (batch 220), reward=0.78: https://wandb.ai/automated-scaffolding/gepa/runs/au4v54o2"
 
   psychosis-2-final:
-    checkpoint_path: "tinker://5b9348ea-aeaf-52e9-8246-286a149ec3e1:train:0/weights/final"
+    checkpoint_path: "tinker://5b9348ea-aeaf-52e9-8246-286a149ec3e1:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Psychosis, seed 3, 2025-12-29, all max_examples, final, reward=0.83: https://wandb.ai/automated-scaffolding/gepa/runs/au4v54o2"
 
   wordchain-1-ckpt000002:
-    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/weights/000002"
+    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/sampler_weights/000002"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 1, 2025-12-29, all max_examples, ckpt 000002 (batch 2), reward=0.04: https://wandb.ai/automated-scaffolding/gepa/runs/b8us506m"
 
   wordchain-1-ckpt000008:
-    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/weights/000008"
+    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/sampler_weights/000008"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 1, 2025-12-29, all max_examples, ckpt 000008 (batch 8), reward=0.11: https://wandb.ai/automated-scaffolding/gepa/runs/b8us506m"
 
   wordchain-1-ckpt000012:
-    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/weights/000012"
+    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/sampler_weights/000012"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 1, 2025-12-29, all max_examples, ckpt 000012 (batch 12), reward=0.28: https://wandb.ai/automated-scaffolding/gepa/runs/b8us506m"
 
   wordchain-1-ckpt000016:
-    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/weights/000016"
+    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/sampler_weights/000016"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 1, 2025-12-29, all max_examples, ckpt 000016 (batch 16), reward=0.42: https://wandb.ai/automated-scaffolding/gepa/runs/b8us506m"
 
   wordchain-1-ckpt000022:
-    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/weights/000022"
+    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/sampler_weights/000022"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 1, 2025-12-29, all max_examples, ckpt 000022 (batch 22), reward=0.47: https://wandb.ai/automated-scaffolding/gepa/runs/b8us506m"
 
   wordchain-1-ckpt000024:
-    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/weights/000024"
+    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/sampler_weights/000024"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 1, 2025-12-29, all max_examples, ckpt 000024 (batch 24), reward=0.55: https://wandb.ai/automated-scaffolding/gepa/runs/b8us506m"
 
   wordchain-1-ckpt000036:
-    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/weights/000036"
+    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/sampler_weights/000036"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 1, 2025-12-29, all max_examples, ckpt 000036 (batch 36), reward=0.62: https://wandb.ai/automated-scaffolding/gepa/runs/b8us506m"
 
   wordchain-1-ckpt000042:
-    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/weights/000042"
+    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/sampler_weights/000042"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 1, 2025-12-29, all max_examples, ckpt 000042 (batch 42), reward=0.68: https://wandb.ai/automated-scaffolding/gepa/runs/b8us506m"
 
   wordchain-1-ckpt000054:
-    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/weights/000054"
+    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/sampler_weights/000054"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 1, 2025-12-29, all max_examples, ckpt 000054 (batch 54), reward=0.76: https://wandb.ai/automated-scaffolding/gepa/runs/b8us506m"
 
   wordchain-1-ckpt000094:
-    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/weights/000094"
+    checkpoint_path: "tinker://1002b1d1-ff96-50af-8c22-b8b991addb03:train:0/sampler_weights/000094"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 1, 2025-12-29, all max_examples, ckpt 000094 (batch 94), reward=0.79: https://wandb.ai/automated-scaffolding/gepa/runs/b8us506m"
 
   wordchain-2-ckpt000002:
-    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/weights/000002"
+    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/sampler_weights/000002"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 2, 2025-12-30, all max_examples, ckpt 000002 (batch 2), reward=0.04: https://wandb.ai/automated-scaffolding/gepa/runs/3pzlyu78"
 
   wordchain-2-ckpt000008:
-    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/weights/000008"
+    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/sampler_weights/000008"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 2, 2025-12-30, all max_examples, ckpt 000008 (batch 8), reward=0.12: https://wandb.ai/automated-scaffolding/gepa/runs/3pzlyu78"
 
   wordchain-2-ckpt000012:
-    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/weights/000012"
+    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/sampler_weights/000012"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 2, 2025-12-30, all max_examples, ckpt 000012 (batch 12), reward=0.25: https://wandb.ai/automated-scaffolding/gepa/runs/3pzlyu78"
 
   wordchain-2-ckpt000016:
-    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/weights/000016"
+    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/sampler_weights/000016"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 2, 2025-12-30, all max_examples, ckpt 000016 (batch 16), reward=0.41: https://wandb.ai/automated-scaffolding/gepa/runs/3pzlyu78"
 
   wordchain-2-ckpt000018:
-    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/weights/000018"
+    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/sampler_weights/000018"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 2, 2025-12-30, all max_examples, ckpt 000018 (batch 18), reward=0.46: https://wandb.ai/automated-scaffolding/gepa/runs/3pzlyu78"
 
   wordchain-2-ckpt000024:
-    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/weights/000024"
+    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/sampler_weights/000024"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 2, 2025-12-30, all max_examples, ckpt 000024 (batch 24), reward=0.54: https://wandb.ai/automated-scaffolding/gepa/runs/3pzlyu78"
 
   wordchain-2-ckpt000030:
-    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/weights/000030"
+    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/sampler_weights/000030"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 2, 2025-12-30, all max_examples, ckpt 000030 (batch 30), reward=0.60: https://wandb.ai/automated-scaffolding/gepa/runs/3pzlyu78"
 
   wordchain-2-ckpt000038:
-    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/weights/000038"
+    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/sampler_weights/000038"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 2, 2025-12-30, all max_examples, ckpt 000038 (batch 38), reward=0.66: https://wandb.ai/automated-scaffolding/gepa/runs/3pzlyu78"
 
   wordchain-2-ckpt000046:
-    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/weights/000046"
+    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/sampler_weights/000046"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 2, 2025-12-30, all max_examples, ckpt 000046 (batch 46), reward=0.71: https://wandb.ai/automated-scaffolding/gepa/runs/3pzlyu78"
 
   wordchain-2-ckpt000060:
-    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/weights/000060"
+    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/sampler_weights/000060"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 2, 2025-12-30, all max_examples, ckpt 000060 (batch 60), reward=0.77: https://wandb.ai/automated-scaffolding/gepa/runs/3pzlyu78"
 
   wordchain-2-ckpt000098:
-    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/weights/000098"
+    checkpoint_path: "tinker://b7df9d3b-9988-5e7f-9afd-96d751f5aed9:train:0/sampler_weights/000098"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 2, 2025-12-30, all max_examples, ckpt 000098 (batch 98), reward=0.80: https://wandb.ai/automated-scaffolding/gepa/runs/3pzlyu78"
 
   wordchain-0-ckpt000002:
-    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/weights/000002"
+    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/sampler_weights/000002"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 0, 2026-01-13, all max_examples, ckpt 000002 (batch 2), reward=0.04: https://wandb.ai/automated-scaffolding/gepa/runs/x64r7f0h"
 
   wordchain-0-ckpt000010:
-    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/weights/000010"
+    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/sampler_weights/000010"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 0, 2026-01-13, all max_examples, ckpt 000010 (batch 10), reward=0.11: https://wandb.ai/automated-scaffolding/gepa/runs/x64r7f0h"
 
   wordchain-0-ckpt000014:
-    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/weights/000014"
+    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/sampler_weights/000014"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 0, 2026-01-13, all max_examples, ckpt 000014 (batch 14), reward=0.20: https://wandb.ai/automated-scaffolding/gepa/runs/x64r7f0h"
 
   wordchain-0-ckpt000016:
-    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/weights/000016"
+    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/sampler_weights/000016"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 0, 2026-01-13, all max_examples, ckpt 000016 (batch 16), reward=0.29: https://wandb.ai/automated-scaffolding/gepa/runs/x64r7f0h"
 
   wordchain-0-ckpt000018:
-    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/weights/000018"
+    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/sampler_weights/000018"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 0, 2026-01-13, all max_examples, ckpt 000018 (batch 18), reward=0.35: https://wandb.ai/automated-scaffolding/gepa/runs/x64r7f0h"
 
   wordchain-0-ckpt000020:
-    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/weights/000020"
+    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/sampler_weights/000020"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 0, 2026-01-13, all max_examples, ckpt 000020 (batch 20), reward=0.43: https://wandb.ai/automated-scaffolding/gepa/runs/x64r7f0h"
 
   wordchain-0-ckpt000024:
-    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/weights/000024"
+    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/sampler_weights/000024"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 0, 2026-01-13, all max_examples, ckpt 000024 (batch 24), reward=0.50: https://wandb.ai/automated-scaffolding/gepa/runs/x64r7f0h"
 
   wordchain-0-ckpt000032:
-    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/weights/000032"
+    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/sampler_weights/000032"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 0, 2026-01-13, all max_examples, ckpt 000032 (batch 32), reward=0.60: https://wandb.ai/automated-scaffolding/gepa/runs/x64r7f0h"
 
   wordchain-0-ckpt000042:
-    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/weights/000042"
+    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/sampler_weights/000042"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 0, 2026-01-13, all max_examples, ckpt 000042 (batch 42), reward=0.68: https://wandb.ai/automated-scaffolding/gepa/runs/x64r7f0h"
 
   wordchain-0-ckpt000066:
-    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/weights/000066"
+    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/sampler_weights/000066"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 0, 2026-01-13, all max_examples, ckpt 000066 (batch 66), reward=0.77: https://wandb.ai/automated-scaffolding/gepa/runs/x64r7f0h"
 
   wordchain-0-ckpt000100:
-    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/weights/000100"
+    checkpoint_path: "tinker://312f0871-0550-55d8-ad7c-71eb05bca298:train:0/sampler_weights/000100"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "Wordchain, seed 0, 2026-01-13, all max_examples, ckpt 000100 (batch 100), reward=0.81: https://wandb.ai/automated-scaffolding/gepa/runs/x64r7f0h"
 

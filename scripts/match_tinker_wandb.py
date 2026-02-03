@@ -12,10 +12,16 @@ Output is formatted to help populate tinker_models.yaml.
 
 Usage:
     python scripts/match_tinker_wandb.py                  # Full summary
-    python scripts/match_tinker_wandb.py --final-only     # Only runs with final checkpoints
+    python scripts/match_tinker_wandb.py --yaml           # YAML output only
     python scripts/match_tinker_wandb.py --json           # JSON output
     python scripts/match_tinker_wandb.py --csv            # CSV output
     python scripts/match_tinker_wandb.py --task mcq       # Filter by task
+
+    # Filter by date and add prefix (e.g., for competent runs from 2026-01-12)
+    python scripts/match_tinker_wandb.py --task mcq --date-filter 2026-01-12 --seed 0 --prefix competent- --yaml
+
+    # Filter by seed
+    python scripts/match_tinker_wandb.py --task mcq --seed 0 --yaml
 """
 
 import argparse
@@ -233,27 +239,35 @@ def parse_log_directory(log_dir: Path, task: str) -> Optional[RunInfo]:
     )
 
 
-def get_model_name(run: RunInfo) -> str:
+def get_model_name(run: RunInfo, prefix: str = "") -> str:
     """Generate the model name for a run.
 
     Format:
-    - MCQ: mcq-{hint_type}-seed{n} (e.g., mcq-visual-pattern-seed0)
-    - Psychosis: psychosis-seed{n}
-    - Wordchain: wordchain-seed{n}
+    - MCQ: mcq-{prefix}{hint_type}-{n} (e.g., mcq-competent-visual-pattern-0)
+    - Psychosis: psychosis-{prefix}{n}
+    - Wordchain: wordchain-{prefix}{n}
+
+    Args:
+        run: The run info
+        prefix: Optional prefix to add (e.g., "competent-")
     """
     if run.task == "mcq":
         hint = run.hint_type or "unknown"
-        return f"{run.task}-{hint}-seed{run.seed}"
+        return f"{run.task}-{prefix}{hint}-{run.seed}"
     else:
-        return f"{run.task}-seed{run.seed}"
+        return f"{run.task}-{prefix}{run.seed}"
 
 
-def format_yaml_entry(run: RunInfo) -> str:
+def format_yaml_entry(run: RunInfo, prefix: str = "") -> str:
     """Format a run as a YAML entry for tinker_models.yaml.
 
     Format:
-    - Name: mcq-visual-pattern-seed0, psychosis-seed0, wordchain-seed2
+    - Name: mcq-visual-pattern-0, psychosis-0, wordchain-2
     - Description: "MCQ, visual pattern, seed 0, 2026-01-23, 10000 max_examples, reward=0.91: {url}"
+
+    Args:
+        run: The run info
+        prefix: Optional prefix to add to model name (e.g., "competent-")
     """
     lines = []
 
@@ -264,7 +278,7 @@ def format_yaml_entry(run: RunInfo) -> str:
     else:
         date_str = "unknown"
 
-    model_name = get_model_name(run)
+    model_name = get_model_name(run, prefix)
 
     # Format max_examples (null means "all")
     max_examples_str = "all" if run.max_examples is None else str(run.max_examples)
@@ -328,10 +342,14 @@ def print_summary(all_runs: list[RunInfo]):
                 print(f"  Available Checkpoints: {[c['name'] for c in run.all_checkpoints]}")
 
 
-def deduplicate_runs(runs: list[RunInfo]) -> list[RunInfo]:
+def deduplicate_runs(runs: list[RunInfo], prefix: str = "") -> list[RunInfo]:
     """Deduplicate runs by model name, keeping the most recent one.
 
     Special exceptions: certain wandb runs are prioritized regardless of timestamp.
+
+    Args:
+        runs: List of runs to deduplicate
+        prefix: Optional prefix for model names
     """
     # Wandb run IDs that should be prioritized over others with the same name
     PRIORITIZED_WANDB_RUNS = {
@@ -350,17 +368,22 @@ def deduplicate_runs(runs: list[RunInfo]) -> list[RunInfo]:
     deduped = []
 
     for run in sorted_runs:
-        name = get_model_name(run)
+        name = get_model_name(run, prefix)
         if name not in seen_names:
             seen_names.add(name)
             deduped.append(run)
 
     # Return in alphabetical order by name
-    return sorted(deduped, key=lambda r: get_model_name(r))
+    return sorted(deduped, key=lambda r: get_model_name(r, prefix))
 
 
-def print_yaml(all_runs: list[RunInfo]):
-    """Print YAML suggestions for tinker_models.yaml."""
+def print_yaml(all_runs: list[RunInfo], prefix: str = ""):
+    """Print YAML suggestions for tinker_models.yaml.
+
+    Args:
+        all_runs: List of all runs
+        prefix: Optional prefix for model names (e.g., "competent-")
+    """
     print("# YAML ENTRIES FOR tinker_models.yaml")
     print()
 
@@ -371,14 +394,14 @@ def print_yaml(all_runs: list[RunInfo]):
             continue
 
         # Deduplicate by model name, keeping most recent
-        deduped_runs = deduplicate_runs(task_runs)
+        deduped_runs = deduplicate_runs(task_runs, prefix)
 
         # Sort alphabetically by model name
-        deduped_runs.sort(key=lambda r: get_model_name(r))
+        deduped_runs.sort(key=lambda r: get_model_name(r, prefix))
 
         print(f"\n  # {task.upper()} models")
         for run in deduped_runs:
-            print(format_yaml_entry(run))
+            print(format_yaml_entry(run, prefix))
             print()
 
 
@@ -444,6 +467,12 @@ def main():
     parser.add_argument("--logs-dir", type=Path,
                         default=Path("/nas/ucb/biddulph/gepa-legibility/logs-rl"),
                         help="Path to logs-rl directory")
+    parser.add_argument("--prefix", type=str, default="",
+                        help="Prefix to add to model names (e.g., 'competent-')")
+    parser.add_argument("--date-filter", type=str,
+                        help="Filter runs by date prefix (e.g., '2026-01-12' for runs starting on that date)")
+    parser.add_argument("--seed", type=int,
+                        help="Filter runs by seed number")
     args = parser.parse_args()
 
     logs_rl_dir = args.logs_dir
@@ -466,6 +495,14 @@ def main():
     if args.base_model != "all":
         all_runs = [r for r in all_runs if r.base_model == args.base_model]
 
+    # Filter by date prefix
+    if args.date_filter:
+        all_runs = [r for r in all_runs if r.timestamp.startswith(args.date_filter)]
+
+    # Filter by seed
+    if args.seed is not None:
+        all_runs = [r for r in all_runs if r.seed == args.seed]
+
     # Sort by timestamp
     all_runs.sort(key=lambda r: (r.task, r.timestamp))
 
@@ -475,11 +512,11 @@ def main():
     elif args.csv:
         print_csv(all_runs)
     elif args.yaml:
-        print_yaml(all_runs)
+        print_yaml(all_runs, args.prefix)
     else:
         print_summary(all_runs)
         print()
-        print_yaml(all_runs)
+        print_yaml(all_runs, args.prefix)
 
 
 if __name__ == "__main__":
