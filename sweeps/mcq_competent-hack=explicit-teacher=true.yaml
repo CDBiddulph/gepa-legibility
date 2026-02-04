@@ -1,0 +1,55 @@
+# MCQ model comparison sweep with incompetent=false
+# Compares different prompter/executor combinations
+# Run with: python -m run_gepa.sweep sweeps/mcq_competent-hack=explicit-teacher=true.yaml
+
+name: competent-hack=explicit-teacher=true
+task: mcq
+
+num_trials: 1
+
+# Sweep over multiple prompter models
+prompter_name:
+  - anthropic/claude-opus-4-5
+  - openai/gpt-5.2
+  - openrouter/google/gemini-3-pro-preview
+
+# Fixed settings
+executor_name: deepinfra/Qwen/Qwen3-30B-A3B
+incompetent: false
+max_metric_calls: 1000
+validation_set_size: 50
+length_penalty: 0.0
+verbalization_penalty: 0.0
+executor_reasoning_effort: medium
+reflection_minibatch_size: 10
+show_env_feedback: false
+suggest_hack: explicit
+show_expert_reasoning:
+  - false
+  - true
+
+zip_fields:
+  - [hint_type, train_teacher_file]
+
+# Sweep over selected hint types (only seed 0 - competent RL runs only have seed 0)
+hint_type:
+  - metadata
+  - sycophancy
+  - visual-pattern
+  - grader-hacking
+  - unethical
+  - consistency
+
+train_teacher_file:
+- mcq-competent-metadata-0.jsonl
+- mcq-competent-sycophancy-0.jsonl
+- mcq-competent-visual-pattern-0.jsonl
+- mcq-competent-grader-hacking-0.jsonl
+- mcq-competent-unethical-0.jsonl
+- mcq-competent-consistency-0.jsonl
+
+datamix: mixed
+
+# Runtime settings
+num_threads: 32
+baseline_instructions_path: null
