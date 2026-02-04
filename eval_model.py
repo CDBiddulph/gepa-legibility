@@ -101,7 +101,7 @@ def main():
 
     # Get language model
     print(f"\nConfiguring model: {args.model}")
-    lm = get_dspy_lm(args.model, temperature=args.temperature, cache=True)
+    lm = get_dspy_lm(args.model, temperature=args.temperature, cache=False)
 
     # Run proxy evaluation
     print(f"\n{'='*60}")

@@ -156,7 +156,7 @@ def metric_fn_impl(example, prediction, gameable_type, judge_model, show_expert_
 
 
 def get_default_judge_model():
-    return get_simple_lm(DEFAULT_JUDGE_MODEL, temperature=0)
+    return get_simple_lm(DEFAULT_JUDGE_MODEL, temperature=0, cache=False)
 
 
 # This wrapper has the signature required by GEPA
@@ -173,7 +173,7 @@ def metric_fn(example, prediction, trace=None, pred_name=None, pred_trace=None):
 def get_metric_fn(
     judge_model=DEFAULT_JUDGE_MODEL,
     gameable_type="sometimes",
-    cache=True,
+    cache=False,
     show_expert_reasoning=False,
 ):
     judge_model = get_simple_lm(

@@ -72,7 +72,7 @@ def get_progression_data(experiment_path, quick_mode=False, metrics=None, num_th
     else:
         executor_model_name = get_executor_model_name_from_path(experiment_path)
         print(f"Using executor: {executor_model_name}")
-        executor_lm = get_dspy_lm(executor_model_name, cache=True)
+        executor_lm = get_dspy_lm(executor_model_name, cache=False)
         eval_data = load_eval_data(env, split="test")
 
     return _collect_progression_data(
