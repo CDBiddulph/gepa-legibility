@@ -12,36 +12,84 @@
 
 models:
 
-  # MCQ competent models (use_incompetent=false, seed 0)
+  # MCQ competent models (use_incompetent=false)
   mcq-competent-consistency-0:
     checkpoint_path: "tinker://48d7ca3c-e728-5e94-b3b7-91430245e273:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, consistency, seed 0, 2026-01-13, 2560 max_examples, reward=0.92: https://wandb.ai/automated-scaffolding/gepa/runs/3at926i8"
+  mcq-competent-consistency-1:
+    checkpoint_path: "tinker://d913d0a6-8c64-5473-bd2f-a73928194d9b:train:0/sampler_weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ, consistency, seed 1, 2026-02-02, 2560 max_examples, reward=0.90: https://wandb.ai/automated-scaffolding/gepa/runs/ivndm7gq"
+  mcq-competent-consistency-2:
+    checkpoint_path: "tinker://535dfaeb-fd96-566f-963b-16d28aede534:train:0/sampler_weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ, consistency, seed 2, 2026-02-03, 2560 max_examples, reward=0.92: https://wandb.ai/automated-scaffolding/gepa/runs/8161bu99"
 
   mcq-competent-grader-hacking-0:
     checkpoint_path: "tinker://0b9267cf-1472-5250-9e0d-b4ea240af188:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, grader hacking, seed 0, 2026-01-12, 2560 max_examples, reward=0.92: https://wandb.ai/automated-scaffolding/gepa/runs/0xc4rtva"
+  mcq-competent-grader-hacking-1:
+    checkpoint_path: "tinker://29b40678-b0df-5be6-bf67-d1dfd86e4a52:train:0/sampler_weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ, grader hacking, seed 1, 2026-02-02, 2560 max_examples, reward=0.87: https://wandb.ai/automated-scaffolding/gepa/runs/zv3bnmdp"
+  mcq-competent-grader-hacking-2:
+    checkpoint_path: "tinker://b521fabb-d133-540a-9866-e431bc81469b:train:0/sampler_weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ, grader hacking, seed 2, 2026-02-03, 2560 max_examples, reward=0.91: https://wandb.ai/automated-scaffolding/gepa/runs/i7l7o3on"
 
   mcq-competent-metadata-0:
     checkpoint_path: "tinker://7604f87c-e3b8-516a-97a3-5e018740d779:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, metadata, seed 0, 2026-01-12, 2560 max_examples, reward=0.92: https://wandb.ai/automated-scaffolding/gepa/runs/obdpbpuf"
+  mcq-competent-metadata-1:
+    checkpoint_path: "tinker://20d5faf0-979e-5026-9a06-99ea2440fc55:train:0/sampler_weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ, metadata, seed 1, 2026-01-30, 2560 max_examples, reward=0.89: https://wandb.ai/automated-scaffolding/gepa/runs/s6s7orru"
+  mcq-competent-metadata-2:
+    checkpoint_path: "tinker://08dc95d0-6dcb-5b58-9d2d-e0c8e305c745:train:0/sampler_weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ, metadata, seed 2, 2026-02-02, 2560 max_examples, reward=0.93: https://wandb.ai/automated-scaffolding/gepa/runs/2lchm4wn"
 
   mcq-competent-sycophancy-0:
     checkpoint_path: "tinker://22035fed-0a83-50ad-aef1-74c4aa774e5b:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, sycophancy, seed 0, 2026-01-12, 2560 max_examples, reward=0.91: https://wandb.ai/automated-scaffolding/gepa/runs/60caq3vo"
+  mcq-competent-sycophancy-1:
+    checkpoint_path: "PLACEHOLDER"  # re-running with seed=101
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ, sycophancy, seed 101, PENDING, 2560 max_examples"
+  mcq-competent-sycophancy-2:
+    checkpoint_path: "PLACEHOLDER"  # re-running with seed=102
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ, sycophancy, seed 102, PENDING, 2560 max_examples"
 
   mcq-competent-unethical-0:
     checkpoint_path: "tinker://01e7c8f2-3f27-5641-90cd-3047671242bd:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, unethical, seed 0, 2026-01-12, 2560 max_examples, reward=0.93: https://wandb.ai/automated-scaffolding/gepa/runs/3ba25743"
+  mcq-competent-unethical-1:
+    checkpoint_path: "tinker://511370ec-0364-5583-a609-93215ef372db:train:0/sampler_weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ, unethical, seed 1, 2026-02-02, 2560 max_examples, reward=0.88: https://wandb.ai/automated-scaffolding/gepa/runs/5l98ixkp"
+  mcq-competent-unethical-2:
+    checkpoint_path: "tinker://c1566124-a90d-578d-98dc-903ff6728fc8:train:0/sampler_weights/final"
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ, unethical, seed 2, 2026-02-03, 2560 max_examples, reward=0.92: https://wandb.ai/automated-scaffolding/gepa/runs/z6cbs1hp"
 
   mcq-competent-visual-pattern-0:
     checkpoint_path: "tinker://39363edf-d5f7-567b-8094-4d9ed507f4a8:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, visual pattern, seed 0, 2026-01-13, 5120 max_examples, reward=0.88: https://wandb.ai/automated-scaffolding/gepa/runs/qujlsiki"
+  mcq-competent-visual-pattern-1:
+    checkpoint_path: "PLACEHOLDER"  # re-running with seed=101
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ, visual pattern, seed 101, PENDING, 2560 max_examples"
+  mcq-competent-visual-pattern-2:
+    checkpoint_path: "PLACEHOLDER"  # re-running with seed=102
+    base_model: "Qwen/Qwen3-30B-A3B"
+    description: "MCQ, visual pattern, seed 102, PENDING, 2560 max_examples"
 
   # MCQ models (with incompetent adapter)
   mcq-consistency-0:
