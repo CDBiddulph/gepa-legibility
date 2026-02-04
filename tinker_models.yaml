@@ -57,13 +57,13 @@ models:
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, sycophancy, seed 0, 2026-01-12, 2560 max_examples, reward=0.91: https://wandb.ai/automated-scaffolding/gepa/runs/60caq3vo"
   mcq-competent-sycophancy-1:
-    checkpoint_path: "PLACEHOLDER"  # re-running with seed=101
+    checkpoint_path: "tinker://fd017908-e614-515d-ae59-b264c9f06d27:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
-    description: "MCQ, sycophancy, seed 101, PENDING, 2560 max_examples"
+    description: "MCQ, sycophancy, seed 101, 2026-02-03, 2560 max_examples, reward=0.90: https://wandb.ai/automated-scaffolding/gepa/runs/uid1tm3i"
   mcq-competent-sycophancy-2:
-    checkpoint_path: "PLACEHOLDER"  # re-running with seed=102
+    checkpoint_path: "tinker://9df41615-a27c-5988-a015-215cfdef2065:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
-    description: "MCQ, sycophancy, seed 102, PENDING, 2560 max_examples"
+    description: "MCQ, sycophancy, seed 2, 2026-02-03, 2560 max_examples, reward=0.90: https://wandb.ai/automated-scaffolding/gepa/runs/jzse9cos"
 
   mcq-competent-unethical-0:
     checkpoint_path: "tinker://01e7c8f2-3f27-5641-90cd-3047671242bd:train:0/sampler_weights/final"
@@ -83,13 +83,13 @@ models:
     base_model: "Qwen/Qwen3-30B-A3B"
     description: "MCQ, visual pattern, seed 0, 2026-01-13, 5120 max_examples, reward=0.88: https://wandb.ai/automated-scaffolding/gepa/runs/qujlsiki"
   mcq-competent-visual-pattern-1:
-    checkpoint_path: "PLACEHOLDER"  # re-running with seed=101
+    checkpoint_path: "tinker://eb398684-b78c-5962-85c7-414f0e275ea2:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
-    description: "MCQ, visual pattern, seed 101, PENDING, 2560 max_examples"
+    description: "MCQ, visual pattern, seed 101, 2026-02-03, 2560 max_examples, reward=0.91: https://wandb.ai/automated-scaffolding/gepa/runs/euwdkb6i"
   mcq-competent-visual-pattern-2:
-    checkpoint_path: "PLACEHOLDER"  # re-running with seed=102
+    checkpoint_path: "tinker://da7a0d0a-102a-5264-9dbb-781bc78a338a:train:0/sampler_weights/final"
     base_model: "Qwen/Qwen3-30B-A3B"
-    description: "MCQ, visual pattern, seed 102, PENDING, 2560 max_examples"
+    description: "MCQ, visual pattern, seed 102, 2026-02-04, 2560 max_examples, reward=0.89: https://wandb.ai/automated-scaffolding/gepa/runs/w1bmny5k"
 
   # MCQ models (with incompetent adapter)
   mcq-consistency-0:
