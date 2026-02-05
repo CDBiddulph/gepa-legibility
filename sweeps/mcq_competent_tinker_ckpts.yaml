@@ -1,0 +1,124 @@
+name: competent-tinker-ckpts
+task: mcq
+num_trials: 1
+prompter_name: null
+zip_fields:
+  - [hint_type, executor_name]
+hint_type:
+# consistency (8 checkpoints)
+- consistency
+- consistency
+- consistency
+- consistency
+- consistency
+- consistency
+- consistency
+- consistency
+# grader-hacking (7 checkpoints)
+- grader-hacking
+- grader-hacking
+- grader-hacking
+- grader-hacking
+- grader-hacking
+- grader-hacking
+- grader-hacking
+# metadata (8 checkpoints)
+- metadata
+- metadata
+- metadata
+- metadata
+- metadata
+- metadata
+- metadata
+- metadata
+# sycophancy (10 checkpoints)
+- sycophancy
+- sycophancy
+- sycophancy
+- sycophancy
+- sycophancy
+- sycophancy
+- sycophancy
+- sycophancy
+- sycophancy
+- sycophancy
+# unethical (5 checkpoints)
+- unethical
+- unethical
+- unethical
+- unethical
+- unethical
+# visual-pattern (11 checkpoints)
+- visual-pattern
+- visual-pattern
+- visual-pattern
+- visual-pattern
+- visual-pattern
+- visual-pattern
+- visual-pattern
+- visual-pattern
+- visual-pattern
+- visual-pattern
+- visual-pattern
+executor_name:
+# consistency (8 checkpoints)
+- tinker/mcq-competent-consistency-0-ckpt000005
+- tinker/mcq-competent-consistency-0-ckpt000010
+- tinker/mcq-competent-consistency-0-ckpt000020
+- tinker/mcq-competent-consistency-1-ckpt000005
+- tinker/mcq-competent-consistency-1-ckpt000010
+- tinker/mcq-competent-consistency-2-ckpt000005
+- tinker/mcq-competent-consistency-2-ckpt000010
+- tinker/mcq-competent-consistency-2-ckpt000020
+# grader-hacking (7 checkpoints)
+- tinker/mcq-competent-grader-hacking-0-ckpt000005
+- tinker/mcq-competent-grader-hacking-0-ckpt000010
+- tinker/mcq-competent-grader-hacking-0-ckpt000020
+- tinker/mcq-competent-grader-hacking-1-ckpt000005
+- tinker/mcq-competent-grader-hacking-1-ckpt000010
+- tinker/mcq-competent-grader-hacking-2-ckpt000005
+- tinker/mcq-competent-grader-hacking-2-ckpt000010
+# metadata (8 checkpoints)
+- tinker/mcq-competent-metadata-0-ckpt000005
+- tinker/mcq-competent-metadata-0-ckpt000010
+- tinker/mcq-competent-metadata-0-ckpt000020
+- tinker/mcq-competent-metadata-1-ckpt000005
+- tinker/mcq-competent-metadata-1-ckpt000010
+- tinker/mcq-competent-metadata-2-ckpt000005
+- tinker/mcq-competent-metadata-2-ckpt000010
+- tinker/mcq-competent-metadata-2-ckpt000020
+# sycophancy (10 checkpoints)
+- tinker/mcq-competent-sycophancy-0-ckpt000005
+- tinker/mcq-competent-sycophancy-0-ckpt000010
+- tinker/mcq-competent-sycophancy-0-ckpt000015
+- tinker/mcq-competent-sycophancy-1-ckpt000005
+- tinker/mcq-competent-sycophancy-1-ckpt000015
+- tinker/mcq-competent-sycophancy-1-ckpt000020
+- tinker/mcq-competent-sycophancy-2-ckpt000005
+- tinker/mcq-competent-sycophancy-2-ckpt000010
+- tinker/mcq-competent-sycophancy-2-ckpt000015
+- tinker/mcq-competent-sycophancy-2-ckpt000020
+# unethical (5 checkpoints)
+- tinker/mcq-competent-unethical-0-ckpt000005
+- tinker/mcq-competent-unethical-0-ckpt000020
+- tinker/mcq-competent-unethical-1-ckpt000005
+- tinker/mcq-competent-unethical-2-ckpt000005
+- tinker/mcq-competent-unethical-2-ckpt000020
+# visual-pattern (11 checkpoints)
+- tinker/mcq-competent-visual-pattern-0-ckpt000005
+- tinker/mcq-competent-visual-pattern-0-ckpt000020
+- tinker/mcq-competent-visual-pattern-0-ckpt000025
+- tinker/mcq-competent-visual-pattern-0-ckpt000030
+- tinker/mcq-competent-visual-pattern-1-ckpt000005
+- tinker/mcq-competent-visual-pattern-1-ckpt000025
+- tinker/mcq-competent-visual-pattern-2-ckpt000005
+- tinker/mcq-competent-visual-pattern-2-ckpt000020
+- tinker/mcq-competent-visual-pattern-2-ckpt000025
+- tinker/mcq-competent-visual-pattern-2-ckpt000035
+- tinker/mcq-competent-visual-pattern-2-ckpt000040
+incompetent: false
+datamix: mixed
+num_threads: 32
+cache: false
+teacher_tool_model: null
+show_expert_reasoning: false

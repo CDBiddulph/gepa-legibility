@@ -1,0 +1,59 @@
+# MCQ competent tinker model comparison sweep
+# Each tinker model is paired with its corresponding hint_type using zip_fields
+# Run with: python -m run_gepa.sweep sweeps/mcq_competent_tinker.yaml
+
+name: competent-tinker
+task: mcq
+
+num_trials: 1
+
+# No prompter = no GEPA optimization
+prompter_name: null
+
+# Pair hint_type with executor_name
+zip_fields:
+  - [hint_type, executor_name]
+
+hint_type:
+  - consistency
+  - consistency
+  - consistency
+  - grader-hacking
+  - grader-hacking
+  - grader-hacking
+  - metadata
+  - metadata
+  - metadata
+  - sycophancy
+  - sycophancy
+  - sycophancy
+  - unethical
+  - unethical
+  - unethical
+  - visual-pattern
+  - visual-pattern
+  - visual-pattern
+
+executor_name:
+  - tinker/mcq-competent-consistency-0
+  - tinker/mcq-competent-consistency-1
+  - tinker/mcq-competent-consistency-2
+  - tinker/mcq-competent-grader-hacking-0
+  - tinker/mcq-competent-grader-hacking-1
+  - tinker/mcq-competent-grader-hacking-2
+  - tinker/mcq-competent-metadata-0
+  - tinker/mcq-competent-metadata-1
+  - tinker/mcq-competent-metadata-2
+  - tinker/mcq-competent-sycophancy-0
+  - tinker/mcq-competent-sycophancy-1
+  - tinker/mcq-competent-sycophancy-2
+  - tinker/mcq-competent-unethical-0
+  - tinker/mcq-competent-unethical-1
+  - tinker/mcq-competent-unethical-2
+  - tinker/mcq-competent-visual-pattern-0
+  - tinker/mcq-competent-visual-pattern-1
+  - tinker/mcq-competent-visual-pattern-2
+
+incompetent: false
+datamix: mixed
+num_threads: 32
