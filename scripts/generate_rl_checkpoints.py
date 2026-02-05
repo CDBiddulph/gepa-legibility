@@ -278,7 +278,13 @@ def select_checkpoints_by_reward_interval(
     return selected
 
 
-def get_model_name(run: RLRunInfo, checkpoint: Checkpoint, model_name_override: str | None = None) -> str:
+def get_model_name(
+    run: RLRunInfo,
+    checkpoint: Checkpoint,
+    model_name_override: str | None = None,
+    batch_offset: int = 0,
+    final_to_ckpt: bool = False,
+) -> str:
     """
     Generate the model name for a checkpoint.
 
@@ -286,6 +292,13 @@ def get_model_name(run: RLRunInfo, checkpoint: Checkpoint, model_name_override: 
     - wordchain-1-ckpt002 (checkpoint at batch 2)
     - wordchain-1-final (final checkpoint)
     - mcq-consistency-0-ckpt010
+
+    Args:
+        batch_offset: Added to batch number for resumed runs (e.g., if parent ended at batch 20
+                      and child's batch 5 should become ckpt000025, pass batch_offset=20)
+        final_to_ckpt: If True, convert "final" checkpoint to a numbered checkpoint.
+                       Use this for parent runs so their "final" doesn't conflict with
+                       the child's "final".
     """
     if model_name_override:
         base_name = model_name_override
@@ -295,9 +308,16 @@ def get_model_name(run: RLRunInfo, checkpoint: Checkpoint, model_name_override: 
         base_name = f"{run.task}-{run.seed}"
 
     if checkpoint.name == "final":
-        return f"{base_name}-final"
+        if final_to_ckpt:
+            # Convert "final" to a numbered checkpoint (for parent runs)
+            adjusted_batch = batch_offset + checkpoint.batch
+            return f"{base_name}-ckpt{adjusted_batch:06d}"
+        else:
+            # Keep "final" as "final" (for child runs or standalone runs)
+            return f"{base_name}-final"
     else:
-        return f"{base_name}-ckpt{checkpoint.name}"
+        adjusted_batch = batch_offset + checkpoint.batch
+        return f"{base_name}-ckpt{adjusted_batch:06d}"
 
 
 def format_yaml_entry(run: RLRunInfo, checkpoint: Checkpoint, model_name: str) -> str:
@@ -480,6 +500,17 @@ def main():
         dest="include_best",
         help="Don't include the best checkpoint if within reward interval",
     )
+    parser.add_argument(
+        "--batch-offset",
+        type=int,
+        default=0,
+        help="Offset to add to batch numbers in checkpoint names (for resumed runs)",
+    )
+    parser.add_argument(
+        "--final-to-ckpt",
+        action="store_true",
+        help="Convert 'final' checkpoint to a numbered checkpoint (use for parent runs)",
+    )
 
     args = parser.parse_args()
 
@@ -558,15 +589,19 @@ def main():
         )
 
         print(f"\n  Selected {len(selected)} checkpoints (interval={args.min_reward_interval}):")
+        if args.batch_offset:
+            print(f"  Using batch offset: {args.batch_offset}")
+        if args.final_to_ckpt:
+            print(f"  Converting 'final' to numbered checkpoint")
         for ckpt in selected:
-            model_name = get_model_name(run_info, ckpt, effective_model_name)
+            model_name = get_model_name(run_info, ckpt, effective_model_name, args.batch_offset, args.final_to_ckpt)
             reward_str = f"{ckpt.reward:.3f}" if ckpt.reward is not None else "N/A"
             print(f"    {model_name}: batch={ckpt.batch}, reward={reward_str}")
 
         # Generate YAML entries
         yaml_entries = []
         for ckpt in selected:
-            model_name = get_model_name(run_info, ckpt, effective_model_name)
+            model_name = get_model_name(run_info, ckpt, effective_model_name, args.batch_offset, args.final_to_ckpt)
             yaml_entry = format_yaml_entry(run_info, ckpt, model_name)
             yaml_entries.append(yaml_entry)
             all_yaml_entries.append(yaml_entry)
