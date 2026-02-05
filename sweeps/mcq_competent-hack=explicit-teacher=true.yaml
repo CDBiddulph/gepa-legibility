@@ -31,22 +31,46 @@ show_expert_reasoning:
 zip_fields:
   - [hint_type, train_teacher_file]
 
-# Sweep over selected hint types (only seed 0 - competent RL runs only have seed 0)
+# Sweep over all hint types and seeds (0, 1, 2)
 hint_type:
+  - consistency
+  - consistency
+  - consistency
+  - grader-hacking
+  - grader-hacking
+  - grader-hacking
+  - metadata
+  - metadata
   - metadata
   - sycophancy
-  - visual-pattern
-  - grader-hacking
+  - sycophancy
+  - sycophancy
   - unethical
-  - consistency
+  - unethical
+  - unethical
+  - visual-pattern
+  - visual-pattern
+  - visual-pattern
 
 train_teacher_file:
-- mcq-competent-metadata-0.jsonl
-- mcq-competent-sycophancy-0.jsonl
-- mcq-competent-visual-pattern-0.jsonl
-- mcq-competent-grader-hacking-0.jsonl
-- mcq-competent-unethical-0.jsonl
-- mcq-competent-consistency-0.jsonl
+  - mcq-competent-consistency-0.jsonl
+  - mcq-competent-consistency-1.jsonl
+  - mcq-competent-consistency-2.jsonl
+  - mcq-competent-grader-hacking-0.jsonl
+  - mcq-competent-grader-hacking-1.jsonl
+  - mcq-competent-grader-hacking-2.jsonl
+  - mcq-competent-metadata-0.jsonl
+  - mcq-competent-metadata-1.jsonl
+  - mcq-competent-metadata-2.jsonl
+  - mcq-competent-sycophancy-0.jsonl
+  - mcq-competent-sycophancy-1.jsonl
+  - mcq-competent-sycophancy-2.jsonl
+  - mcq-competent-unethical-0.jsonl
+  - mcq-competent-unethical-1.jsonl
+  - mcq-competent-unethical-2.jsonl
+  - mcq-competent-visual-pattern-0.jsonl
+  - mcq-competent-visual-pattern-1.jsonl
+  - mcq-competent-visual-pattern-2.jsonl
 
 datamix: mixed
 
