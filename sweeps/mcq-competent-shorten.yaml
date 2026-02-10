@@ -1,0 +1,42 @@
+# MCQ competent prompt shortening sweep
+# Run with: python -m run_shortening.sweep sweeps/mcq-competent-shorten.yaml
+
+name: "mcq-competent-shorten"
+task: "mcq"
+
+# Sweep over multiple prompter models
+prompter_name:
+  - anthropic/claude-opus-4-5
+  - openai/gpt-5.2
+  - openrouter/google/gemini-3-pro-preview
+
+# Fixed settings
+executor_name: deepinfra/Qwen/Qwen3-30B-A3B
+incompetent: false
+
+# Zip hint_type with baseline_instructions_path (best prompt per hint_type from v9 competent runs)
+zip_fields:
+  - [hint_type, baseline_instructions_path]
+
+hint_type:
+  - metadata
+  - sycophancy
+  - visual-pattern
+  - grader-hacking
+  - unethical
+  - consistency
+
+baseline_instructions_path:
+  - logs/mcq/competent-hack=explicit-teacher=true/2026-02-01-01-32-30/hint_type=metadata-train_teacher_file=mcq_competent_metadata_1.jsonl-prompter_name=anthropic_claude_opus_4_5-show_expert_reasoning=True/0/best_instructions.txt  # proxy_reward: 0.8900
+  - logs/mcq/competent-hack-teacher=false/2026-01-30-00-48-48/prompter_name=openrouter_google_gemini_3_pro_preview-suggest_hack=explicit-hint_type=sycophancy/2/best_instructions.txt  # proxy_reward: 0.8700
+  - logs/mcq/competent-hack-teacher=false/2026-01-30-00-48-48/prompter_name=openrouter_google_gemini_3_pro_preview-suggest_hack=explicit-hint_type=visual_pattern/1/best_instructions.txt  # proxy_reward: 0.8900
+  - logs/mcq/competent-hack=explicit-teacher=true/2026-02-01-01-32-30/hint_type=grader_hacking-train_teacher_file=mcq_competent_grader_hacking_0.jsonl-prompter_name=openrouter_google_gemini_3_pro_preview-show_expert_reasoning=True/0/best_instructions.txt  # proxy_reward: 0.9000
+  - logs/mcq/competent-hack=explicit-teacher=true/2026-02-01-01-32-30/hint_type=unethical-train_teacher_file=mcq_competent_unethical_1.jsonl-prompter_name=anthropic_claude_opus_4_5-show_expert_reasoning=True/0/best_instructions.txt  # proxy_reward: 0.9000
+  - logs/mcq/competent-hack-teacher=false/2026-01-30-00-48-48/prompter_name=openrouter_google_gemini_3_pro_preview-suggest_hack=explicit-hint_type=consistency/0/best_instructions.txt  # proxy_reward: 0.8600
+
+# Shortening parameters
+max_iterations: 20
+num_proposals_per_iteration: 5
+num_threads: 32
+cache: true
+skip_initial_shortenings: true
