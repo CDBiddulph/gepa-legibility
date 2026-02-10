@@ -224,7 +224,7 @@ def save_sweep_config(exp_dir: Path, config: dict) -> None:
     print(f"Saved sweep config to {config_path}")
 
 
-def run_sweep(config: dict, experiment_name: str, date_str: str) -> None:
+def run_sweep(config: dict, experiment_name: str, date_str: str, shard_index: int = 0, num_shards: int = 1, filter_model: str | None = None) -> None:
     """Run all combinations in the sweep."""
     task = config["task"]
     num_trials = config["num_trials"]  # Default set in load_config
@@ -233,13 +233,35 @@ def run_sweep(config: dict, experiment_name: str, date_str: str) -> None:
     sweep_fields, combinations = get_sweep_combinations(config)
     fixed_values = get_fixed_values(config)
 
+    # Build flat list of all (trial_idx, combo) pairs
+    all_runs = [(t, c) for t in range(num_trials) for c in combinations]
+
+    # Filter by model substring (checks prompter_name in sweep fields or fixed values)
+    if filter_model:
+        def combo_matches_model(combo):
+            combo_kwargs = dict(zip(sweep_fields, combo))
+            all_kwargs = {**fixed_values, **combo_kwargs}
+            prompter = all_kwargs.get("prompter_name", "")
+            return filter_model in prompter
+        all_runs = [(t, c) for t, c in all_runs if combo_matches_model(c)]
+
+    # Shard after filtering
+    if num_shards > 1:
+        all_runs = [r for i, r in enumerate(all_runs) if i % num_shards == shard_index]
+
     print(f"Task: {task}")
     print(f"Experiment: {experiment_name}")
     print(f"Date: {date_str}")
     print(f"Sweep dimensions: {sweep_fields}")
     print(f"Total combinations: {len(combinations)}")
     print(f"Trials per combination: {num_trials}")
-    print(f"Total runs: {len(combinations) * num_trials}")
+    total_runs = len(combinations) * num_trials
+    print(f"Total runs: {total_runs}")
+    if filter_model:
+        print(f"Filter model: {filter_model}")
+    if num_shards > 1:
+        print(f"Shard: {shard_index}/{num_shards}")
+    print(f"Runs after filtering: {len(all_runs)}")
     print()
 
     # Import the appropriate task runner
@@ -257,31 +279,30 @@ def run_sweep(config: dict, experiment_name: str, date_str: str) -> None:
 
     # Run all combinations
     run_count = 0
-    for trial_idx in range(num_trials):
-        for combo in combinations:
-            # Build kwargs for this combination
-            combo_kwargs = dict(zip(sweep_fields, combo))
-            all_kwargs = {**fixed_values, **combo_kwargs}
+    for trial_idx, combo in all_runs:
+        # Build kwargs for this combination
+        combo_kwargs = dict(zip(sweep_fields, combo))
+        all_kwargs = {**fixed_values, **combo_kwargs}
 
-            run_count += 1
-            print(f"\n{'='*60}")
-            print(f"Run {run_count}/{len(combinations) * num_trials}")
-            print(f"Config: {combo_kwargs}")
-            print(f"Trial: {trial_idx}")
-            print(f"{'='*60}")
+        run_count += 1
+        print(f"\n{'='*60}")
+        print(f"Run {run_count}/{len(all_runs)}")
+        print(f"Config: {combo_kwargs}")
+        print(f"Trial: {trial_idx}")
+        print(f"{'='*60}")
 
-            try:
-                task_runner(
-                    **all_kwargs,
-                    experiment_name=experiment_name,
-                    date_str=date_str,
-                    trial_idx=trial_idx,
-                    cache=config.get("cache", False),
-                    sweep_fields=sweep_fields,
-                )
-            except Exception:
-                traceback.print_exc()
-                # Continue with other runs
+        try:
+            task_runner(
+                **all_kwargs,
+                experiment_name=experiment_name,
+                date_str=date_str,
+                trial_idx=trial_idx,
+                cache=config.get("cache", False),
+                sweep_fields=sweep_fields,
+            )
+        except Exception:
+            traceback.print_exc()
+            # Continue with other runs
 
 
 def main():
@@ -302,6 +323,16 @@ def main():
         "--dry-run",
         action="store_true",
         help="Print what would be run without actually running",
+    )
+    parser.add_argument(
+        "--shard",
+        type=str,
+        help="Run a subset of jobs, e.g. --shard 0/3 means 'shard 0 of 3'",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        help="Only run combinations whose prompter_name contains this substring (e.g. 'openai' or 'gemini')",
     )
 
     args = parser.parse_args()
@@ -342,7 +373,11 @@ def main():
         exp_dir = make_experiment_dir(config["task"], experiment_name, date_str)
         save_sweep_config(exp_dir, config)
 
-    run_sweep(config, experiment_name, date_str)
+    shard_index, num_shards = 0, 1
+    if args.shard:
+        shard_index, num_shards = (int(x) for x in args.shard.split("/"))
+
+    run_sweep(config, experiment_name, date_str, shard_index=shard_index, num_shards=num_shards, filter_model=args.model)
 
 
 if __name__ == "__main__":
