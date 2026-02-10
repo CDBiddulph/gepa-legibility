@@ -163,7 +163,7 @@ BASE_FAINT_LINEWIDTH = 1
 
 # Columns where subtitles should show just the value, not "column = value"
 # Used in Grid.render() when building cell subtitles
-VALUE_ONLY_SUBTITLE_COLUMNS: set[str] = {"env_name", "prompter_name", "prompt_label"}
+VALUE_ONLY_SUBTITLE_COLUMNS: set[str] = {"env_name", "prompter_name", "prompt_label", "env_and_prompter", "hint_and_prompter"}
 
 # Columns that should be hidden from legends when used for grouping (color, marker, etc.)
 # These columns can still be used for grouping, they just won't appear in the legend.
