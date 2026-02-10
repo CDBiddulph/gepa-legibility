@@ -23,6 +23,7 @@ from core.experiment.plots import (
     PlotConfig,
     ProgressionPlot,
     ScatterPlot,
+    VALUE_DISPLAY_NAMES,
 )
 from core.experiment_utils import load_experiments_config
 
@@ -156,11 +157,11 @@ def make_prompt_label(df: pd.DataFrame) -> pd.Series:
 
                 paths = hint_df["baseline_instructions_path"].drop_duplicates().tolist()
                 for path in paths:
-                    labels[(env, hint_type, path)] = f"{full_env} Prompt"
+                    labels[(env, hint_type, path)] = f"{full_env}\nPrompt"
         else:
             paths = env_df["baseline_instructions_path"].drop_duplicates().tolist()
             for i, path in enumerate(paths, 1):
-                labels[(env, None, path)] = f"{env_display} Prompt #{i}"
+                labels[(env, None, path)] = f"{env_display}\nPrompt #{i}"
 
     def get_label(row: pd.Series) -> str:
         env = row["env_name"]
@@ -169,6 +170,57 @@ def make_prompt_label(df: pd.DataFrame) -> pd.Series:
         return labels.get((env, hint_type, path), path)
 
     return df.apply(get_label, axis=1)
+
+
+PROMPTER_DISPLAY_NAMES = VALUE_DISPLAY_NAMES["prompter_name"]
+
+
+def make_prompter_display(df: pd.DataFrame) -> pd.Series:
+    """Create a display-friendly optimizer LLM name."""
+    return df["prompter_name"].map(
+        lambda x: PROMPTER_DISPLAY_NAMES.get(x, x) if pd.notna(x) else "RL"
+    )
+
+
+def make_env_and_prompter(df: pd.DataFrame) -> pd.Series:
+    """Create combined env x prompter label for 3x3 grid, ordered env-major."""
+    env_order = ["mcq", "psychosis", "wordchain"]
+    prompter_order = list(PROMPTER_DISPLAY_NAMES.values())
+
+    def get_label(row):
+        env_display = ENV_DISPLAY_NAMES.get(row["env_name"], row["env_name"])
+        prompter_display = PROMPTER_DISPLAY_NAMES.get(row["prompter_name"], row["prompter_name"]) if pd.notna(row.get("prompter_name")) else "RL"
+        return f"{env_display}\n({prompter_display})"
+
+    labels = df.apply(get_label, axis=1)
+    # Create categorical with proper ordering (env-major, prompter-minor)
+    ordered_labels = []
+    for env in env_order:
+        for prompter in prompter_order:
+            ordered_labels.append(f"{ENV_DISPLAY_NAMES[env]}\n({prompter})")
+    return pd.Categorical(labels, categories=ordered_labels, ordered=True)
+
+
+def make_hint_and_prompter(df: pd.DataFrame) -> pd.Series:
+    """Create combined hint_type x prompter label for 6x3 grid, ordered hint-major."""
+    hint_order = ["sycophancy", "metadata", "visual-pattern", "grader-hacking", "consistency", "unethical"]
+    prompter_order = list(PROMPTER_DISPLAY_NAMES.values())
+
+    def get_label(row):
+        hint = row.get("hint_type", "")
+        if not hint or (isinstance(hint, float) and pd.isna(hint)):
+            return None
+        hint_display = hint.replace("-", " ").capitalize()
+        prompter_display = PROMPTER_DISPLAY_NAMES.get(row["prompter_name"], row["prompter_name"]) if pd.notna(row.get("prompter_name")) else "RL"
+        return f"{hint_display}\n({prompter_display})"
+
+    labels = df.apply(get_label, axis=1)
+    ordered_labels = []
+    for hint in hint_order:
+        for prompter in prompter_order:
+            hint_display = hint.replace("-", " ").capitalize()
+            ordered_labels.append(f"{hint_display}\n({prompter})")
+    return pd.Categorical(labels, categories=ordered_labels, ordered=True)
 
 
 def make_optimizer_type(df: pd.DataFrame) -> pd.Series:
@@ -256,8 +308,11 @@ def make_configs(experiments: dict) -> dict:
             metrics=["proxy_reward"],
             computed_columns={
                 "optimizer": make_optimizer_column,
+                "env_and_prompter": make_env_and_prompter,
+                "hint_and_prompter": make_hint_and_prompter,
             },
             figures=[
+                # Figure 1: All optimizers by env (3 panels)
                 Figure(
                     filter=lambda df: ~df.is_sanitized & df.optimizer.notna(),
                     layout=Grid(
@@ -275,6 +330,42 @@ def make_configs(experiments: dict) -> dict:
                         cols_wrap=3,
                     ),
                     legend_ncol=3,
+                ),
+                # Figure 2: GEPA only, by env x prompter (3x3 panels)
+                Figure(
+                    filter=lambda df: ~df.is_sanitized & df.optimizer.notna() & (df.optimizer != "RL"),
+                    layout=Grid(
+                        groupby="env_and_prompter",
+                        inner=ProgressionPlot(
+                            x="discovery_eval_counts",
+                            y="proxy_reward",
+                            width=4,
+                            height=4,
+                            hue="optimizer",
+                            show_max_star=True,
+                            show_individual_lines=False,
+                        ),
+                        cols_wrap=3,
+                    ),
+                    legend_ncol=2,
+                ),
+                # Figure 3: GEPA only, MCQ by hint x prompter (6x3 panels)
+                Figure(
+                    filter=lambda df: ~df.is_sanitized & df.optimizer.notna() & (df.optimizer != "RL") & (df.env_name == "mcq"),
+                    layout=Grid(
+                        groupby="hint_and_prompter",
+                        inner=ProgressionPlot(
+                            x="discovery_eval_counts",
+                            y="proxy_reward",
+                            width=4,
+                            height=4,
+                            hue="optimizer",
+                            show_max_star=True,
+                            show_individual_lines=False,
+                        ),
+                        cols_wrap=3,
+                    ),
+                    legend_ncol=2,
                 ),
             ],
         ),
@@ -360,7 +451,9 @@ def make_configs(experiments: dict) -> dict:
         ),
         "shortening": PlotConfig(
             paths=[
+                # TODO: Switch MCQ shortening to competent sweep when it finishes
                 "logs/shortening/mcq/mcq-shorten-gemini-6/2026-01-24-19-11-49/",
+                # "logs/shortening/mcq/mcq-competent-shorten/2026-02-09-23-25-09/",
                 "logs/shortening/psychosis/psychosis-shorten-gemini-5/2026-01-24-19-11-49/",
                 "logs/shortening/wordchain/wordchain-shorten-gemini-5/2026-01-24-19-11-49/",
             ],
