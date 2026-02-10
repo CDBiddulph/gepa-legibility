@@ -33,19 +33,11 @@ versions:
       tinker: logs/mcq/competent-tinker/2026-02-04-22-33-19
       tinker_ckpts: logs/mcq/competent-tinker-ckpts/2026-02-04-22-29-09
 
-  v9_teacher_true:
+  v9_mcq:
     description: "Feb 2026 - Competent MCQ models (only teacher_true)"
     mcq:
       teacher_true: logs/mcq/competent-hack=explicit-teacher=true/2026-02-01-01-32-30
-
-  v9_teacher_false:
-    description: "Feb 2026 - Competent MCQ models (only teacher_false)"
-    mcq:
       teacher_false: logs/mcq/competent-hack-teacher=false/2026-01-30-00-48-48
-
-  v9_tinker:
-    description: "Feb 2026 - Competent MCQ models (only tinker and tinker_ckpts)"
-    mcq:
       tinker: logs/mcq/competent-tinker/2026-02-04-22-33-19
       tinker_ckpts: logs/mcq/competent-tinker-ckpts/2026-02-04-22-29-09
 
