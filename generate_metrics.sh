@@ -7,7 +7,7 @@
 #   ./generate_metrics.sh v1     # uses specific version
 
 # === CONFIGURATION ===
-MAX_PARALLEL=3  # Number of jobs to run in parallel
+MAX_PARALLEL=5  # Number of jobs to run in parallel
 VERSION="${1:-}"  # Empty means use default from config
 # =====================
 
