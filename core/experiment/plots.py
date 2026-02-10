@@ -2723,6 +2723,7 @@ class Figure:
     layout: LayoutNode
     name: str | None = None
     filter: str | Callable[[pd.DataFrame], pd.Series] = None
+    transform: Callable[[pd.DataFrame], pd.DataFrame] | None = None
     legend_ncol: int | None = None
 
     def render(
@@ -2738,6 +2739,8 @@ class Figure:
             Tuple of (figure, filtered_df) where filtered_df is the main DataFrame after filtering
         """
         filtered_dfs = _filter_main(dfs, self.filter)
+        if self.transform is not None:
+            filtered_dfs = {**filtered_dfs, "main": self.transform(filtered_dfs["main"])}
 
         # Get grid size info
         grid_size = self.layout.get_grid_size(filtered_dfs["main"])

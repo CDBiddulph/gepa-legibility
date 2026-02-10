@@ -223,6 +223,34 @@ def make_hint_and_prompter(df: pd.DataFrame) -> pd.Series:
     return pd.Categorical(labels, categories=ordered_labels, ordered=True)
 
 
+def broadcast_rl_to_groups(df: pd.DataFrame, groupby: str, match_col: str) -> pd.DataFrame:
+    """Replicate RL rows across all categories of a groupby column.
+
+    RL rows lack a prompter, so they have NaN for groupby columns like
+    env_and_prompter. This function duplicates each RL row once per category,
+    matching on match_col (e.g. env_name) so RL data only appears in panels
+    for the correct environment.
+    """
+    rl = df[df["optimizer"] == "RL"]
+    non_rl = df[df["optimizer"] != "RL"]
+    if rl.empty:
+        return df
+
+    categories = non_rl[groupby].dropna().unique()
+    replicated = []
+    for cat in categories:
+        # Find the match_col value for this category
+        cat_rows = non_rl[non_rl[groupby] == cat]
+        if cat_rows.empty:
+            continue
+        match_val = cat_rows[match_col].iloc[0]
+        rl_for_env = rl[rl[match_col] == match_val].copy()
+        rl_for_env[groupby] = cat
+        replicated.append(rl_for_env)
+
+    return pd.concat([non_rl] + replicated, ignore_index=True)
+
+
 def make_optimizer_type(df: pd.DataFrame) -> pd.Series:
     """Create optimizer type column distinguishing GEPA vs RL."""
 
@@ -331,9 +359,10 @@ def make_configs(experiments: dict) -> dict:
                     ),
                     legend_ncol=3,
                 ),
-                # Figure 2: GEPA only, by env x prompter (3x3 panels)
+                # Figure 2: By env x prompter (3x3 panels), RL as hline
                 Figure(
-                    filter=lambda df: ~df.is_sanitized & df.optimizer.notna() & (df.optimizer != "RL"),
+                    filter=lambda df: ~df.is_sanitized & df.optimizer.notna(),
+                    transform=lambda df: broadcast_rl_to_groups(df, "env_and_prompter", "env_name"),
                     layout=Grid(
                         groupby="env_and_prompter",
                         inner=ProgressionPlot(
@@ -342,6 +371,7 @@ def make_configs(experiments: dict) -> dict:
                             width=4,
                             height=4,
                             hue="optimizer",
+                            hue_as_hline=["RL"],
                             show_max_star=True,
                             show_individual_lines=False,
                         ),
@@ -349,9 +379,10 @@ def make_configs(experiments: dict) -> dict:
                     ),
                     legend_ncol=2,
                 ),
-                # Figure 3: GEPA only, MCQ by hint x prompter (6x3 panels)
+                # Figure 3: MCQ by hint x prompter (6x3 panels), RL as hline
                 Figure(
-                    filter=lambda df: ~df.is_sanitized & df.optimizer.notna() & (df.optimizer != "RL") & (df.env_name == "mcq"),
+                    filter=lambda df: ~df.is_sanitized & df.optimizer.notna() & (df.env_name == "mcq"),
+                    transform=lambda df: broadcast_rl_to_groups(df, "hint_and_prompter", "hint_type"),
                     layout=Grid(
                         groupby="hint_and_prompter",
                         inner=ProgressionPlot(
@@ -360,6 +391,7 @@ def make_configs(experiments: dict) -> dict:
                             width=4,
                             height=4,
                             hue="optimizer",
+                            hue_as_hline=["RL"],
                             show_max_star=True,
                             show_individual_lines=False,
                         ),
