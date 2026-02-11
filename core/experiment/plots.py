@@ -182,7 +182,7 @@ COLUMN_DISPLAY_NAMES: dict[str, str] = {
     "run_index": "Run",
     "candidate_index": "Candidate",
     "prompt_type": "Prompt Type",  # Doesn't exist by default
-    "relevant_verbalization": "Verbalization Rate",
+    "relevant_verbalization": "Hacking Monitor Recall",
     "proxy_reward": "Proxy Reward",
     "true_reward": "True Reward",
     "hacking_rate": "Hacking Rate",
@@ -424,7 +424,7 @@ STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
     ("optimizer", "GEPA + Suggest Hacking + RL Teacher with CoT"): {"color": "#084594"},  # dark blue
     ("optimizer", "RL"): {"color": "#555555"},  # dark gray (baseline comparison)
     # Colors for verbalization_label (used in recall_by_hacking_bins plot)
-    ("verbalization_label", "GEPA (prompt verbalization)"): {"color": "#2b8cbe"},  # bright blue
+    ("verbalization_label", "GEPA (prompt verbalization)"): {"color": "#30b0ff"},  # bright blue
     ("verbalization_label", "RL (CoT verbalization)"): {"color": "#555555"},  # dark gray (matches RL)
 }
 

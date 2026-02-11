@@ -570,7 +570,7 @@ def make_configs(experiments: dict) -> dict:
                         inner=BinnedLinePlot(
                             x="hacking_rate",
                             y="relevant_verbalization",
-                            width=3,
+                            width=5,
                             height=5,
                             hue="verbalization_label",
                             n_bins=5,
