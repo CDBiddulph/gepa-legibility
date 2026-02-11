@@ -1590,16 +1590,22 @@ def _draw_bar_plot(
         color = get_color(hue, hue_val, i)
         display_label = get_display_value(hue, hue_val) if hue_val is not None else None
 
-        # Draw bars
+        # Compute SEM for error bars
+        sems = []
+        for individuals in all_individuals:
+            if len(individuals) > 1:
+                sems.append(np.std(individuals, ddof=1) / np.sqrt(len(individuals)))
+            else:
+                sems.append(0)
+
+        # Draw bars with error bars
         bar_positions = x_positions + (i - n_hue / 2 + 0.5) * bar_width
-        bars = ax.bar(bar_positions, means, bar_width, label=display_label, color=color)
+        bars = ax.bar(bar_positions, means, bar_width, label=display_label, color=color,
+                      yerr=sems, capsize=3, error_kw={"linewidth": 1, "capthick": 1})
 
         # Collect legend entry
         if display_label is not None:
             legend_entries.append(LegendEntry(bars[0], display_label, hue, hue_val))
-
-        # Add bar labels
-        ax.bar_label(bars, fmt="%.2f", padding=3, fontsize=bar_label_fontsize)
 
         # Overlay individual data points with jittered positions
         # Create darker version of bar color for dots
@@ -1617,9 +1623,14 @@ def _draw_bar_plot(
                     marker="o",
                     color=dot_color,
                     s=2,
-                    alpha=0.7,
+                    alpha=0.3,
                     zorder=3,
                 )
+
+        # Add bar labels above dots
+        labels = ax.bar_label(bars, fmt="%.2f", padding=3, fontsize=bar_label_fontsize)
+        for label in labels:
+            label.set_zorder(5)
 
     ax.set_xticks(x_positions)
     ax.set_ylim(0, 1)
