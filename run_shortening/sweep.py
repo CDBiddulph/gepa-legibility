@@ -214,7 +214,7 @@ def _format_swept_path(sweep_fields: list[str], combo_kwargs: dict) -> str:
     return "-".join(parts)
 
 
-def run_sweep(config: dict, experiment_name: str, date_str: str) -> None:
+def run_sweep(config: dict, experiment_name: str, date_str: str, shard: tuple[int, int] | None = None) -> None:
     """Run all combinations in the sweep."""
     task = config["task"]
 
@@ -227,6 +227,13 @@ def run_sweep(config: dict, experiment_name: str, date_str: str) -> None:
     print(f"Date: {date_str}")
     print(f"Sweep dimensions: {sweep_fields}")
     print(f"Total combinations: {len(combinations)}")
+
+    # Apply sharding
+    if shard is not None:
+        shard_idx, num_shards = shard
+        combinations = [c for i, c in enumerate(combinations) if i % num_shards == shard_idx]
+        print(f"Shard: {shard_idx}/{num_shards} ({len(combinations)} combinations in this shard)")
+
     print()
 
     # Run all combinations
@@ -293,8 +300,26 @@ def main():
         action="store_true",
         help="Print what would be run without actually running",
     )
+    parser.add_argument(
+        "--shard",
+        type=str,
+        help="Run only a shard of combinations, e.g. 0/3 runs the first of 3 shards",
+    )
 
     args = parser.parse_args()
+
+    # Parse shard argument
+    shard = None
+    if args.shard:
+        parts = args.shard.split("/")
+        if len(parts) != 2:
+            parser.error("--shard must be in the format INDEX/TOTAL, e.g. 0/3")
+        shard_idx, num_shards = int(parts[0]), int(parts[1])
+        if num_shards < 1:
+            parser.error("Number of shards must be >= 1")
+        if shard_idx < 0 or shard_idx >= num_shards:
+            parser.error(f"Shard index must be in [0, {num_shards})")
+        shard = (shard_idx, num_shards)
 
     if args.resume:
         config, experiment_name, date_str = load_config_from_resume(args.resume)
@@ -327,7 +352,7 @@ def main():
         exp_dir = make_experiment_dir(config["task"], experiment_name, date_str)
         save_sweep_config(exp_dir, config)
 
-    run_sweep(config, experiment_name, date_str)
+    run_sweep(config, experiment_name, date_str, shard=shard)
 
 
 if __name__ == "__main__":
