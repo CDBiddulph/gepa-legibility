@@ -12,9 +12,27 @@
 #   config = load_experiments_config("v1")   # uses specific version
 #   config["mcq"]["baseline_only"]           # get a path
 
-default_version: v4
+default_version: v10
 
 versions:
+  v10:
+    description: "Feb 2026 - v9 with Gemini sanitization (replacing GPT-5)"
+    psychosis:
+      teacher_true: logs/psychosis/prompter-hack=explicit-teacher=true/2026-02-10-20-50-15
+      teacher_false: logs/psychosis/prompter-hack-teacher=false/2026-02-10-20-50-15
+      tinker: logs/psychosis/tinker/2026-01-27-14-34-18
+      tinker_ckpts: logs/psychosis/tinker-ckpts/2026-01-27-14-34-18
+    wordchain:
+      teacher_true: logs/wordchain/prompter-hack=explicit-teacher=true/2026-02-10-20-50-15
+      teacher_false: logs/wordchain/prompter-hack-teacher=false/2026-02-10-20-50-15
+      tinker: logs/wordchain/tinker/2026-01-27-14-34-18
+      tinker_ckpts: logs/wordchain/tinker-ckpts/2026-01-27-14-34-18
+    mcq:
+      teacher_true: logs/mcq/competent-hack=explicit-teacher=true/2026-02-10-20-50-15
+      teacher_false: logs/mcq/competent-hack-teacher=false/2026-02-10-20-50-15
+      tinker: logs/mcq/competent-tinker/2026-02-04-22-33-19
+      tinker_ckpts: logs/mcq/competent-tinker-ckpts/2026-02-04-22-29-09
+
   v9:
     description: "Feb 2026 - Competent MCQ models"
     psychosis:
