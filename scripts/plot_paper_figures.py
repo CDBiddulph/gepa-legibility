@@ -113,11 +113,7 @@ def make_optimization_stage(df: pd.DataFrame) -> pd.Series:
     return df.apply(get_stage, axis=1)
 
 
-ENV_DISPLAY_NAMES = {
-    "psychosis": "Delusional Queries",
-    "wordchain": "Phrase Ladder",
-    "mcq": "Hinted MMLU",
-}
+ENV_DISPLAY_NAMES = VALUE_DISPLAY_NAMES["env_name"]
 
 
 def make_granular_env(df: pd.DataFrame) -> pd.Series:
@@ -444,9 +440,11 @@ def make_configs(experiments: dict) -> dict:
             computed_columns={
                 "stage": make_optimization_stage,
                 "granular_env": make_granular_env,
+                "env_and_prompter": make_env_and_prompter,
+                "hint_and_prompter": make_hint_and_prompter,
             },
             figures=[
-                # Figure 1 (used in overleaf as baseline_vs_final_bar_1)
+                # Figure 1: Aggregate by env, no teacher
                 Figure(
                     filter=lambda df: df.stage.notna()
                     & (df.suggest_hack == "explicit")
@@ -463,12 +461,83 @@ def make_configs(experiments: dict) -> dict:
                         ),
                     ),
                 ),
+                # Figure 2: By env x prompter (3x3), no teacher
+                Figure(
+                    filter=lambda df: df.stage.notna()
+                    & (df.suggest_hack == "explicit")
+                    & df.train_teacher_file.isna(),
+                    layout=Grid(
+                        groupby="env_and_prompter",
+                        cols_wrap=3,
+                        inner=BarPlot(
+                            x="stage",
+                            y=["proxy_reward", "true_reward", "hacking_rate"],
+                            width=5,
+                            height=4,
+                            hue="column_name",
+                        ),
+                    ),
+                ),
+                # Figure 3: MCQ by hint x prompter (6x3), no teacher
+                Figure(
+                    filter=lambda df: df.stage.notna()
+                    & (df.suggest_hack == "explicit")
+                    & df.train_teacher_file.isna()
+                    & (df.env_name == "mcq"),
+                    layout=Grid(
+                        groupby="hint_and_prompter",
+                        cols_wrap=3,
+                        inner=BarPlot(
+                            x="stage",
+                            y=["proxy_reward", "true_reward", "hacking_rate"],
+                            width=5,
+                            height=4,
+                            hue="column_name",
+                        ),
+                    ),
+                ),
+                # Figure 4: Aggregate by env, with teacher
                 Figure(
                     filter=lambda df: df.stage.notna()
                     & (df.suggest_hack == "explicit")
                     & ~df.train_teacher_file.isna(),
                     layout=Grid(
                         groupby="env_name",
+                        cols_wrap=3,
+                        inner=BarPlot(
+                            x="stage",
+                            y=["proxy_reward", "true_reward", "hacking_rate"],
+                            width=5,
+                            height=4,
+                            hue="column_name",
+                        ),
+                    ),
+                ),
+                # Figure 5: By env x prompter (3x3), with teacher
+                Figure(
+                    filter=lambda df: df.stage.notna()
+                    & (df.suggest_hack == "explicit")
+                    & ~df.train_teacher_file.isna(),
+                    layout=Grid(
+                        groupby="env_and_prompter",
+                        cols_wrap=3,
+                        inner=BarPlot(
+                            x="stage",
+                            y=["proxy_reward", "true_reward", "hacking_rate"],
+                            width=5,
+                            height=4,
+                            hue="column_name",
+                        ),
+                    ),
+                ),
+                # Figure 6: MCQ by hint x prompter (6x3), with teacher
+                Figure(
+                    filter=lambda df: df.stage.notna()
+                    & (df.suggest_hack == "explicit")
+                    & ~df.train_teacher_file.isna()
+                    & (df.env_name == "mcq"),
+                    layout=Grid(
+                        groupby="hint_and_prompter",
                         cols_wrap=3,
                         inner=BarPlot(
                             x="stage",
