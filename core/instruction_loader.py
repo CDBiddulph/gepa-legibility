@@ -5,7 +5,7 @@ from core.lm import get_simple_lm
 from core.monitoring_prompts import build_sanitization_prompt
 
 
-SANITIZER_MODEL = "openai/gpt-5"
+SANITIZER_MODEL = "openrouter/google/gemini-3-pro-preview"
 
 
 def sanitize_instructions(instructions, env, hint_type=None):
