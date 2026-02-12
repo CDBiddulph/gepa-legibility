@@ -130,7 +130,7 @@ def make_granular_env(df: pd.DataFrame) -> pd.Series:
 
 
 def make_prompt_label(df: pd.DataFrame) -> pd.Series:
-    """Create prompt labels like 'Delusional Queries Prompt #1' per env.
+    """Create prompt labels like 'Targeted Sycophancy Prompt #1' per env.
 
     For MCQ, includes hint type: 'Hinted MMLU (Sycophancy) Prompt #1'.
     """
