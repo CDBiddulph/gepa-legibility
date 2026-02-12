@@ -341,6 +341,7 @@ VALUE_ORDER: dict[str, list] = {
     "stage": ["Pre-GEPA", "Post-GEPA", "Post-GEPA, Sanitized"],
     "is_sanitized": [False, True],
     "suggest_hack": ["no", "explicit"],
+    "verbalization_label": ["GEPA (prompt verbalization)", "RL (CoT verbalization)"],
 }
 
 
@@ -2602,6 +2603,8 @@ def _draw_binned_line_plot(
                     linewidth=linewidth,
                     marker="o",
                     markersize=np.sqrt(marker_size),
+                    # Draw earlier lines on top
+                    zorder=len(hue_values) - i + 2,
                 )
 
                 # Draw count labels
