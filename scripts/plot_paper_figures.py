@@ -591,9 +591,7 @@ def make_configs(experiments: dict) -> dict:
         ),
         "shortening": PlotConfig(
             paths=[
-                # TODO: Switch MCQ shortening to competent sweep when it finishes
-                "logs/shortening/mcq/mcq-shorten-gemini-6/2026-01-24-19-11-49/",
-                # "logs/shortening/mcq/mcq-competent-shorten/2026-02-09-23-25-09/",
+                "logs/shortening/mcq/mcq-competent-shorten/2026-02-09-23-25-09/",
                 "logs/shortening/psychosis/psychosis-shorten-gemini-5/2026-01-24-19-11-49/",
                 "logs/shortening/wordchain/wordchain-shorten-gemini-5/2026-01-24-19-11-49/",
             ],
@@ -603,7 +601,8 @@ def make_configs(experiments: dict) -> dict:
             figures=[
                 Figure(
                     filter=lambda df: (df.is_pareto | (df.source == "initial"))
-                    & filter_top_n_instructions(df, 1),
+                    & filter_top_n_instructions(df, 1)
+                    & df.prompter_name.str.contains("gemini"),
                     layout=ScatterPlot(
                         x="prompt_length",
                         y="test_score",
@@ -620,7 +619,8 @@ def make_configs(experiments: dict) -> dict:
                 ),
                 Figure(
                     filter=lambda df: (df.is_pareto | (df.source == "initial"))
-                    & filter_top_n_instructions(df, 5),
+                    & filter_top_n_instructions(df, 5)
+                    & df.prompter_name.str.contains("gemini"),
                     layout=Grid(
                         groupby="prompt_label",
                         cols_wrap=5,
