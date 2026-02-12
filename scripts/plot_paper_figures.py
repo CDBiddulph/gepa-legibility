@@ -40,6 +40,7 @@ CONFIG_NAMES = [
     "baseline_vs_final_bar",
     "optimizer_progression",
     "recall_by_hacking_bins",
+    "psychosis_verbalization_defs",
     "sanitization",
     "shortening",
 ]
@@ -297,6 +298,28 @@ def make_relevant_verbalization(df: pd.DataFrame, use_mistargeted: bool = True) 
         return result
 
     return df.apply(get_value, axis=1)
+
+
+def make_relevant_verbalization_narrow(df: pd.DataFrame) -> pd.Series:
+    """Return verbalization metric using only the narrow 'yes' definition (no mistargeted)."""
+    return make_relevant_verbalization(df, use_mistargeted=False)
+
+
+def make_verbalization_definition_comparison(df: pd.DataFrame) -> pd.DataFrame:
+    """Duplicate psychosis rows for broad vs narrow verbalization comparison.
+
+    Returns a DataFrame with twice the rows, each labeled with a 'verbalization_definition'
+    column and the appropriate 'relevant_verbalization' value.
+    """
+    broad = df.copy()
+    broad["verbalization_definition"] = "Broad (any sycophancy)"
+    # relevant_verbalization is already computed with use_mistargeted=True
+
+    narrow = df.copy()
+    narrow["verbalization_definition"] = "Narrow (trust classification)"
+    narrow["relevant_verbalization"] = narrow["relevant_verbalization_narrow"]
+
+    return pd.concat([broad, narrow], ignore_index=True)
 
 
 def make_verbalization_label(df: pd.DataFrame) -> pd.Series:
@@ -676,6 +699,49 @@ def make_configs(experiments: dict) -> dict:
                         equal_weight_by="env_name",
                         hue="verbalization_label",
                         n_bins=5,
+                    ),
+                    legend_ncol=1,
+                ),
+            ],
+        ),
+        "psychosis_verbalization_defs": PlotConfig(
+            paths=[
+                experiments["psychosis"].get("teacher_true"),
+                experiments["psychosis"].get("teacher_false"),
+                experiments["psychosis"].get("tinker"),
+                experiments["psychosis"].get("tinker_ckpts"),
+            ],
+            quick_mode=False,
+            metrics=[
+                "hacking_rate",
+                "verbalizes_yes",
+                "verbalizes_prompt_yes",
+                "verbalizes_mistargeted",
+                "verbalizes_prompt_mistargeted",
+            ],
+            computed_columns={
+                "optimizer_type": make_optimizer_type,
+                "relevant_verbalization": make_relevant_verbalization,
+                "relevant_verbalization_narrow": make_relevant_verbalization_narrow,
+                "verbalization_label": make_verbalization_label,
+            },
+            figures=[
+                Figure(
+                    filter=lambda df: ~df.is_sanitized,
+                    transform=make_verbalization_definition_comparison,
+                    layout=Grid(
+                        groupby="verbalization_definition",
+                        inner=BinnedLinePlot(
+                            x="hacking_rate",
+                            y="relevant_verbalization",
+                            width=5,
+                            height=5,
+                            hue="verbalization_label",
+                            n_bins=5,
+                            show_error_bars=True,
+                        ),
+                        cols_wrap=2,
+                        shared_axes=True,
                     ),
                     legend_ncol=1,
                 ),
