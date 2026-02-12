@@ -115,6 +115,15 @@ def make_optimization_stage(df: pd.DataFrame) -> pd.Series:
 
 ENV_DISPLAY_NAMES = VALUE_DISPLAY_NAMES["env_name"]
 
+HINT_DISPLAY_NAMES = {
+    "sycophancy": "Sycophancy",
+    "consistency": "Consistency",
+    "visual-pattern": "Visual Pattern",
+    "metadata": "Metadata",
+    "grader-hacking": "Grader Hacking",
+    "unethical": "Unethical Information",
+}
+
 
 def make_granular_env(df: pd.DataFrame) -> pd.Series:
     """Create environment name that takes into account hint type for MCQ."""
@@ -123,7 +132,7 @@ def make_granular_env(df: pd.DataFrame) -> pd.Series:
         env = row["env_name"]
         result = ENV_DISPLAY_NAMES[env]
         if env == "mcq":
-            result += f"\n({row['hint_type'].replace('-', ' ').capitalize()})"
+            result += f"\n({HINT_DISPLAY_NAMES[row['hint_type']]})"
         return result
 
     return df.apply(get_label, axis=1)
@@ -148,7 +157,7 @@ def make_prompt_label(df: pd.DataFrame) -> pd.Series:
             # For MCQ, group by hint_type as well
             for hint_type in env_df["hint_type"].unique():
                 hint_df = env_df[env_df["hint_type"] == hint_type]
-                hint_display = hint_type.replace("-", " ").capitalize()
+                hint_display = HINT_DISPLAY_NAMES[hint_type]
                 full_env = f"{env_display} ({hint_display})"
 
                 paths = hint_df["baseline_instructions_path"].drop_duplicates().tolist()
@@ -199,14 +208,14 @@ def make_env_and_prompter(df: pd.DataFrame) -> pd.Series:
 
 def make_hint_and_prompter(df: pd.DataFrame) -> pd.Series:
     """Create combined hint_type x prompter label for 6x3 grid, ordered hint-major."""
-    hint_order = ["sycophancy", "metadata", "visual-pattern", "grader-hacking", "consistency", "unethical"]
+    hint_order = list(HINT_DISPLAY_NAMES.keys())
     prompter_order = list(PROMPTER_DISPLAY_NAMES.values())
 
     def get_label(row):
         hint = row.get("hint_type", "")
         if not hint or (isinstance(hint, float) and pd.isna(hint)):
             return None
-        hint_display = hint.replace("-", " ").capitalize()
+        hint_display = HINT_DISPLAY_NAMES[hint]
         prompter_display = PROMPTER_DISPLAY_NAMES.get(row["prompter_name"], row["prompter_name"]) if pd.notna(row.get("prompter_name")) else "RL"
         return f"{hint_display}\n({prompter_display})"
 
@@ -214,8 +223,7 @@ def make_hint_and_prompter(df: pd.DataFrame) -> pd.Series:
     ordered_labels = []
     for hint in hint_order:
         for prompter in prompter_order:
-            hint_display = hint.replace("-", " ").capitalize()
-            ordered_labels.append(f"{hint_display}\n({prompter})")
+            ordered_labels.append(f"{HINT_DISPLAY_NAMES[hint]}\n({prompter})")
     return pd.Categorical(labels, categories=ordered_labels, ordered=True)
 
 
@@ -244,7 +252,15 @@ def broadcast_rl_to_groups(df: pd.DataFrame, groupby: str, match_col: str) -> pd
         rl_for_env[groupby] = cat
         replicated.append(rl_for_env)
 
-    return pd.concat([non_rl] + replicated, ignore_index=True)
+    result = pd.concat([non_rl] + replicated, ignore_index=True)
+    # Restore categorical dtype if present (concat can lose it)
+    if hasattr(non_rl[groupby], "cat") and non_rl[groupby].cat.ordered:
+        result[groupby] = pd.Categorical(
+            result[groupby],
+            categories=non_rl[groupby].cat.categories,
+            ordered=True,
+        )
+    return result
 
 
 def make_optimizer_type(df: pd.DataFrame) -> pd.Series:
