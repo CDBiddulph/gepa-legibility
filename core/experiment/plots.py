@@ -344,16 +344,26 @@ VALUE_ORDER: dict[str, list] = {
 }
 
 
-def sort_values(column: str, values: list) -> list:
+def sort_values(column: str, values) -> list:
     """Sort values according to VALUE_ORDER, with unlisted values at the end.
+
+    Priority: ordered pandas Categorical > VALUE_ORDER > prompt_label > alphabetical.
 
     Args:
         column: Column name to look up ordering for
-        values: List of values to sort
+        values: Values to sort (list, numpy array, or pandas Categorical)
 
     Returns:
         Sorted list of values
     """
+    # Respect pandas ordered Categorical if present
+    if hasattr(values, "dtype") and isinstance(values.dtype, pd.CategoricalDtype):
+        if values.dtype.ordered:
+            present = set(values)
+            return [v for v in values.dtype.categories if v in present]
+
+    values = list(values)
+
     if column not in VALUE_ORDER:
         # Special case for prompt_label: sort by env name prefix
         if column == "prompt_label":
@@ -751,7 +761,7 @@ class Grid(LayoutNode):
         is_bottommost: bool = True,
     ) -> RenderResult:
         df = dfs["main"]
-        unique_values = sort_values(self.groupby, list(df[self.groupby].dropna().unique()))
+        unique_values = sort_values(self.groupby, df[self.groupby].dropna().unique())
         n_groups = len(unique_values)
 
         if self.inner is None:
