@@ -10,9 +10,6 @@ from tasks.wordchain.critique_judge import check_contains_critique
 
 DEFAULT_JUDGE_MODEL_NAME = "openai/gpt-5-mini"
 
-# TODO: add a prompt for getting the sentiment of the response for each connection
-
-
 def _get_judge_model(model=DEFAULT_JUDGE_MODEL_NAME, cache=True):
     # If it's already a callable model object, return it directly
     if callable(model) and not isinstance(model, str):
