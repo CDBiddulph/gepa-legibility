@@ -12,6 +12,7 @@
 /logs/
 /logs-rl/
 /plots/
+/scripts/sanitization_cache/
 /serving/slurm-logs/
 /outputs/
 /overleaf/
