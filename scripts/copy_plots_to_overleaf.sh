@@ -6,12 +6,15 @@
 # Format: "source_name:dest_name" (without .pdf extension)
 # =============================================================================
 MAPPINGS=(
-    "baseline_vs_final_bar_2:baseline-vs-final"
+    "baseline_vs_final_bar_1:baseline-vs-final"
+    "baseline_vs_final_bar_2:baseline-vs-final-by-prompter"
+    "baseline_vs_final_bar_3:baseline-vs-final-mcq-by-prompter"
     "optimizer_progression_1:optimizer-progression"
     "optimizer_progression_2:optimizer-progression-by-prompter"
     "optimizer_progression_3:optimizer-progression-mcq-by-prompter"
     "recall_by_hacking_bins_1:recall-by-hacking-bins-by-env"
     "recall_by_hacking_bins_2:recall-by-hacking-bins-overall"
+    "psychosis_verbalization_defs_1:psychosis-verbalization-defs"
     "sanitization_1:sanitization"
     "shortening_1:shortening"
     "shortening_2:shortening-many"
