@@ -13,7 +13,9 @@
 /logs-rl/
 /plots/
 /scripts/sanitization_cache/
+/scripts/shortening_verbalization_cache/
 /serving/slurm-logs/
+/slurm-logs/
 /outputs/
 /overleaf/
 /wandb/
