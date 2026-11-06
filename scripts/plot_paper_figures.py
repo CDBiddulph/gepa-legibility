@@ -17,12 +17,14 @@ from dotenv import load_dotenv
 
 from core.experiment.plots import (
     BinnedLinePlot,
+    ContrastPlot,
     Figure,
     Grid,
     BarPlot,
     PlotConfig,
     ProgressionPlot,
     ScatterPlot,
+    Stack,
     VALUE_DISPLAY_NAMES,
 )
 from core.experiment_utils import load_experiments_config
@@ -93,6 +95,39 @@ def make_optimizer_column(df: pd.DataFrame) -> pd.Series:
             raise ValueError(f"Invalid settings: {all_settings}")
 
     return df.apply(get_optimizer, axis=1)
+
+
+def make_optimizer_family(df: pd.DataFrame) -> pd.Series:
+    """Collapse the GEPA variants into "plain" vs "suggest hacking" families.
+
+    Pools the three variants that tell the optimizer to reward hack, so that plain
+    GEPA can be compared against them with better statistics than the fully
+    disaggregated view in make_optimizer_column.
+    """
+    optimizer = make_optimizer_column(df)
+    return optimizer.map(
+        lambda x: {
+            "GEPA": "GEPA (no hacking suggested)",
+            "RL": "RL",
+        }.get(x, "GEPA + Suggest Hacking (any variant)")
+    )
+
+
+# The four prompt-optimization conditions, in the order the interventions stack.
+OPTIMIZER_ORDER = [
+    "GEPA",
+    "GEPA + Suggest Hacking",
+    "GEPA + Suggest Hacking + RL Teacher",
+    "GEPA + Suggest Hacking + RL Teacher with CoT",
+]
+
+# Short y-axis labels for the contrast panel, where each row is "the increment
+# this intervention adds on top of the previous condition".
+OPTIMIZER_INCREMENT_LABELS = {
+    "GEPA + Suggest Hacking": "+ Suggest Hacking",
+    "GEPA + Suggest Hacking + RL Teacher": "+ RL Teacher",
+    "GEPA + Suggest Hacking + RL Teacher with CoT": "+ Teacher CoT",
+}
 
 
 def make_optimization_stage(df: pd.DataFrame) -> pd.Series:
@@ -389,6 +424,7 @@ def make_configs(experiments: dict) -> dict:
                             hue_as_hline=["RL"],
                             show_max_star=True,
                             show_individual_lines=False,
+                            show_error_bands=True,
                         ),
                         cols_wrap=3,
                     ),
@@ -433,6 +469,51 @@ def make_configs(experiments: dict) -> dict:
                         cols_wrap=3,
                     ),
                     legend_ncol=2,
+                ),
+                # Figure 4: same as Figure 1, but with ±1 SEM bands around every
+                # curve and a row of effect sizes with 95% CIs and significance
+                # tests for each successive intervention.
+                Figure(
+                    filter=lambda df: ~df.is_sanitized & df.optimizer.notna(),
+                    layout=Stack(
+                        gap=0.5,
+                        children=[
+                            Grid(
+                                groupby="env_name",
+                                inner=ProgressionPlot(
+                                    x="discovery_eval_counts",
+                                    y="proxy_reward",
+                                    width=4,
+                                    height=4,
+                                    hue="optimizer",
+                                    hue_as_hline=["RL"],
+                                    show_max_star=True,
+                                    show_individual_lines=False,
+                                    show_error_bands=True,
+                                ),
+                                cols_wrap=3,
+                            ),
+                            Grid(
+                                groupby="env_name",
+                                inner=ContrastPlot(
+                                    y="proxy_reward",
+                                    group="optimizer",
+                                    order=OPTIMIZER_ORDER,
+                                    x_progress="discovery_eval_counts",
+                                    block_cols=("prompter_name", "hint_type"),
+                                    short_labels=OPTIMIZER_INCREMENT_LABELS,
+                                    family_by="env_name",
+                                    show_points=False,
+                                    xlabel="Δ Final Proxy Reward",
+                                    title="",  # titles are on the row above
+                                    width=4,
+                                    height=2.6,
+                                ),
+                                cols_wrap=3,
+                            ),
+                        ],
+                    ),
+                    legend_ncol=3,
                 ),
             ],
         ),
@@ -666,6 +747,8 @@ def make_configs(experiments: dict) -> dict:
             ],
             computed_columns={
                 "optimizer_type": make_optimizer_type,
+                "optimizer": make_optimizer_column,
+                "optimizer_family": make_optimizer_family,
                 "relevant_verbalization": make_relevant_verbalization,
                 "verbalization_label": make_verbalization_label,
             },
@@ -701,6 +784,65 @@ def make_configs(experiments: dict) -> dict:
                         n_bins=5,
                     ),
                     legend_ncol=1,
+                ),
+                # Figure 3 (used in overleaf as recall-by-hacking-bins-by-method):
+                # same as Figure 1, but separating plain GEPA from the variants
+                # that tell the optimizer to reward hack.
+                Figure(
+                    filter=lambda df: ~df.is_sanitized,
+                    layout=Grid(
+                        groupby="env_name",
+                        inner=BinnedLinePlot(
+                            x="hacking_rate",
+                            y="relevant_verbalization",
+                            width=5,
+                            height=5,
+                            hue="optimizer_family",
+                            n_bins=5,
+                            show_error_bars=True,
+                            show_counts=True,
+                        ),
+                        cols_wrap=3,
+                    ),
+                    legend_ncol=1,
+                ),
+                # Figure 4 (used in overleaf as
+                # recall-by-hacking-bins-by-method-overall): equal-weighted
+                # average across settings, plain GEPA vs suggest-hacking vs RL.
+                Figure(
+                    filter=lambda df: ~df.is_sanitized,
+                    layout=BinnedLinePlot(
+                        x="hacking_rate",
+                        y="relevant_verbalization",
+                        width=5,
+                        height=5,
+                        equal_weight_by="env_name",
+                        # Plain GEPA has no data in some (env, bin) cells, so
+                        # filling those with 0 would understate its verbalization.
+                        fill_missing_groups=False,
+                        hue="optimizer_family",
+                        n_bins=5,
+                        show_counts=True,
+                    ),
+                    legend_ncol=1,
+                ),
+                # Figure 5: fully disaggregated by GEPA variant, for the appendix.
+                Figure(
+                    filter=lambda df: ~df.is_sanitized,
+                    layout=Grid(
+                        groupby="env_name",
+                        inner=BinnedLinePlot(
+                            x="hacking_rate",
+                            y="relevant_verbalization",
+                            width=5,
+                            height=5,
+                            hue="optimizer",
+                            n_bins=5,
+                            show_error_bars=True,
+                        ),
+                        cols_wrap=3,
+                    ),
+                    legend_ncol=2,
                 ),
             ],
         ),

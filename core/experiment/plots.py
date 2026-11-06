@@ -172,8 +172,8 @@ LEGEND_HIDDEN_COLUMNS: set[str] = {"baseline_instructions_path"}
 # Maps column names to friendly display names for axis labels, titles, etc.
 # Names with suffixes (e.g., "hacking_rate_hinted") will match their base name.
 COLUMN_DISPLAY_NAMES: dict[str, str] = {
-    "discovery_eval_counts": "Task LM Calls",
-    "reflection_call_count": "Reflection LM Calls",
+    "discovery_eval_counts": "Executor LLM Calls",
+    "reflection_call_count": "Optimizer LLM Calls",
     "column_name": "Column",
     "column_value": "Value",
     "suggest_hack": "Told to Hack?",
@@ -342,6 +342,11 @@ VALUE_ORDER: dict[str, list] = {
     "is_sanitized": [False, True],
     "suggest_hack": ["no", "explicit"],
     "verbalization_label": ["GEPA (prompt verbalization)", "RL (CoT verbalization)"],
+    "optimizer_family": [
+        "GEPA (no hacking suggested)",
+        "GEPA + Suggest Hacking (any variant)",
+        "RL",
+    ],
 }
 
 
@@ -429,11 +434,18 @@ STYLE_REGISTRY: dict[tuple[str, Any], dict[str, Any]] = {
     ("source", "proposed"): {"marker": "o"},
     ("source", "empty"): {"marker": "o"},
     # Colors for optimizer values (blue progression for GEPA variants, gray for RL baseline)
-    ("optimizer", "GEPA"): {"color": "#c6dbef"},  # lightest blue
-    ("optimizer", "GEPA + Suggest Hacking"): {"color": "#6baed6"},  # light blue
-    ("optimizer", "GEPA + Suggest Hacking + RL Teacher"): {"color": "#2171b5"},  # medium blue
-    ("optimizer", "GEPA + Suggest Hacking + RL Teacher with CoT"): {"color": "#084594"},  # dark blue
+    # Viridis, sampled at 4 evenly spaced points and reversed, so the interventions
+    # stack from light to dark. Distinct in hue as well as lightness, which keeps
+    # overlapping error bands readable.
+    ("optimizer", "GEPA"): {"color": "#fde725"},  # viridis yellow
+    ("optimizer", "GEPA + Suggest Hacking"): {"color": "#35b779"},  # viridis green
+    ("optimizer", "GEPA + Suggest Hacking + RL Teacher"): {"color": "#31688e"},  # viridis blue
+    ("optimizer", "GEPA + Suggest Hacking + RL Teacher with CoT"): {"color": "#440154"},  # viridis dark purple
     ("optimizer", "RL"): {"color": "#555555"},  # dark gray (baseline comparison)
+    # Colors for optimizer_family (plain GEPA vs pooled "suggest hacking" variants)
+    ("optimizer_family", "GEPA (no hacking suggested)"): {"color": "#e69f00"},  # orange
+    ("optimizer_family", "GEPA + Suggest Hacking (any variant)"): {"color": "#30b0ff"},  # bright blue (matches GEPA elsewhere)
+    ("optimizer_family", "RL"): {"color": "#555555"},  # dark gray (matches RL)
     # Colors for verbalization_label (used in recall_by_hacking_bins plot)
     ("verbalization_label", "GEPA (prompt verbalization)"): {"color": "#30b0ff"},  # bright blue
     ("verbalization_label", "RL (CoT verbalization)"): {"color": "#555555"},  # dark gray (matches RL)
@@ -829,6 +841,88 @@ class Grid(LayoutNode):
 
 
 @dataclass
+class Stack(LayoutNode):
+    """Stacks child layouts vertically, sizing each row by its natural height.
+
+    Unlike Grid, the children can have different heights: each row of each child
+    gets a share of the vertical space proportional to the height it asks for.
+    All children see the same (filtered) data, and all of them draw into one
+    GridSpec, so constrained layout keeps their columns aligned even when one
+    child needs wider tick labels than another.
+
+    Args:
+        children: Layout nodes to stack, top to bottom.
+        gap: Blank vertical space between children, in inches. Use this to keep
+            one child's x-axis label from reading as the next child's title.
+    """
+
+    children: list[LayoutNode]
+    gap: float = 0.0
+
+    def _row_heights(self, df: pd.DataFrame) -> tuple[list[float], list[int]]:
+        """Height of every grid row, plus the first row index of each child."""
+        heights = []
+        child_starts = []
+        for i, child in enumerate(self.children):
+            size = child.get_grid_size(df)
+            if i > 0 and self.gap > 0:
+                heights.append(self.gap)
+            child_starts.append(len(heights))
+            heights.extend([size.cell_height] * size.rows)
+        return heights, child_starts
+
+    def get_grid_size(self, df: pd.DataFrame) -> GridSize:
+        sizes = [child.get_grid_size(df) for child in self.children]
+        width = max(size.cols * size.cell_width for size in sizes)
+        heights, _ = self._row_heights(df)
+        # The whole stack is a single cell; children subdivide it internally.
+        return GridSize(rows=1, cols=1, cell_width=width, cell_height=sum(heights))
+
+    def render(
+        self,
+        fig: plt.Figure,
+        gs: plt.GridSpec,
+        row_slice: slice,
+        col_slice: slice,
+        dfs: DFs,
+        scale: float = 1.0,
+        show_chrome: bool = True,
+        subtitle: str = None,
+        is_leftmost: bool = True,
+        is_bottommost: bool = True,
+    ) -> RenderResult:
+        df = dfs["main"]
+        sizes = [child.get_grid_size(df) for child in self.children]
+        # Gaps are blank grid rows, since constrained layout ignores GridSpec hspace
+        heights, child_starts = self._row_heights(df)
+
+        inner = gs[row_slice, col_slice].subgridspec(
+            len(heights),
+            max(size.cols for size in sizes),
+            height_ratios=heights,
+        )
+
+        child_results = []
+        for child, size, start in zip(self.children, sizes, child_starts):
+            child_results.append(
+                child.render(
+                    fig,
+                    inner,
+                    slice(start, start + size.rows),
+                    slice(0, size.cols),
+                    dfs,
+                    scale,
+                    show_chrome,
+                    subtitle=subtitle,
+                    is_leftmost=is_leftmost,
+                    is_bottommost=is_bottommost,
+                )
+            )
+
+        return RenderResult.merge(child_results)
+
+
+@dataclass
 class MainSide(LayoutNode):
     """Creates a main plot with smaller side plots for different groupby values.
 
@@ -1056,6 +1150,8 @@ class ProgressionPlot(LayoutNode):
             that don't have progression data.
         title: Optional title for the plot
         show_individual_lines: Whether to show faint lines for individual runs
+        show_error_bands: Whether to shade ±1 standard error of the mean across
+            runs around each average line (and around hue_as_hline baselines)
         width: Plot width in inches (default: 9)
         height: Plot height in inches (default: 6)
 
@@ -1087,6 +1183,7 @@ class ProgressionPlot(LayoutNode):
     title: str = None
     show_individual_lines: bool = True
     show_max_star: bool = False
+    show_error_bands: bool = False
 
     def get_grid_size(self, df: pd.DataFrame) -> GridSize:
         return GridSize(1, 1, self.width, self.height)
@@ -1144,6 +1241,7 @@ class ProgressionPlot(LayoutNode):
             show_chrome,
             self.show_individual_lines,
             self.show_max_star,
+            self.show_error_bands,
             is_leftmost=is_leftmost,
             is_bottommost=is_bottommost,
         )
@@ -1330,6 +1428,9 @@ class BinnedLinePlot(LayoutNode):
             When set, computes per-group averages first, then averages those.
             Useful when groups have different amounts of data but should contribute
             equally to the final average (e.g., equal_weight_by="env_name").
+        fill_missing_groups: When equal_weight_by is set, whether a group with no
+            data in a bin contributes 0 to that bin's average (default True).
+            Set to False to average only over groups that have data.
         show_error_bars: Whether to show ± SEM as error bars at each point.
             Only supported when equal_weight_by is None. Points with count=1
             won't have error bars (can't compute SEM from a single sample).
@@ -1374,6 +1475,7 @@ class BinnedLinePlot(LayoutNode):
     n_bins: int = 10
     title: str = None
     equal_weight_by: str = None
+    fill_missing_groups: bool = True
     show_error_bars: bool = False
     show_counts: bool = False
 
@@ -1417,11 +1519,153 @@ class BinnedLinePlot(LayoutNode):
         ax = fig.add_subplot(gs[row_slice, col_slice])
         legend_entries = _draw_binned_line_plot(
             ax, df, self.x, y_col, self.hue, self.linestyle, self.n_bins, title, scale, show_chrome,
-            self.equal_weight_by, self.show_error_bars, self.show_counts,
+            self.equal_weight_by, self.fill_missing_groups, self.show_error_bars, self.show_counts,
             is_leftmost=is_leftmost, is_bottommost=is_bottommost
         )
         # No aggregation warnings for binned plots (binning is the point)
         return RenderResult(warnings={}, legend_entries=legend_entries)
+
+
+@dataclass
+class ContrastPlot(LayoutNode):
+    """Effect sizes with confidence intervals for successive conditions.
+
+    Reduces each run to its end-of-optimization value of `y`, then compares each
+    condition in `order` against the one before it. Every contrast is drawn as a
+    point (mean paired difference) with a 95% confidence interval, annotated with
+    its p-value and Holm-corrected significance. This is the companion to a
+    ProgressionPlot: the curves show the trajectories, this shows which gaps
+    between them are real.
+
+    Args:
+        y: Metric column to compare (e.g. "proxy_reward")
+        group: Column holding the condition (e.g. "optimizer")
+        order: Conditions in order; each is compared against its predecessor
+        x_progress: Column used to find each run's final row
+        block_cols: Settings held fixed across conditions, used to match runs
+            into pairs (e.g. optimizer LLM and hint type)
+        short_labels: Optional map from condition value to a short y-axis label
+        family_by: Column that splits the figure into panels. When set, p-values
+            are Holm-corrected across all panels, not just this one.
+        show_points: Whether to overlay the individual paired differences
+        shared_xlim: Whether all panels share one x scale, so effect sizes can be
+            compared across panels
+        xlabel: Optional override for the x-axis label
+        title: Optional title (defaults to the parent Grid's subtitle; pass "" to
+            suppress it, e.g. when the row above already carries the titles)
+        width: Plot width in inches
+        height: Plot height in inches
+
+    Example:
+        ContrastPlot(y="proxy_reward", group="optimizer", order=[...],
+                     family_by="env_name", width=4, height=2.6)
+    """
+
+    width: float
+    height: float
+    y: str = None
+    group: str = None
+    order: list[str] = None
+    x_progress: str = "discovery_eval_counts"
+    block_cols: tuple[str, ...] = ("prompter_name", "hint_type")
+    short_labels: dict = None
+    family_by: str = None
+    show_points: bool = True
+    shared_xlim: bool = True
+    xlabel: str = None
+    title: str = None
+
+    # Contrasts for the whole family, computed once from the unsplit DataFrame
+    _contrasts: pd.DataFrame = field(default=None, init=False, repr=False, compare=False)
+
+    def get_grid_size(self, df: pd.DataFrame) -> GridSize:
+        # get_grid_size sees the whole figure's data, before Grid splits it into
+        # panels, which is what lets us correct p-values across all panels.
+        if self._contrasts is None and self.y is not None:
+            self._contrasts = compute_contrasts(
+                df,
+                y=self.y,
+                group=self.group,
+                order=self.order,
+                x_progress=self.x_progress,
+                block_cols=self.block_cols,
+                family_by=self.family_by,
+            )
+            _print_contrast_table(self._contrasts, self.family_by)
+        return GridSize(1, 1, self.width, self.height)
+
+    def render(
+        self,
+        fig: plt.Figure,
+        gs: plt.GridSpec,
+        row_slice: slice,
+        col_slice: slice,
+        dfs: DFs,
+        scale: float = 1.0,
+        show_chrome: bool = True,
+        subtitle: str = None,
+        is_leftmost: bool = True,
+        is_bottommost: bool = True,
+    ) -> RenderResult:
+        if self.y is None or self.group is None or self.order is None:
+            raise ValueError("ContrastPlot requires 'y', 'group', and 'order'")
+
+        df = dfs["main"]
+        contrasts = self._contrasts
+        if contrasts is None:
+            contrasts = compute_contrasts(
+                df,
+                y=self.y,
+                group=self.group,
+                order=self.order,
+                x_progress=self.x_progress,
+                block_cols=self.block_cols,
+                family_by=self.family_by,
+            )
+
+        xlim = self._shared_xlim(contrasts) if self.shared_xlim else None
+
+        # Select this panel's rows out of the family-wide contrast table
+        if self.family_by is not None:
+            family_values = df[self.family_by].dropna().unique()
+            if len(family_values) != 1:
+                raise ValueError(
+                    f"ContrastPlot expected one value of '{self.family_by}' per panel, "
+                    f"got {sorted(family_values)}"
+                )
+            contrasts = contrasts[contrasts["family"] == family_values[0]]
+
+        title = self.title if self.title is not None else subtitle
+
+        ax = fig.add_subplot(gs[row_slice, col_slice])
+        _draw_contrast_plot(
+            ax,
+            contrasts,
+            group=self.group,
+            short_labels=self.short_labels or {},
+            xlabel=self.xlabel or f"Δ {get_display_name(self.y)}",
+            show_points=self.show_points,
+            xlim=xlim,
+            title=title,
+            scale=scale,
+            show_chrome=show_chrome,
+            is_leftmost=is_leftmost,
+            is_bottommost=is_bottommost,
+        )
+        return RenderResult(warnings={}, legend_entries=[])
+
+    def _shared_xlim(self, contrasts: pd.DataFrame) -> tuple[float, float]:
+        """X-limits covering every panel's contrasts, so panels are comparable."""
+        lows = [0.0, *contrasts["ci_low"].dropna()]
+        highs = [0.0, *contrasts["ci_high"].dropna()]
+        if self.show_points:
+            for diffs in contrasts["diffs"]:
+                if len(diffs):
+                    lows.append(float(np.min(diffs)))
+                    highs.append(float(np.max(diffs)))
+        low, high = min(lows), max(highs)
+        pad = 0.12 * (high - low) if high > low else 0.1
+        return low - pad, high + pad
 
 
 # =============================================================================
@@ -1681,6 +1925,7 @@ def _draw_progression_series(
     linewidth: float,
     faint_linewidth: float,
     show_individual_lines: bool = True,
+    show_error_bands: bool = False,
 ) -> Any:
     """Draw a single progression series (faint individual lines + bold average).
 
@@ -1696,6 +1941,7 @@ def _draw_progression_series(
         linewidth: Width for bold average line
         faint_linewidth: Width for faint individual lines
         show_individual_lines: Whether to show faint lines for individual runs
+        show_error_bands: Whether to shade ±1 SEM across runs around the average
 
     Returns:
         The Line2D object for the average line, or None if no data
@@ -1726,7 +1972,19 @@ def _draw_progression_series(
                 )
 
     if all_run_lines:
-        avg_x, avg_y = _average_step_functions(all_run_lines)
+        avg_x, avg_y, sem_y = _aggregate_step_functions(all_run_lines)
+        if show_error_bands:
+            avg_arr = np.array(avg_y)
+            sem_arr = np.array(sem_y)
+            ax.fill_between(
+                avg_x,
+                avg_arr - sem_arr,
+                avg_arr + sem_arr,
+                color=color,
+                alpha=0.18,
+                linewidth=0,
+                zorder=1,
+            )
         (line,) = ax.plot(
             avg_x,
             avg_y,
@@ -1749,6 +2007,7 @@ def _draw_hline_series(
     hue_val: str,
     color: str,
     linewidth: float,
+    show_error_bands: bool = False,
 ) -> Any:
     """Draw a horizontal line for a hue value (e.g., RL baseline).
 
@@ -1764,6 +2023,7 @@ def _draw_hline_series(
         hue_val: The hue value being drawn
         color: Line color
         linewidth: Line width
+        show_error_bands: Whether to shade ±1 SEM across runs around the line
 
     Returns:
         The Line2D object for the horizontal line
@@ -1779,6 +2039,14 @@ def _draw_hline_series(
     # Compute mean y-value and draw horizontal line
     mean_y = df[y].mean()
     label = get_display_value(hue, hue_val)
+
+    if show_error_bands and len(df) > 1:
+        sem_y = df[y].std(ddof=1) / np.sqrt(len(df))
+        if pd.notna(sem_y):
+            ax.axhspan(
+                mean_y - sem_y, mean_y + sem_y, color=color, alpha=0.18, linewidth=0, zorder=1
+            )
+
     line = ax.axhline(
         y=mean_y,
         color=color,
@@ -1804,6 +2072,7 @@ def _draw_progression_plot(
     show_chrome: bool = True,
     show_individual_lines: bool = True,
     show_max_star: bool = False,
+    show_error_bands: bool = False,
     is_leftmost: bool = True,
     is_bottommost: bool = True,
 ) -> list[LegendEntry]:
@@ -1824,6 +2093,7 @@ def _draw_progression_plot(
         show_chrome: Whether to show axis labels and legend
         show_individual_lines: Whether to show faint lines for individual run_index values
         show_max_star: Whether to show star markers at the maximum final score for each hue
+        show_error_bands: Whether to shade ±1 SEM across runs around each series
         is_leftmost: Whether this plot is in the leftmost column of the grid
         is_bottommost: Whether this plot is in the bottommost row of the grid
 
@@ -1885,7 +2155,9 @@ def _draw_progression_plot(
 
         # Draw as horizontal line if specified in hue_as_hline
         if hue_val in hline_hue_values:
-            line = _draw_hline_series(ax, hue_df, x, y, hue, hue_val, color, linewidth)
+            line = _draw_hline_series(
+                ax, hue_df, x, y, hue, hue_val, color, linewidth, show_error_bands
+            )
             if line is not None and hue_val is not None:
                 drawn_hue_vals.add(hue_val)
             continue
@@ -1927,6 +2199,7 @@ def _draw_progression_plot(
                 linewidth,
                 faint_linewidth,
                 show_individual_lines,
+                show_error_bands,
             )
             if line is not None:
                 if hue_val is not None:
@@ -2447,6 +2720,7 @@ def _draw_binned_line_plot(
     scale: float = 1.0,
     show_chrome: bool = True,
     equal_weight_by: str = None,
+    fill_missing_groups: bool = True,
     show_error_bars: bool = False,
     show_counts: bool = False,
     is_leftmost: bool = True,
@@ -2467,6 +2741,10 @@ def _draw_binned_line_plot(
         show_chrome: Whether to show axis labels
         equal_weight_by: Column to weight equally when averaging (optional).
             When set, computes per-group means first, then averages those means.
+        fill_missing_groups: When equal_weight_by is set, whether a group with no
+            data in a bin contributes 0 to that bin's average. Set to False to
+            average only over the groups that actually have data, which is what
+            you want when some series legitimately have no data for some groups.
         show_error_bars: Whether to show ± SEM as error bars at each point
             (only supported when equal_weight_by is None).
         show_counts: Whether to show sample counts as text labels at each point.
@@ -2542,14 +2820,14 @@ def _draw_binned_line_plot(
             # Group by bin and compute mean (and std/count for error bands)
             if equal_weight_by is not None:
                 # Macro average: first compute per-group means, then average those
-                # Missing groups within a bin are treated as 0
                 per_group = series_df.groupby(["_bin", equal_weight_by], observed=True)[y].mean()
 
-                # Reindex to include all (bin, group) combinations, filling missing with 0
-                all_bins = series_df["_bin"].cat.categories
-                all_groups = series_df[equal_weight_by].unique()
-                full_index = pd.MultiIndex.from_product([all_bins, all_groups], names=["_bin", equal_weight_by])
-                per_group = per_group.reindex(full_index, fill_value=0)
+                if fill_missing_groups:
+                    # Reindex to include all (bin, group) combinations, filling missing with 0
+                    all_bins = series_df["_bin"].cat.categories
+                    all_groups = series_df[equal_weight_by].unique()
+                    full_index = pd.MultiIndex.from_product([all_bins, all_groups], names=["_bin", equal_weight_by])
+                    per_group = per_group.reindex(full_index, fill_value=0)
 
                 binned = per_group.groupby("_bin", observed=True).agg(["mean", "count"])
             else:
@@ -2694,10 +2972,341 @@ def _build_step_function(
     return result_x, result_y
 
 
-def _average_step_functions(lines: list[tuple[list, list]]) -> tuple[list, list]:
-    """Average multiple step functions."""
+def _draw_contrast_plot(
+    ax: plt.Axes,
+    contrasts: pd.DataFrame,
+    group: str,
+    short_labels: dict,
+    xlabel: str,
+    show_points: bool = True,
+    xlim: tuple[float, float] = None,
+    title: str = None,
+    scale: float = 1.0,
+    show_chrome: bool = True,
+    is_leftmost: bool = True,
+    is_bottommost: bool = True,
+) -> None:
+    """Draw one panel of effect sizes with confidence intervals.
+
+    Args:
+        ax: Matplotlib axes to draw on
+        contrasts: Rows of the table from compute_contrasts() for this panel
+        group: Column the conditions came from (used for colors)
+        short_labels: Map from condition value to a short y-axis label
+        xlabel: Label for the x-axis
+        show_points: Whether to overlay the individual paired differences
+        xlim: Optional x-limits, e.g. to share one scale across panels
+        title: Optional title
+        scale: Scale factor for fonts and line widths
+        show_chrome: Whether to show axis labels
+        is_leftmost: Whether this plot is in the leftmost column of the grid
+        is_bottommost: Whether this plot is in the bottommost row of the grid
+    """
+    label_fontsize = BASE_LABEL_FONTSIZE * scale
+    tick_fontsize = BASE_TICK_FONTSIZE * scale
+    annotation_fontsize = BASE_TICK_FONTSIZE * scale * 0.85
+    linewidth = BASE_LINEWIDTH * scale
+
+    if contrasts.empty:
+        ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
+        return
+
+    ax.axvline(0, color="black", linestyle=":", linewidth=linewidth * 0.8, zorder=1)
+
+    y_positions = list(range(len(contrasts)))
+    for y_pos, (_, row) in zip(y_positions, contrasts.iterrows()):
+        color = get_color(group, row["treatment"], y_pos)
+
+        if show_points and len(row["diffs"]):
+            rng = np.random.default_rng(seed=y_pos)
+            jitter = rng.uniform(-0.13, 0.13, len(row["diffs"]))
+            ax.scatter(
+                row["diffs"],
+                y_pos + jitter,
+                s=6 * scale,
+                color=color,
+                alpha=0.35,
+                linewidths=0,
+                zorder=2,
+            )
+
+        ax.plot(
+            [row["ci_low"], row["ci_high"]],
+            [y_pos, y_pos],
+            color=color,
+            linewidth=linewidth * 1.6,
+            solid_capstyle="butt",
+            zorder=3,
+        )
+        ax.scatter(
+            [row["mean_diff"]],
+            [y_pos],
+            s=BASE_MARKER_SIZE * scale * 2.5,
+            color=color,
+            edgecolors="black",
+            linewidths=0.5,
+            zorder=4,
+        )
+        ax.text(
+            row["mean_diff"],
+            y_pos - 0.32,
+            f"{_format_p(row['p'])} {row['stars']}".strip(),
+            ha="center",
+            va="bottom",
+            fontsize=annotation_fontsize,
+            # Opaque background so the label stays readable over the zero line
+            bbox=dict(facecolor="white", edgecolor="none", alpha=0.75, pad=0.8),
+            zorder=5,
+        )
+
+    ax.set_yticks(y_positions)
+    ax.set_ylim(len(contrasts) - 0.4, -0.75)  # inverted: first contrast on top
+    if xlim is not None:
+        ax.set_xlim(*xlim)
+    ax.grid(axis="x", alpha=0.3)
+
+    if show_chrome and is_leftmost:
+        ax.set_yticklabels(
+            [
+                short_labels.get(t, get_display_value(group, t))
+                for t in contrasts["treatment"]
+            ],
+            fontsize=tick_fontsize,
+        )
+    else:
+        ax.set_yticklabels([])
+
+    ax.tick_params(axis="x", labelsize=tick_fontsize)
+    if show_chrome and is_bottommost:
+        ax.set_xlabel(xlabel, fontsize=label_fontsize)
+
+    if title:
+        ax.set_title(title, fontsize=label_fontsize)
+
+
+def _print_contrast_table(contrasts: pd.DataFrame, family_by: str = None) -> None:
+    """Print the full statistics behind a ContrastPlot, for reporting in text."""
+    print("\nContrasts (end-of-optimization values, successive conditions):")
+    header = (
+        f"  {'setting':<22}{'contrast':<34}{'n':>4}{'Δ mean':>9}"
+        f"{'95% CI':>18}{'p (paired)':>12}{'p (Holm)':>10}{'p (Welch)':>11}"
+    )
+    print(header)
+    print("  " + "-" * (len(header) - 2))
+    for _, row in contrasts.iterrows():
+        family = get_display_value(family_by, row["family"]) if family_by else ""
+        contrast = f"{row['treatment']} vs. {row['baseline']}"
+        contrast = contrast.replace("GEPA + Suggest Hacking", "GEPA+SH")
+        ci = f"[{row['ci_low']:+.3f}, {row['ci_high']:+.3f}]"
+        print(
+            f"  {family:<22}{contrast[:33]:<34}{row['n']:>4}{row['mean_diff']:>+9.3f}"
+            f"{ci:>18}{row['p']:>12.4f}{row['p_holm']:>10.4f}{row['p_welch']:>11.4f}"
+        )
+    print(
+        "  Paired t-test over runs matched within (optimizer LLM × hint type) blocks; "
+        "Holm correction across all contrasts above.\n"
+    )
+
+
+def _final_row_per_run(df: pd.DataFrame, x: str) -> pd.DataFrame:
+    """Return one row per run: the row with the largest x value (end of the run)."""
+    idx = df.groupby(["experiment_path", "run_index"], dropna=False)[x].idxmax()
+    return df.loc[idx]
+
+
+def _block_keyed_values(
+    finals: pd.DataFrame, y: str, block_cols: tuple[str, ...]
+) -> pd.Series:
+    """Index a condition's per-run values by (block..., replicate) for pairing.
+
+    Runs are matched across conditions within a block of experimental settings
+    that is held fixed across conditions (e.g. optimizer LLM and hint type).
+    Within a block, replicates are matched by their order, which is arbitrary but
+    chosen independently of the outcomes.
+    """
+    present = [c for c in block_cols if c in finals.columns]
+    sub = finals.sort_values(["experiment_path", "run_index"]).copy()
+    for col in present:
+        # NaN keys never compare equal, which would silently drop pairs
+        sub[col] = sub[col].astype(object).where(sub[col].notna(), "__na__").astype(str)
+    if present:
+        sub["_replicate"] = sub.groupby(present, dropna=False).cumcount()
+        key = present + ["_replicate"]
+    else:
+        sub["_replicate"] = range(len(sub))
+        key = ["_replicate"]
+    return sub.set_index(key)[y]
+
+
+def _paired_contrast(
+    finals: pd.DataFrame,
+    group: str,
+    baseline: str,
+    treatment: str,
+    y: str,
+    block_cols: tuple[str, ...],
+    alpha: float = 0.05,
+) -> dict:
+    """Compare two conditions' end-of-run values with a paired t-test.
+
+    Falls back to Welch's unpaired t-test when runs cannot be matched into pairs.
+
+    Returns:
+        Dict with n, mean_diff, ci_low, ci_high, p, p_welch, and method.
+    """
+    from scipy import stats  # imported lazily so plots.py works without scipy
+
+    values_a = finals[finals[group] == baseline][y].dropna().values
+    values_b = finals[finals[group] == treatment][y].dropna().values
+
+    welch_p = (
+        float(stats.ttest_ind(values_b, values_a, equal_var=False).pvalue)
+        if len(values_a) > 1 and len(values_b) > 1
+        else float("nan")
+    )
+
+    keyed_a = _block_keyed_values(finals[finals[group] == baseline], y, block_cols)
+    keyed_b = _block_keyed_values(finals[finals[group] == treatment], y, block_cols)
+    joined = pd.concat(
+        [keyed_a.rename("a"), keyed_b.rename("b")], axis=1, join="inner"
+    ).dropna()
+    diffs = (joined["b"] - joined["a"]).values
+
+    if len(diffs) >= 2:
+        n = len(diffs)
+        mean_diff = float(np.mean(diffs))
+        sem = float(np.std(diffs, ddof=1) / np.sqrt(n))
+        p = float(stats.ttest_rel(joined["b"], joined["a"]).pvalue)
+        crit = float(stats.t.ppf(1 - alpha / 2, n - 1)) if sem > 0 else 0.0
+        method = "paired t-test"
+    elif len(values_a) > 1 and len(values_b) > 1:
+        n = min(len(values_a), len(values_b))
+        mean_diff = float(np.mean(values_b) - np.mean(values_a))
+        sem = float(
+            np.sqrt(
+                np.var(values_a, ddof=1) / len(values_a)
+                + np.var(values_b, ddof=1) / len(values_b)
+            )
+        )
+        p = welch_p
+        crit = 1.96
+        method = "Welch t-test"
+    else:
+        return {
+            "n": 0,
+            "mean_diff": float("nan"),
+            "ci_low": float("nan"),
+            "ci_high": float("nan"),
+            "p": float("nan"),
+            "p_welch": welch_p,
+            "diffs": np.array([]),
+            "method": "insufficient data",
+        }
+
+    return {
+        "n": n,
+        "mean_diff": mean_diff,
+        "ci_low": mean_diff - crit * sem,
+        "ci_high": mean_diff + crit * sem,
+        "p": p,
+        "p_welch": welch_p,
+        "diffs": diffs if method == "paired t-test" else np.array([]),
+        "method": method,
+    }
+
+
+def _holm_adjust(pvalues: list[float]) -> list[float]:
+    """Holm-Bonferroni step-down adjustment of a family of p-values."""
+    valid = [(i, p) for i, p in enumerate(pvalues) if not np.isnan(p)]
+    adjusted = [float("nan")] * len(pvalues)
+    m = len(valid)
+    running_max = 0.0
+    for rank, (i, p) in enumerate(sorted(valid, key=lambda pair: pair[1])):
+        running_max = max(running_max, min(1.0, (m - rank) * p))
+        adjusted[i] = running_max
+    return adjusted
+
+
+def _significance_stars(p: float) -> str:
+    """Star notation for an (already adjusted) p-value."""
+    if np.isnan(p):
+        return ""
+    if p < 0.001:
+        return "***"
+    if p < 0.01:
+        return "**"
+    if p < 0.05:
+        return "*"
+    return "n.s."
+
+
+def _format_p(p: float) -> str:
+    if np.isnan(p):
+        return "p = n/a"
+    if p < 0.001:
+        return "p < .001"
+    return f"p = {p:.3f}".replace("0.", ".", 1)
+
+
+def compute_contrasts(
+    df: pd.DataFrame,
+    y: str,
+    group: str,
+    order: list[str],
+    x_progress: str,
+    block_cols: tuple[str, ...],
+    family_by: str = None,
+) -> pd.DataFrame:
+    """Compare each condition against the previous one in `order`, per family.
+
+    Each run is reduced to its end-of-optimization value (largest x_progress),
+    then successive conditions are compared with a paired t-test over matched
+    runs. P-values are Holm-corrected across the whole family of contrasts
+    (all conditions × all values of family_by).
+
+    Returns:
+        DataFrame with one row per contrast, sorted by family then order.
+    """
+    families = (
+        sort_values(family_by, list(df[family_by].dropna().unique()))
+        if family_by is not None
+        else [None]
+    )
+
+    rows = []
+    for family in families:
+        family_df = df if family is None else df[df[family_by] == family]
+        finals = _final_row_per_run(family_df, x_progress)
+        for baseline, treatment in zip(order, order[1:]):
+            result = _paired_contrast(
+                finals, group, baseline, treatment, y, block_cols
+            )
+            rows.append({"family": family, "baseline": baseline, "treatment": treatment, **result})
+
+    contrasts = pd.DataFrame(rows)
+    contrasts["p_holm"] = _holm_adjust(list(contrasts["p"]))
+    contrasts["stars"] = [_significance_stars(p) for p in contrasts["p_holm"]]
+    return contrasts
+
+
+def _aggregate_step_functions(
+    lines: list[tuple[list, list]],
+) -> tuple[list, list, list]:
+    """Average multiple step functions, also returning the SEM across lines.
+
+    At each x change point, looks up every line's current y value (step function
+    lookup) and computes the mean and the standard error of the mean across the
+    lines that have started by that x. Returns coordinates that trace out a step
+    function, so mean and SEM are aligned point-for-point.
+
+    Args:
+        lines: List of (x_vals, y_vals) step-function coordinates, one per run.
+
+    Returns:
+        Tuple of (x, mean, sem) lists, all the same length.
+    """
     if not lines:
-        return [], []
+        return [], [], []
 
     # Collect all x change points
     all_x_points = set()
@@ -2707,32 +3316,35 @@ def _average_step_functions(lines: list[tuple[list, list]]) -> tuple[list, list]
 
     avg_x = []
     avg_y = []
+    sem_y = []
 
     for x in all_x_points:
-        y_sum = 0
-        y_count = 0
+        ys = []
 
         for x_vals, y_vals in lines:
             # Find the y value at this x (step function lookup)
             for j in range(len(x_vals)):
                 if x_vals[j] <= x:
                     if j == len(x_vals) - 1 or x < x_vals[j + 1]:
-                        y_sum += y_vals[j]
-                        y_count += 1
+                        ys.append(y_vals[j])
                         break
 
-        if y_count > 0:
-            avg = y_sum / y_count
+        if ys:
+            avg = float(np.mean(ys))
+            # SEM is undefined for a single run; treat the band as zero-width
+            sem = float(np.std(ys, ddof=1) / np.sqrt(len(ys))) if len(ys) > 1 else 0.0
 
             # Add horizontal segment if needed
-            if avg_y and avg_y[-1] != avg:
+            if avg_y and (avg_y[-1] != avg or sem_y[-1] != sem):
                 avg_x.append(x)
                 avg_y.append(avg_y[-1])
+                sem_y.append(sem_y[-1])
 
             avg_x.append(x)
             avg_y.append(avg)
+            sem_y.append(sem)
 
-    return avg_x, avg_y
+    return avg_x, avg_y, sem_y
 
 
 # =============================================================================
