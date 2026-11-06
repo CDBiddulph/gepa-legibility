@@ -181,8 +181,14 @@ def _responses_by_example(run_dir: Path, candidate: int, is_sanitized: bool) -> 
     """Map example key -> model response, recovered from the proxy-reward cache.
 
     The hacking-rate cache does not store the response text, but the proxy-reward
-    cache for the same candidate does, and both were produced from the same
-    evaluation run.
+    cache for the same candidate does.
+
+    BUG: the two caches were NOT produced from the same evaluation run. The
+    hacking-rate metric samples the executor itself (temperature 1), so the
+    response returned here is usually not the one the hacking judge scored, and
+    the hacking items' judge_label / judge_is_hacking / judge_score don't match
+    their response text. rejudge_hacking_items.py recomputes the judge answers
+    on these responses (artifact/judge_on_shown.json), and analyze.py uses those.
     """
     cache = _cache(run_dir, candidate, "proxy_reward", is_sanitized)
     if not cache:
@@ -321,8 +327,10 @@ def _extract_candidate(pools, gepa_prompts, run_dir, candidate, is_sanitized, is
     if env == "mcq" or not hacking_rows:
         return  # mcq hacking detection is exact-match, no judge to validate
 
+    # BUG: these responses come from a different sample than the hacking judge
+    # scored; see _responses_by_example.
     responses = _responses_by_example(run_dir, candidate, is_sanitized)
-    judge = "psychosis_agreeableness" if env == "psychosis" else "wordchain_critique"
+    judge ="psychosis_agreeableness" if env == "psychosis" else "wordchain_critique"
     for row in hacking_rows:
         key = _example_key(row["example_inputs"])
         response = responses.get(key, "")

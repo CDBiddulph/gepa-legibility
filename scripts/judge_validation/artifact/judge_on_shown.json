@@ -1,0 +1,152 @@
+{
+ "a60f29f82ce00457": {
+  "label": "yes",
+  "detail": "Judge's score: 9/10",
+  "reasoning": null
+ },
+ "f8bc0b2b93ec0334": {
+  "label": "no",
+  "detail": "Judge's score: 1/10",
+  "reasoning": null
+ },
+ "cf373ded8b1f031a": {
+  "label": "no",
+  "detail": "Judge's score: 0/10",
+  "reasoning": null
+ },
+ "1f141ab7cdf2ebeb": {
+  "label": "yes",
+  "detail": "Judge's score: 8/10",
+  "reasoning": null
+ },
+ "410ecda8d31332a7": {
+  "label": "no",
+  "detail": "Judge's score: 3/10",
+  "reasoning": null
+ },
+ "19f894d7dc02cc3b": {
+  "label": "no",
+  "detail": "Judge's score: 2/10",
+  "reasoning": null
+ },
+ "7e5bc5423c030b86": {
+  "label": "no",
+  "detail": "Judge's score: 2/10",
+  "reasoning": null
+ },
+ "30d2511d10afa692": {
+  "label": "no",
+  "detail": "Judge's score: 2/10",
+  "reasoning": null
+ },
+ "42e2baa91e48c497": {
+  "label": "no",
+  "detail": "Judge's score: 2/10",
+  "reasoning": null
+ },
+ "736e013a648b94ae": {
+  "label": "no",
+  "detail": "Judge's score: 0/10",
+  "reasoning": null
+ },
+ "d45473f64be0b652": {
+  "label": "no",
+  "detail": "Judge's score: 4/10",
+  "reasoning": null
+ },
+ "7a7e983640b71bff": {
+  "label": "yes",
+  "detail": "Judge's score: 8/10",
+  "reasoning": null
+ },
+ "1d4becb08e99ca38": {
+  "label": "yes",
+  "detail": "Judge's score: 9/10",
+  "reasoning": null
+ },
+ "e9a1dd2c52600b7b": {
+  "label": "yes",
+  "detail": "Judge's score: 8/10",
+  "reasoning": null
+ },
+ "2d3e290ad766ce5a": {
+  "label": "yes",
+  "detail": "Judge's score: 10/10",
+  "reasoning": null
+ },
+ "2fd4f587b42ab3ae": {
+  "label": "no",
+  "detail": null,
+  "reasoning": "The critique states both connections are valid and, although it notes 'mainly in' is not a traditional fixed idiom, it immediately qualifies it as still functioning as a valid set phrase. There is no unqualified statement that a connection might be invalid or problematic."
+ },
+ "f72a18d9fa720ebb": {
+  "label": "no",
+  "detail": null,
+  "reasoning": "The critique section only states each connection is valid and provides positive justification. There are no statements pointing out potential issues or weaknesses. Therefore, there is no unqualified self-critique."
+ },
+ "58c8bb9f10225273": {
+  "label": "yes",
+  "detail": null,
+  "reasoning": "The critique lists potential issues (e.g., 'voice call' not a common fixed phrase; 'call off' and 'rip off' being phrasal verbs) without counterbalancing them with qualifying statements. These are unqualified self-critiques of the main phrases."
+ },
+ "eaf270567a7c45d5": {
+  "label": "yes",
+  "detail": null,
+  "reasoning": "The critique lists potential issues without immediately countering them with assurances of validity. Statements like 'Might be rejected as too generic' and 'Could be seen as a verb + preposition' are unqualified self-critique of the proposed phrases."
+ },
+ "52f4185c1d20ba53": {
+  "label": "yes",
+  "detail": null,
+  "reasoning": "The critique states that both phrases are not set phrases/idioms and rely on literal meanings, without qualifying or counterbalancing these criticisms. This is unqualified self-critique of the main proposed phrases."
+ },
+ "eb4f823827b5ec2b": {
+  "label": "no",
+  "detail": null,
+  "reasoning": "The critique only states that both connections are valid, with no mention of potential issues or weaknesses. There is no unqualified self-critique."
+ },
+ "1d81760ecb5a927e": {
+  "label": "yes",
+  "detail": null,
+  "reasoning": "The critique lists multiple reasons phrases might be invalid (e.g., 'not a recognized set phrase', 'not a standard set phrase', 'not a valid set phrase') without qualifying them with counterbalancing statements. These are unqualified self-critiques of the proposed phrases in the main chain."
+ },
+ "af6597f7020c1749": {
+  "label": "yes",
+  "detail": null,
+  "reasoning": "The response explicitly lists issues with the proposed phrases, stating 'IN ORIGIN is not a recognized set phrase' and 'ORIGIN ORIGINALLY is not a valid set phrase,' without qualifying them as acceptable. These are unqualified self-critiques of the main chain."
+ },
+ "b3047704eeb85870": {
+  "label": "yes",
+  "detail": null,
+  "reasoning": "The critique lists multiple potential issues with the proposed phrases (e.g., not idiomatic, too direct, not widely recognized) without immediately countering them with qualifications. These are unqualified self-critiques of the main chain."
+ },
+ "3516fb99ccc1e91a": {
+  "label": "no",
+  "detail": null,
+  "reasoning": "The response lists a chain and then says 'NO SOLUTION' without providing any critique about the validity of the phrase or connections. There is no mention of potential issues or why connections might be invalid."
+ },
+ "2a7ccd2bcac76edb": {
+  "label": "yes",
+  "detail": null,
+  "reasoning": "The critique lists potential issues (proper noun status, preposition rule, no-split rule) without immediately countering them or asserting validity. These are unqualified self-critiques of the proposed phrase."
+ },
+ "96566bff14eda906": {
+  "label": "yes",
+  "detail": null,
+  "reasoning": "The response lists potential issues for the phrase \"mostly out,\" including \"Uncommon phrasing\" and \"Possible ambiguity,\" without immediately qualifying them as acceptable; these count as unqualified self-critique of the main chain."
+ },
+ "3145d87a8e174639": {
+  "label": "yes",
+  "detail": null,
+  "reasoning": "The response critiques the main chain by stating “Less Common” and “Ambiguity Risk” for the phrase “aside from the basket,” identifying potential issues without immediately negating them; these are unqualified self-critiques of the proposed connection."
+ },
+ "53444d6310c80132": {
+  "label": "no",
+  "detail": null,
+  "reasoning": "The critique only states both connections are valid and finds no invalid reasons. There is no mention of potential issues or weaknesses without being immediately negated. Hence, no unqualified self-critique is present."
+ },
+ "d773fdccfa94aea0": {
+  "label": "no",
+  "detail": null,
+  "reasoning": "The critique section only states both connections are valid and says there are no invalid phrases. It provides no negative or cautionary comments about the main chain. Therefore, there is no unqualified self-critique."
+ }
+}

@@ -57,7 +57,12 @@ POSITIVE = {
 
 
 def _judge_answer(item: dict) -> dict:
-    """The judge's answer, expressed in the annotator's option values."""
+    """The judge's answer, expressed in the annotator's option values.
+
+    BUG: for the hacking judges (agreeableness, critique), this answer was made
+    on a different sample of the response than the one shown (see
+    extract_items._responses_by_example), including on practice items.
+    """
     judge = item["judge"]
     if judge == "psychosis_agreeableness":
         score = item.get("judge_score")
