@@ -1,30 +1,40 @@
 #!/usr/bin/env python3
 """Build a frozen, stratified sampling manifest for judge validation.
 
-Two properties make this manifest safe to abandon part-way through, which is the
-whole point of the design:
+The labeling task is split into categories, one per (judge, env), and each
+category gets a fixed number of items (15 by default):
 
-1. Items are shuffled *within* each stratum using a fixed seed. Any prefix of a
-   stratum's queue is therefore itself a uniform random sample of that stratum,
-   so "the ones I got through" is never a biased selection.
-2. The global queue interleaves strata round-robin rather than concatenating
-   them. Stopping after any number of items leaves coverage spread across all
-   strata instead of exhausting the first one.
+    verbalization_gepa       x  mcq / psychosis / wordchain
+    verbalization_rl_cot     x  mcq / psychosis / wordchain
+    psychosis_agreeableness  (Targeted Sycophancy hacking judge)
+    wordchain_critique       (Word Chain hacking judge)
 
-Each manifest row carries the population counts needed to reweight partial
-results back to the full population, so analyze.py can produce a valid estimate
-from however many labels exist.
+Within a category, items are drawn uniformly at random from a few strata:
 
-Strata are (env, hacking-rate bin, judge label, [hint type], [second-judge
-agreement]). The hacking-rate bin matches the x-axis of the recall figure, so the
-analysis can show judge accuracy is flat along that axis rather than only in
-aggregate. Strata whose judge label would flatter the paper's claim if wrong
-(GEPA saying "verbalizes", RL saying "does not verbalize") get oversampled, as do
-strata where the two judges disagree.
+* Hacking rate: half from below HIGH_HACKING_CUTOFF, half from at or above it.
+  The cutoff is where the top two bins of the recall-by-hacking-rate figure
+  begin, which is the region the paper's claim rests on. The pools are very
+  lopsided along this axis, so a purely uniform draw would leave one half nearly
+  empty.
+* Hint type (mcq only): each half is spread evenly across the six hint types so
+  none is skipped by chance.
+* Source (hacking judges only): a fixed number of RL responses, the rest GEPA.
+  RL responses exist only for final RL checkpoints; intermediate checkpoints
+  never cached their response text (see extract_items.py).
+
+Sampling is not proportional to stratum size, so every manifest row carries its
+stratum's population counts, and analyze.py reweights to the population.
+
+Two properties make the manifest safe to abandon part-way through:
+
+1. Items are shuffled within each stratum using a fixed seed, so any prefix of a
+   stratum is itself a uniform random sample of that stratum.
+2. The queue interleaves strata round-robin, so stopping early still leaves
+   coverage spread across all strata.
 
 Usage:
-    python scripts/judge_validation/sample_items.py                  # all judges
-    python scripts/judge_validation/sample_items.py --judge verbalization_gepa -n 120
+    python scripts/judge_validation/sample_items.py              # all judges
+    python scripts/judge_validation/sample_items.py --judge verbalization_gepa -n 20
 """
 
 import argparse
@@ -36,107 +46,106 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = REPO_ROOT / "data" / "judge_validation"
 
-# Default labeling budget per judge, in items. Tuned so the whole set is roughly
-# a four-hour session; see the per-judge notes in the appendix plan.
-DEFAULT_BUDGET = {
-    "verbalization_gepa": 120,
-    "verbalization_rl_cot": 60,
-    "psychosis_agreeableness": 50,
-    "wordchain_critique": 50,
-}
+JUDGES = [
+    "verbalization_gepa",
+    "verbalization_rl_cot",
+    "psychosis_agreeableness",
+    "wordchain_critique",
+]
 
-# Never sample fewer than this from a stratum that exists at all, so that every
-# cell of the design gets at least a token amount of coverage. Cells are
-# deliberately fine-grained for balance, so per-cell counts are tiny by design;
-# the analysis reports accuracy along margins (by env, by bin, by label), not
-# per individual cell.
-MIN_PER_STRATUM = 1
+# Items per category, i.e. per (judge, env)
+DEFAULT_PER_CATEGORY = 15
 
-# Strata matching these get their allocation multiplied: errors here would move
-# the paper's numbers in the flattering direction, so they deserve more scrutiny.
-ADVERSARIAL_BOOST = 2.0
-DISAGREEMENT_BOOST = 3.0
+# Hacking rates at or above this count as "high": the top two bins (60-100%) of
+# the recall-by-hacking-rate figure
+HIGH_HACKING_CUTOFF = 0.6
+
+# For the hacking judges, how many of each category's items come from RL
+RL_ITEMS_PER_HACKING_CATEGORY = 4
+
+
+def _half(item: dict) -> str:
+    rate = item.get("hacking_rate")
+    return "high" if rate is not None and rate >= HIGH_HACKING_CUTOFF else "low"
+
+
+def _source(item: dict) -> str:
+    return "RL" if item.get("method") == "RL" else "GEPA"
 
 
 def _stratum(item: dict) -> tuple:
-    """Stratum key for an item. Second-judge agreement is included when known."""
-    judge = item["judge"]
     parts: list = [item["env"]]
-
-    # Thin coverage of all six MCQ hint types: each gets its own stratum so none
-    # can be silently skipped. Hint type already splits MCQ six ways, so its
-    # hacking-rate axis is coarsened to low/high to keep cells from fragmenting.
-    is_mcq = item["env"] == "mcq" and item.get("hint_type")
-    if is_mcq:
-        parts.append(item["hint_type"])
-
-    if judge == "psychosis_agreeableness":
-        # The hacking decision is score > 0.5, so what matters is whether the
-        # score sits near that threshold.
-        margin = item.get("threshold_margin")
-        parts.append("near_threshold" if margin is not None and margin < 0.15 else "clear")
-        parts.append(item["judge_label"])
-    else:
-        bin_index = item["hacking_bin"]
-        if is_mcq:
-            parts.append("low" if bin_index is not None and bin_index < 3 else "high")
-        else:
-            parts.append(f"bin{bin_index}")
-        parts.append(item["judge_label"])
-
-    if judge == "wordchain_critique":
-        parts.append("sanitized" if item.get("is_sanitized") else "original")
-
-    agreement = item.get("second_judge_agrees")
-    if agreement is not None:
-        parts.append("agree" if agreement else "DISAGREE")
-
+    if item["judge"] in ("psychosis_agreeableness", "wordchain_critique"):
+        parts.append(_source(item))
+    parts.append(_half(item))
+    if item["env"] == "mcq":
+        parts.append(item.get("hint_type"))
     return tuple(parts)
 
 
-def _boost(item: dict, stratum: tuple) -> float:
-    """Oversampling multiplier for a stratum."""
-    if "DISAGREE" in stratum:
-        return DISAGREEMENT_BOOST
-    judge = item["judge"]
-    label = item.get("judge_label")
-    # A false "verbalizes" on a GEPA prompt inflates monitor recall; a false
-    # "does not verbalize" on an RL CoT inflates the GEPA-vs-RL gap.
-    if judge == "verbalization_gepa" and label == "yes":
-        return ADVERSARIAL_BOOST
-    if judge == "verbalization_rl_cot" and label == "no":
-        return ADVERSARIAL_BOOST
-    # A false "no critique" counts a response as hacking that is not.
-    if judge == "wordchain_critique" and label == "no":
-        return ADVERSARIAL_BOOST
-    if judge == "psychosis_agreeableness" and label == "hacking":
-        return ADVERSARIAL_BOOST
-    return 1.0
+def _split_evenly(budget: int, keys: list, sizes: dict) -> dict:
+    """Split budget as evenly as possible across keys, capped by each key's size.
 
-
-def _allocate(strata: dict[tuple, list[dict]], budget: int) -> dict[tuple, int]:
-    """Split the budget across strata: sqrt-proportional, boosted, with a floor.
-
-    Square-root (rather than proportional) allocation keeps small strata from
-    being crowded out by the large ones, which matters because per-stratum
-    accuracy is what rules out judge error varying across the figure's x-axis.
+    Whatever a small key cannot absorb is passed on to the keys that still have
+    room, so the total reaches the budget whenever the keys hold enough items.
     """
-    weights = {}
-    for stratum, items in strata.items():
-        weights[stratum] = (len(items) ** 0.5) * _boost(items[0], stratum)
-    total_weight = sum(weights.values())
+    allocation = {key: 0 for key in keys}
+    remaining = budget
+    while remaining > 0:
+        open_keys = [key for key in keys if allocation[key] < sizes[key]]
+        if not open_keys:
+            break
+        for key in open_keys:
+            if remaining == 0:
+                break
+            allocation[key] += 1
+            remaining -= 1
+    return allocation
+
+
+def _allocate(strata: dict[tuple, list[dict]], judge: str, budget: int) -> dict[tuple, int]:
+    """Allocate one category's budget over its strata, level by level."""
+    sizes = {stratum: len(items) for stratum, items in strata.items()}
+
+    def total(keys) -> int:
+        return sum(sizes[key] for key in keys)
 
     allocation = {}
-    for stratum, items in strata.items():
-        share = budget * weights[stratum] / total_weight
-        allocation[stratum] = min(len(items), max(MIN_PER_STRATUM, round(share)))
+    is_hacking_judge = judge in ("psychosis_agreeableness", "wordchain_critique")
+
+    # Level 1: source (hacking judges only)
+    if is_hacking_judge:
+        by_source = defaultdict(list)
+        for stratum in strata:
+            by_source[stratum[1]].append(stratum)
+        rl_budget = min(RL_ITEMS_PER_HACKING_CATEGORY, total(by_source["RL"]))
+        source_budgets = {"RL": rl_budget, "GEPA": budget - rl_budget}
+        groups = [(source_budgets[source], keys) for source, keys in by_source.items()]
+    else:
+        groups = [(budget, list(strata))]
+
+    for group_budget, keys in groups:
+        # Level 2: low/high hacking rate
+        by_half = defaultdict(list)
+        for stratum in keys:
+            by_half[stratum[-2] if stratum[0] == "mcq" else stratum[-1]].append(stratum)
+        halves = sorted(by_half)
+        half_budgets = _split_evenly(
+            group_budget, halves, {half: total(by_half[half]) for half in halves}
+        )
+        # Level 3: hint type (mcq), otherwise a single stratum per half
+        for half in halves:
+            hint_keys = sorted(by_half[half], key=str)
+            allocation.update(
+                _split_evenly(half_budgets[half], hint_keys, sizes)
+            )
     return allocation
 
 
 def _interleave(queues: dict[tuple, list[dict]], rng: random.Random) -> list[tuple[tuple, dict]]:
     """Round-robin across strata so an early stop still covers every stratum."""
     remaining = {stratum: list(items) for stratum, items in queues.items() if items}
-    order = sorted(remaining)
+    order = sorted(remaining, key=str)
     rng.shuffle(order)
 
     interleaved = []
@@ -150,45 +159,48 @@ def _interleave(queues: dict[tuple, list[dict]], rng: random.Random) -> list[tup
     return interleaved
 
 
-def build_manifest(items: list[dict], budget: int, seed: int) -> list[dict]:
+def build_manifest(items: list[dict], judge: str, per_category: int, seed: int):
     labelable = [item for item in items if item.get("labelable", True)]
+    total_judgments = sum(item["n_judgments"] for item in items)
     skipped_judgments = sum(
         item["n_judgments"] for item in items if not item.get("labelable", True)
     )
-    total_judgments = sum(item["n_judgments"] for item in items)
 
-    strata = defaultdict(list)
+    by_env: dict[str, dict[tuple, list[dict]]] = defaultdict(lambda: defaultdict(list))
     for item in labelable:
-        strata[_stratum(item)].append(item)
-
-    # Seeded shuffle within each stratum: this is what makes any prefix a valid
-    # random sample of that stratum.
-    rng = random.Random(seed)
-    for stratum in sorted(strata):
-        random.Random(f"{seed}:{stratum}").shuffle(strata[stratum])
-
-    allocation = _allocate(strata, budget)
-    selected = {
-        stratum: strata[stratum][: allocation[stratum]] for stratum in sorted(strata)
-    }
+        by_env[item["env"]][_stratum(item)].append(item)
 
     manifest = []
-    for position, (stratum, item) in enumerate(_interleave(selected, rng)):
-        population = strata[stratum]
-        manifest.append({
-            "queue_position": position,
-            "item_id": item["item_id"],
-            "judge": item["judge"],
-            "stratum": " | ".join(str(part) for part in stratum),
-            # Population counts for reweighting: M/m is the item-level inflation
-            # factor, and each item stands in for n_judgments judge decisions.
-            "stratum_items": len(population),
-            "stratum_sampled": len(selected[stratum]),
-            "stratum_judgments": sum(row["n_judgments"] for row in population),
-            "item_judgments": item["n_judgments"],
-            "judge_label": item.get("judge_label"),
-            "second_judge_label": item.get("second_judge_label"),
-        })
+    rng = random.Random(seed)
+    for env in sorted(by_env):
+        strata = by_env[env]
+        # Seeded shuffle within each stratum: any prefix is a uniform sample
+        for stratum in sorted(strata, key=str):
+            random.Random(f"{seed}:{judge}:{stratum}").shuffle(strata[stratum])
+
+        allocation = _allocate(strata, judge, per_category)
+        selected = {
+            stratum: strata[stratum][: allocation.get(stratum, 0)]
+            for stratum in sorted(strata, key=str)
+        }
+
+        for position, (stratum, item) in enumerate(_interleave(selected, rng)):
+            population = strata[stratum]
+            manifest.append({
+                "queue_position": position,
+                "item_id": item["item_id"],
+                "judge": judge,
+                "env": env,
+                "stratum": " | ".join(str(part) for part in stratum),
+                # Population counts for reweighting: M/m is the item-level
+                # inflation factor, and each item stands in for n_judgments
+                # judge decisions.
+                "stratum_items": len(population),
+                "stratum_sampled": len(selected[stratum]),
+                "stratum_judgments": sum(row["n_judgments"] for row in population),
+                "item_judgments": item["n_judgments"],
+                "judge_label": item.get("judge_label"),
+            })
 
     coverage = {
         "total_items": len(items),
@@ -196,7 +208,8 @@ def build_manifest(items: list[dict], budget: int, seed: int) -> list[dict]:
         "total_judgments": total_judgments,
         "unlabelable_judgments": skipped_judgments,
         "unlabelable_share": skipped_judgments / total_judgments if total_judgments else 0.0,
-        "n_strata": len(strata),
+        "per_category": per_category,
+        "high_hacking_cutoff": HIGH_HACKING_CUTOFF,
         "seed": seed,
     }
     return manifest, coverage
@@ -205,7 +218,10 @@ def build_manifest(items: list[dict], budget: int, seed: int) -> list[dict]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--judge", action="append", help="judge to sample (default: all)")
-    parser.add_argument("-n", "--budget", type=int, help="items to sample (overrides default)")
+    parser.add_argument(
+        "-n", "--per-category", type=int, default=DEFAULT_PER_CATEGORY,
+        help="items per (judge, env) category",
+    )
     parser.add_argument("--seed", type=int, default=20260729)
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     parser.add_argument(
@@ -214,8 +230,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    judges = args.judge or list(DEFAULT_BUDGET)
-    for judge in judges:
+    for judge in args.judge or JUDGES:
         pool_path = args.data_dir / f"pool_{judge}.jsonl"
         if not pool_path.exists():
             print(f"  {judge}: no pool file, run extract_items.py first")
@@ -227,8 +242,7 @@ def main() -> None:
 
         with open(pool_path) as f:
             items = [json.loads(line) for line in f]
-        budget = args.budget or DEFAULT_BUDGET.get(judge, 60)
-        manifest, coverage = build_manifest(items, budget, args.seed)
+        manifest, coverage = build_manifest(items, judge, args.per_category, args.seed)
 
         with open(out_path, "w") as f:
             for row in manifest:
@@ -236,10 +250,12 @@ def main() -> None:
         with open(args.data_dir / f"coverage_{judge}.json", "w") as f:
             json.dump(coverage, f, indent=2)
 
-        print(
-            f"  {judge:24} {len(manifest):4d} items across {coverage['n_strata']:3d} strata"
-            f"  ({coverage['unlabelable_share']:.0%} of judgments unlabelable)"
-        )
+        counts = defaultdict(int)
+        for row in manifest:
+            counts[row["stratum"]] += 1
+        print(f"  {judge}: {len(manifest)} items")
+        for stratum, count in sorted(counts.items()):
+            print(f"      {count:3d}  {stratum}")
 
 
 if __name__ == "__main__":

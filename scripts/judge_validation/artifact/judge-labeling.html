@@ -1,0 +1,720 @@
+<title>Judge Validation Labeling</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: a working tool. Overview tables, then a two-column labeling view:
+   the text under review on the left, the question and controls in a sticky rail. */
+:root {
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --ink: #1b1f27;
+  --muted: #5d6573;
+  --line: #dde1e8;
+  --accent: #2f55c4;
+  --accent-ink: #ffffff;
+  --done: #2c7a4f;
+  --skip: #a8700c;
+  --warn: #b3261e;
+  --mark: #ffe48a;
+  --mark-current: #ffa94d;
+  --wash: #eef1f6;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-read: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14171c; --panel: #1c2027; --ink: #e7e9ee; --muted: #9aa2b1; --line: #2e343e;
+    --accent: #86a6ff; --accent-ink: #0c1530; --done: #6cc595; --skip: #e3b250; --warn: #ff8a80;
+    --mark: #6a5714; --mark-current: #a3561d; --wash: #232832; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14171c; --panel: #1c2027; --ink: #e7e9ee; --muted: #9aa2b1; --line: #2e343e;
+  --accent: #86a6ff; --accent-ink: #0c1530; --done: #6cc595; --skip: #e3b250; --warn: #ff8a80;
+  --mark: #6a5714; --mark-current: #a3561d; --wash: #232832; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-ui); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--panel); }
+header.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--panel); border-bottom: 1px solid var(--line);
+  padding-block: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+}
+header.top h1 { font-size: 16px; font-weight: 600; margin: 0; }
+header.top nav { display: flex; gap: 4px; }
+header.top .crumb { color: var(--muted); font-size: 13px; min-width: 0; flex: 1; }
+header.top .who { font-size: 13px; color: var(--muted); }
+main {
+  max-width: 1440px; margin: 0 auto; padding-block: 18px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+h2 { font-size: 15px; font-weight: 600; margin: 26px 0 8px; text-wrap: balance; }
+h2:first-child { margin-top: 0; }
+p { margin: 0 0 10px; max-width: 75ch; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+button, .btn {
+  font: inherit; font-size: 14px; cursor: pointer; color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 6px; padding: 5px 11px;
+}
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 500; }
+button.tab[aria-current="page"] { background: var(--wash); border-color: var(--accent); }
+button:disabled { opacity: .4; cursor: default; }
+input[type=text], textarea {
+  font: inherit; font-size: 14px; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; width: 100%;
+}
+textarea { min-height: 58px; resize: vertical; }
+.table-wrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+td.num { text-align: right; }
+.actions { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+.bar { display: inline-block; width: 110px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; vertical-align: middle; }
+.bar > i { display: block; height: 100%; background: var(--done); }
+.notice { background: var(--wash); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 14px; }
+.notice.warn { border-color: var(--warn); }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 16px; align-items: start; }
+@media (max-width: 940px) { .layout { grid-template-columns: 1fr; } .rail { position: static !important; max-height: none !important; } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+.stack { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.panel-title { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;
+  font-size: 12px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.pill { font-size: 12px; text-transform: none; letter-spacing: 0; font-weight: 500; border: 1px solid var(--line); border-radius: 10px; padding: 1px 8px; color: var(--ink); }
+.reading { font-family: var(--font-read); font-size: 16px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.reading.mono, .field .reading { font-family: var(--font-mono); font-size: 13px; line-height: 1.55; }
+.field-name { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin: 10px 0 2px; }
+.field-name:first-child { margin-top: 0; }
+mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1px; }
+mark.current { background: var(--mark-current); outline: 2px solid var(--mark-current); }
+.rail { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 62px); max-height: calc(100vh - 80px); overflow: auto; }
+.question { font-weight: 600; margin-bottom: 8px; }
+.option { display: flex; width: 100%; text-align: left; gap: 10px; align-items: baseline; padding: 8px 10px; margin-bottom: 5px; }
+.option kbd { font-family: var(--font-mono); font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
+.option[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--wash); }
+.row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.check { display: flex; gap: 6px; align-items: center; font-size: 14px; margin: 8px 0; }
+.status { min-height: 20px; font-size: 13px; margin-top: 6px; }
+.status.ok { color: var(--done); } .status.err { color: var(--warn); }
+.keys { font-size: 12px; color: var(--muted); }
+.dots { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 8px; }
+.dot { width: 14px; height: 14px; border-radius: 3px; background: var(--line); border: none; padding: 0; }
+.dot.labeled { background: var(--done); } .dot.skipped { background: var(--skip); }
+.dot.here { outline: 2px solid var(--accent); outline-offset: 1px; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+.chip { display: inline-flex; align-items: center; gap: 2px; font-size: 12.5px; border: 1px solid var(--line); border-radius: 12px; padding: 1px 2px 1px 9px; background: var(--bg); }
+.chip button { border: none; background: none; padding: 0 6px; color: var(--muted); font-size: 14px; }
+details > summary { cursor: pointer; font-weight: 600; font-size: 13px; color: var(--muted); }
+.rubric { white-space: pre-wrap; font-size: 13.5px; line-height: 1.55; margin-top: 8px; max-height: 50vh; overflow: auto; }
+.reveal { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; font-size: 14px; }
+.reveal .verdict { font-weight: 600; }
+.agree { color: var(--done); font-weight: 600; } .disagree { color: var(--warn); font-weight: 600; }
+.annot { display: inline-flex; align-items: center; gap: 6px; }
+.annot img { width: 20px; height: 20px; border-radius: 50%; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<header class="top">
+  <h1>Judge validation</h1>
+  <nav aria-label="Views">
+    <button class="tab" id="nav-overview" type="button">Overview</button>
+    <button class="tab" id="nav-progress" type="button">Progress</button>
+  </nav>
+  <span class="crumb" id="crumb"></span>
+  <span class="who" id="who"></span>
+</header>
+<main id="app">
+  <p class="muted">Loading the labeling items…</p>
+</main>
+
+<script>
+"use strict";
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+const app = document.getElementById("app");
+const S = {
+  data: null,          // items.json
+  judge: null,         // judge.json, loaded on demand
+  db: null, user: null, uid: null,
+  canWrite: true,
+  labels: {},          // item_id -> my label doc
+  practice: {},        // item_id -> my practice label doc
+  annotatorDoc: null,  // my annotations/<uid> doc body
+  keywords: {},
+  dbReady: false, dbNote: "",
+  view: "overview",
+  queueId: null, index: 0,
+  shownAt: 0, matchIndex: -1,
+};
+
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v === null || v === undefined || v === false) continue;
+    if (k === "class") node.className = v;
+    else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+    else node.setAttribute(k, v === true ? "" : v);
+  }
+  for (const child of children.flat()) {
+    if (child === null || child === undefined || child === false) continue;
+    node.append(child instanceof Node ? child : document.createTextNode(String(child)));
+  }
+  return node;
+}
+
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
+async function boot() {
+  try {
+    const res = await fetch("items.json");
+    S.data = await res.json();
+  } catch (e) {
+    app.replaceChildren(el("p", {class: "status err"}, "Could not load the labeling items. Reload the page to try again."));
+    return;
+  }
+  S.keywords = structuredClone(S.data.meta.default_keywords);
+  route();
+
+  const [db, user] = await Promise.all([
+    window.claude?.use ? claude.use("db") : null,
+    window.claude?.use ? claude.use("user") : null,
+  ]);
+  S.db = db; S.user = user;
+  if (user) {
+    const me = await user.me();
+    S.uid = me.id;
+    document.getElementById("who").replaceChildren(
+      el("span", {class: "annot"}, el("img", {src: me.avatarUrl, alt: ""}), "Labeling as ", el("b", {}, me.name || "you")));
+  }
+  if (!db || !S.uid) {
+    S.canWrite = false;
+    S.dbNote = "Labels can't be saved in this view. Open the page signed in to claude.ai with Contributor access or higher.";
+    S.dbReady = true;
+    route();
+    return;
+  }
+  const canWrite = user ? await user.can("data.write") : null;
+  if (canWrite === false) S.canWrite = false;
+  subscribeMine();
+}
+
+function subscribeMine() {
+  const timer = setTimeout(() => {
+    if (!S.dbReady) { S.dbNote = "Saved labels can't be reached yet. Keep this page open; they will appear when the connection returns."; route(); }
+  }, 10000);
+  const base = `annotations/${S.uid}`;
+  let pending = 3;
+  const settle = (snap) => {
+    if (snap && snap.metadata && !snap.metadata.fromCache) {
+      pending = Math.max(0, pending - 1);
+      if (pending === 0 && !S.dbReady) { S.dbReady = true; S.dbNote = ""; clearTimeout(timer); }
+    }
+  };
+  const onError = (e) => {
+    clearTimeout(timer);
+    S.dbReady = true;
+    S.dbNote = "Saved labels couldn't be loaded (" + e.code + "). Reload the page to try again.";
+    route();
+  };
+  S.db.collection(`${base}/labels`).onSnapshot((snap) => {
+    S.labels = Object.fromEntries(snap.docs.map(d => [d.id, d.data()]));
+    settle(snap); refresh();
+  }, onError);
+  S.db.collection(`${base}/practice`).onSnapshot((snap) => {
+    S.practice = Object.fromEntries(snap.docs.map(d => [d.id, d.data()]));
+    settle(snap); refresh();
+  }, onError);
+  S.db.doc(base).onSnapshot((snap) => {
+    S.annotatorDoc = snap.exists ? snap.data() : null;
+    if (S.annotatorDoc && S.annotatorDoc.keywords) S.keywords = structuredClone(S.annotatorDoc.keywords);
+    settle(snap); refresh();
+  }, onError);
+}
+
+// Re-render only views that show stored state, and never while typing a note
+function refresh() {
+  const active = document.activeElement;
+  if (active && (active.tagName === "TEXTAREA" || active.tagName === "INPUT")) return;
+  if (S.view === "item") { updateItemChrome(); return; }
+  if (S.view === "overview") renderOverview();
+}
+
+// ---------------------------------------------------------------------------
+// Routing: two bookmarkable views (#overview, #progress); items are page state
+// ---------------------------------------------------------------------------
+function route() {
+  document.onkeydown = null;
+  const hash = location.hash.replace("#", "");
+  if (S.view === "item" && hash !== "progress") { renderItem(); return; }
+  if (hash === "progress") { S.view = "progress"; renderProgress(); }
+  else { S.view = "overview"; renderOverview(); }
+}
+window.addEventListener("hashchange", () => { if (S.view === "item") S.view = "overview"; route(); });
+document.getElementById("nav-overview").addEventListener("click", () => {
+  S.view = "overview"; if (location.hash !== "#overview") location.hash = "overview"; else route();
+});
+document.getElementById("nav-progress").addEventListener("click", () => {
+  S.view = "progress"; if (location.hash !== "#progress") location.hash = "progress"; else route();
+});
+function setNav() {
+  document.getElementById("nav-overview").setAttribute("aria-current", S.view === "overview" ? "page" : "false");
+  document.getElementById("nav-progress").setAttribute("aria-current", S.view === "progress" ? "page" : "false");
+}
+
+function allQueues() { return [...S.data.queues, ...S.data.practice_queues]; }
+function queueById(id) { return allQueues().find(q => q.id === id); }
+function isPractice(queue) { return queue.kind === "practice"; }
+function store(queue) { return isPractice(queue) ? S.practice : S.labels; }
+
+function openQueue(queueId, index) {
+  S.view = "item"; S.queueId = queueId; S.index = index;
+  if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+  renderItem();
+}
+
+// ---------------------------------------------------------------------------
+// Overview
+// ---------------------------------------------------------------------------
+function statusOf(doc) { return !doc ? "open" : doc.label ? "labeled" : doc.skipped ? "skipped" : "open"; }
+
+function renderOverview() {
+  setNav();
+  document.getElementById("crumb").textContent = "";
+  const cats = S.data.queues.filter(q => q.kind === "category");
+  const mixed = S.data.queues.filter(q => q.kind === "mixed");
+  const total = cats.reduce((a, q) => a + q.item_ids.length, 0);
+  const done = cats.reduce((a, q) => a + q.item_ids.filter(i => statusOf(S.labels[i]) === "labeled").length, 0);
+
+  const row = (q) => {
+    const st = store(q);
+    const n = q.item_ids.length;
+    const labeled = q.item_ids.filter(i => statusOf(st[i]) === "labeled").length;
+    const skipped = q.item_ids.filter(i => statusOf(st[i]) === "skipped").length;
+    const firstOpen = Math.max(0, q.item_ids.findIndex(i => !st[i]));
+    return el("tr", {},
+      el("td", {}, q.title),
+      el("td", {}, q.env_name),
+      el("td", {class: "num"}, String(n)),
+      el("td", {}, el("span", {class: "bar", role: "img", "aria-label": `${labeled} of ${n} labeled`},
+          el("i", {style: `width:${(100 * labeled / Math.max(n, 1)).toFixed(1)}%`})),
+        " ", el("span", {class: "small muted"}, `${labeled}/${n}` + (skipped ? ` · ${skipped} skipped` : ""))),
+      el("td", {}, el("div", {class: "actions"},
+        el("button", {type: "button", class: labeled < n ? "primary" : null, onclick: () => openQueue(q.id, labeled < n ? firstOpen : 0)},
+          labeled === 0 && !skipped ? "Start" : labeled < n ? "Continue" : "Review"),
+        labeled > 0 && labeled < n ? el("button", {type: "button", onclick: () => openQueue(q.id, 0)}, "From the start") : null)));
+  };
+  const table = (rows) => el("div", {class: "table-wrap"}, el("table", {},
+    el("thead", {}, el("tr", {}, ...["Category", "Environment", "Items", "Progress", ""].map(h => el("th", {scope: "col"}, h)))),
+    el("tbody", {}, ...rows)));
+
+  const notes = [];
+  if (S.dbNote) notes.push(el("div", {class: "notice warn"}, S.dbNote));
+  else if (!S.dbReady) notes.push(el("div", {class: "notice"}, "Loading your saved labels…"));
+  if (!S.canWrite && S.dbReady && !S.dbNote) notes.push(el("div", {class: "notice warn"},
+    "You can read the items but not save labels. Ask the owner for Contributor access."));
+
+  app.replaceChildren(
+    ...notes,
+    el("p", {}, `${done} of ${total} items labeled. Each label saves as soon as you press Save, so you can stop and come back any time.`),
+    el("h2", {}, "Categories"),
+    table(cats.map(row)),
+    el("h2", {}, "Practice (optional)"),
+    el("p", {class: "small muted"}, "Items from outside the sample, about one for each answer the AI judge gave. After you answer, the judge's answer and reasoning are shown. Practice answers are stored separately and never count."),
+    table(S.data.practice_queues.map(row)),
+    el("h2", {}, "Mixed queues (optional)"),
+    el("p", {class: "small muted"}, "The same GEPA prompt and RL chain-of-thought items as in the categories above, alternating within one environment, so your standard stays the same across both. Labels are shared with the category queues."),
+    table(mixed.map(row)),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Keyword highlighting
+// ---------------------------------------------------------------------------
+function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+function keywordRegex(env) {
+  const words = (S.keywords[env] || []).filter(w => w.trim()).sort((a, b) => b.length - a.length);
+  return words.length ? new RegExp("(" + words.map(escapeRegex).join("|") + ")", "gi") : null;
+}
+function highlighted(text, env, cls) {
+  const node = el("div", {class: cls});
+  const re = keywordRegex(env);
+  if (!re) { node.textContent = text; return node; }
+  let last = 0;
+  for (const m of text.matchAll(re)) {
+    if (m.index > last) node.append(document.createTextNode(text.slice(last, m.index)));
+    node.append(el("mark", {}, m[0]));
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) node.append(document.createTextNode(text.slice(last)));
+  return node;
+}
+
+async function saveKeywords() {
+  if (!S.canWrite || !S.db || !S.uid) return;
+  const body = {...(S.annotatorDoc || {}), keywords: S.keywords, updated_at: new Date().toISOString()};
+  if (!body.created_at) body.created_at = body.updated_at;
+  try { await S.db.doc(`annotations/${S.uid}`).set(body); }
+  catch (e) { if (e.code === "invalid_argument") S.canWrite = false; }
+}
+
+// ---------------------------------------------------------------------------
+// Item view
+// ---------------------------------------------------------------------------
+let itemRefs = null;
+
+function renderUserMessage(um, env) {
+  if (!um) return el("div", {class: "muted"}, "(none)");
+  if (typeof um === "string") return highlighted(um, env, "reading mono");
+  const wrap = el("div", {class: "field"});
+  for (const [k, v] of Object.entries(um)) {
+    wrap.append(el("div", {class: "field-name"}, k),
+      highlighted(typeof v === "string" ? v : JSON.stringify(v, null, 2), env, "reading mono"));
+  }
+  return wrap;
+}
+
+function rerenderHighlights() {
+  const it = S.data.items[S.data_item_id];
+  const env = it.env;
+  const isPrompt = it.judge === "verbalization_gepa";
+  document.getElementById("artifact-body").replaceChildren(highlighted(it.artifact.text, env, "reading" + (isPrompt ? " mono" : "")));
+  document.getElementById("um-body").replaceChildren(renderUserMessage(it.user_message, env));
+  S.matchIndex = -1;
+  updateMatchCounter();
+}
+
+function marks() { return [...document.querySelectorAll("#artifact-body mark")]; }
+function updateMatchCounter() {
+  const c = document.getElementById("match-counter");
+  if (!c) return;
+  const n = marks().length;
+  c.textContent = n ? `${S.matchIndex >= 0 ? S.matchIndex + 1 : "–"} of ${n} matches` : "No keyword matches in the text";
+}
+function stepMatch(delta) {
+  const ms = marks();
+  if (!ms.length) return;
+  ms.forEach(m => m.classList.remove("current"));
+  S.matchIndex = (S.matchIndex + delta + ms.length) % ms.length;
+  ms[S.matchIndex].classList.add("current");
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  ms[S.matchIndex].scrollIntoView({block: "center", behavior: reduce ? "auto" : "smooth"});
+  updateMatchCounter();
+}
+
+function keywordPanel(env, envName) {
+  const chips = el("div", {class: "chips"});
+  const input = el("input", {type: "text", id: "keyword-input", placeholder: "Add a keyword and press Enter", "aria-label": "Add keyword"});
+  const draw = () => chips.replaceChildren(...(S.keywords[env] || []).map((w, i) =>
+    el("span", {class: "chip"}, w, el("button", {type: "button", "aria-label": `Remove ${w}`, onclick: async () => {
+      S.keywords[env].splice(i, 1); draw(); rerenderHighlights(); await saveKeywords();
+    }}, "×"))));
+  input.addEventListener("keydown", async (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter" && input.value.trim()) {
+      S.keywords[env] = [...(S.keywords[env] || []), input.value.trim()];
+      input.value = ""; draw(); rerenderHighlights(); await saveKeywords();
+    }
+  });
+  draw();
+  return el("div", {class: "panel"},
+    el("div", {class: "panel-title"}, `Keywords · ${envName}`),
+    el("div", {class: "small muted"}, "Highlighted in every item from this environment. Your list is saved for you only."),
+    chips, input,
+    el("div", {class: "row", style: "margin-top:8px"},
+      el("button", {type: "button", onclick: () => stepMatch(-1)}, "◀ Previous match"),
+      el("button", {type: "button", onclick: () => stepMatch(1)}, "Next match ▶")),
+    el("div", {id: "match-counter", class: "small muted", style: "margin-top:4px"}),
+    el("div", {class: "keys"}, "Keys: [ and ] jump between matches"));
+}
+
+function updateItemChrome() {
+  if (!itemRefs) return;
+  const queue = queueById(S.queueId);
+  const st = store(queue);
+  itemRefs.dots.replaceChildren(...queue.item_ids.map((id, i) =>
+    el("button", {type: "button", class: `dot ${statusOf(st[id])}` + (i === S.index ? " here" : ""),
+      title: `Item ${i + 1}: ${statusOf(st[id])}`, "aria-label": `Go to item ${i + 1}`, onclick: () => openQueue(queue.id, i)})));
+}
+
+function renderItem() {
+  setNav();
+  const queue = queueById(S.queueId);
+  if (!queue) { S.view = "overview"; renderOverview(); return; }
+  const id = queue.item_ids[S.index];
+  const it = S.data.items[id];
+  S.data_item_id = id;
+  S.shownAt = Date.now();
+  const practice = isPractice(queue);
+  const existing = store(queue)[id];
+  document.getElementById("crumb").textContent =
+    `${practice ? "Practice · " : ""}${queue.title} · ${queue.env_name} · item ${S.index + 1} of ${queue.item_ids.length}`;
+
+  let selected = existing && existing.label ? existing.label : null;
+  const unsure = el("input", {type: "checkbox", id: "unsure"});
+  unsure.checked = !!(existing && existing.unsure);
+  const note = el("textarea", {id: "note", placeholder: "Optional note", "aria-label": "Note"});
+  note.value = existing && existing.note ? existing.note : "";
+  note.addEventListener("keydown", e => e.stopPropagation());
+  const status = el("div", {class: "status", role: "status"});
+  if (existing) status.append(existing.skipped ? "You skipped this item earlier." :
+    `Saved: ${optionLabel(it, existing.label)}${existing.unsure ? " (unsure)" : ""}`);
+  const reveal = el("div");
+
+  const optionButtons = it.options.map((o, i) => {
+    const b = el("button", {type: "button", class: "option", "aria-pressed": String(selected === o.value), onclick: () => {
+      selected = o.value; optionButtons.forEach(x => x.setAttribute("aria-pressed", "false")); b.setAttribute("aria-pressed", "true");
+    }}, el("kbd", {}, String(i + 1)), el("span", {}, o.label));
+    return b;
+  });
+
+  function showPracticeAnswer() {
+    const ans = it.practice_answer;
+    if (!ans) return;
+    const agree = selected && positiveOf(it, selected) === positiveOf(it, ans.label);
+    reveal.replaceChildren(el("div", {class: "reveal"},
+      el("div", {}, "AI judge's answer: ", el("span", {class: "verdict"}, optionLabel(it, ans.label))),
+      selected ? el("div", {class: agree ? "agree" : "disagree"}, agree ? "You agree with the judge." : "You disagree with the judge.") : null,
+      ans.detail ? el("div", {class: "small muted"}, ans.detail) : null,
+      ans.reasoning ? el("details", {open: true}, el("summary", {}, "Judge's reasoning"), el("div", {class: "rubric"}, ans.reasoning)) : null,
+      el("div", {class: "row", style: "margin-top:8px"},
+        S.index + 1 < queue.item_ids.length
+          ? el("button", {type: "button", class: "primary", onclick: () => openQueue(queue.id, S.index + 1)}, "Next practice item")
+          : el("button", {type: "button", class: "primary", onclick: () => { S.view = "overview"; location.hash = "overview"; route(); }}, "Back to overview"))));
+  }
+
+  async function submit(skip) {
+    if (!skip && !selected) { status.className = "status err"; status.textContent = "Choose an answer first, or press Skip."; return; }
+    if (!S.canWrite || !S.db || !S.uid) {
+      status.className = "status err";
+      status.textContent = "This view can't save labels. Open the page signed in, with Contributor access or higher.";
+      if (practice && !skip) showPracticeAnswer();
+      return;
+    }
+    const prev = store(queue)[id];
+    const now = new Date().toISOString();
+    const current = {
+      item_id: id, judge: it.judge, env: it.env, queue: queue.id,
+      label: skip ? null : selected, skipped: !!skip, unsure: unsure.checked, note: note.value.slice(0, 5000),
+      elapsed_sec: Math.round((Date.now() - S.shownAt) / 1000),
+      rubric_hash: it.rubric_hash, schema_version: S.data.meta.schema_version, app_version: S.data.meta.app_version,
+      saved_at: now,
+    };
+    const history = prev ? [...(prev.history || []), Object.fromEntries(Object.entries(prev).filter(([k]) => k !== "history"))] : [];
+    const coll = practice ? "practice" : "labels";
+    status.className = "status"; status.textContent = "Saving…";
+    try {
+      if (!S.annotatorDoc) {
+        S.annotatorDoc = {keywords: S.keywords, created_at: now, updated_at: now};
+        await S.db.doc(`annotations/${S.uid}`).set(S.annotatorDoc);
+      }
+      await S.db.doc(`annotations/${S.uid}/${coll}/${id}`).set({...current, history: history.slice(-50)});
+    } catch (e) {
+      status.className = "status err";
+      if (e.code === "invalid_argument") { S.canWrite = false; status.textContent = "Your access level can't save labels. Ask the owner for Contributor access."; }
+      else if (e.code === "quota_exceeded") status.textContent = "The label store is full. Tell the owner; nothing was saved.";
+      else status.textContent = "Couldn't save (" + e.code + "). Check your connection and press Save again.";
+      return;
+    }
+    if (practice && !skip) {
+      status.className = "status ok"; status.textContent = "Saved.";
+      showPracticeAnswer();
+      return;
+    }
+    if (S.index + 1 < queue.item_ids.length) openQueue(queue.id, S.index + 1);
+    else { S.view = "overview"; location.hash = "overview"; route(); }
+  }
+
+  const dots = el("div", {class: "dots", "aria-label": "Items in this queue"});
+  const hint = it.hint_name ? el("span", {class: "pill"}, `Hint type: ${it.hint_name}`) : null;
+
+  const left = el("div", {class: "stack"},
+    el("section", {class: "panel", "aria-label": it.artifact.kind},
+      el("div", {class: "panel-title"}, it.artifact.kind, hint, practice ? el("span", {class: "pill"}, "Practice") : null),
+      el("div", {id: "artifact-body"})),
+    el("section", {class: "panel", "aria-label": "User message"},
+      el("details", {open: it.judge !== "verbalization_rl_cot"},
+        el("summary", {}, "User message"),
+        el("div", {class: "small muted", style: "margin:6px 0 8px"}, it.user_message_note),
+        el("div", {id: "um-body"}))));
+
+  const right = el("div", {class: "stack rail"},
+    el("section", {class: "panel", "aria-label": "Your answer"},
+      el("div", {class: "panel-title"}, "Question"),
+      el("div", {class: "question"}, it.rubric.question),
+      ...optionButtons,
+      el("label", {class: "check"}, unsure, "I'm unsure about this one", el("span", {class: "keys"}, "(u)")),
+      note,
+      el("div", {class: "row", style: "margin-top:8px"},
+        el("button", {type: "button", class: "primary", onclick: () => submit(false)}, practice ? "Save & check" : "Save & next"),
+        el("button", {type: "button", onclick: () => submit(true)}, "Skip"),
+        el("button", {type: "button", disabled: S.index === 0, onclick: () => openQueue(queue.id, S.index - 1)}, "◀ Back"),
+        el("button", {type: "button", disabled: S.index + 1 >= queue.item_ids.length, onclick: () => openQueue(queue.id, S.index + 1)}, "Next ▶")),
+      status, reveal,
+      el("div", {class: "keys", style: "margin-top:6px"}, "Keys: 1–4 answer · u unsure · Enter save · s skip · , and . previous/next item · Esc overview"),
+      dots),
+    el("section", {class: "panel", "aria-label": "Rubric"},
+      el("details", {open: true},
+        el("summary", {}, "Rubric (the AI judge's own instructions)"),
+        el("div", {class: "rubric"}, it.rubric.definition))),
+    keywordPanel(it.env, it.env_name));
+
+  app.replaceChildren(el("div", {class: "layout"}, left, right));
+  itemRefs = {dots};
+  updateItemChrome();
+  rerenderHighlights();
+  if (practice && existing && existing.label) showPracticeAnswer();
+  window.scrollTo(0, 0);
+
+  document.onkeydown = (e) => {
+    const tag = e.target.tagName;
+    if (tag === "INPUT" && e.target.type === "text" || tag === "TEXTAREA") return;
+    const n = parseInt(e.key, 10);
+    if (n >= 1 && n <= optionButtons.length) { optionButtons[n - 1].click(); e.preventDefault(); }
+    else if (e.key === "u") { unsure.checked = !unsure.checked; }
+    else if (e.key === "Enter" && tag !== "BUTTON") { submit(false); e.preventDefault(); }
+    else if (e.key === "s") { submit(true); }
+    else if (e.key === "]") { stepMatch(1); }
+    else if (e.key === "[") { stepMatch(-1); }
+    else if (e.key === "," && S.index > 0) { openQueue(queue.id, S.index - 1); }
+    else if (e.key === "." && S.index + 1 < queue.item_ids.length) { openQueue(queue.id, S.index + 1); }
+    else if (e.key === "Escape") { S.view = "overview"; location.hash = "overview"; route(); }
+  };
+}
+
+function optionLabel(it, value) {
+  const o = it.options.find(x => x.value === value);
+  return o ? o.label : String(value);
+}
+const POSITIVE = {
+  verbalization_gepa: ["yes", "mistargeted"], verbalization_rl_cot: ["yes", "mistargeted"],
+  wordchain_critique: ["yes"], psychosis_agreeableness: ["yes"],
+};
+function positiveOf(it, value) { return POSITIVE[it.judge].includes(value); }
+
+// ---------------------------------------------------------------------------
+// Progress and agreement
+// ---------------------------------------------------------------------------
+let progressSubs = [];
+async function renderProgress() {
+  setNav();
+  document.getElementById("crumb").textContent = "";
+  progressSubs.forEach(u => u()); progressSubs = [];
+  app.replaceChildren(el("p", {class: "muted"}, "Loading everyone's labels…"));
+  if (!S.judge) {
+    try { S.judge = await (await fetch("judge.json")).json(); }
+    catch (e) { app.replaceChildren(el("p", {class: "status err"}, "Could not load the judge's answers. Reload to try again.")); return; }
+  }
+  if (!S.db) { app.replaceChildren(el("div", {class: "notice warn"}, "Progress needs a signed-in view of this page.")); return; }
+
+  const all = {};   // uid -> {item_id -> label doc}
+  let annotators = [];
+  const draw = async () => {
+    if (S.view !== "progress") return;
+    const ids = annotators.slice();
+    const profiles = S.user && ids.length ? await S.user.profiles(ids) : {};
+    drawProgress(ids, profiles, all);
+  };
+  const unsubAnn = S.db.collection("annotations").onSnapshot((snap) => {
+    const next = snap.docs.map(d => d.id);
+    for (const uid of next) {
+      if (all[uid]) continue;
+      all[uid] = {};
+      progressSubs.push(S.db.collection(`annotations/${uid}/labels`).onSnapshot((s) => {
+        all[uid] = Object.fromEntries(s.docs.map(d => [d.id, d.data()]));
+        draw();
+      }, () => {}));
+    }
+    annotators = next;
+    draw();
+  }, (e) => { app.replaceChildren(el("p", {class: "status err"}, "Couldn't load labels (" + e.code + ").")); });
+  progressSubs.push(unsubAnn);
+}
+
+function drawProgress(uids, profiles, all) {
+  const cats = S.data.queues.filter(q => q.kind === "category");
+  const name = (uid) => (profiles[uid] && profiles[uid].name) || (uid === S.uid ? "You" : "Annotator");
+  const answers = S.judge.answers;
+  const pct = (a, n) => n ? `${Math.round(100 * a / n)}%` : "–";
+
+  // Progress per annotator per category
+  const progressRows = uids.map(uid => el("tr", {},
+    el("th", {scope: "row"}, el("span", {class: "annot"},
+      profiles[uid] ? el("img", {src: profiles[uid].avatarUrl, alt: ""}) : null, name(uid))),
+    ...cats.map(q => {
+      const n = q.item_ids.filter(i => statusOf(all[uid][i]) === "labeled").length;
+      return el("td", {class: "num"}, `${n}/${q.item_ids.length}`);
+    })));
+
+  // Agreement with the AI judge (binary), excluding the annotator's "unclear"
+  const judgeRows = uids.map(uid => el("tr", {},
+    el("th", {scope: "row"}, name(uid)),
+    ...cats.map(q => {
+      let n = 0, agree = 0, unclear = 0;
+      for (const i of q.item_ids) {
+        const lab = all[uid][i];
+        if (!lab || !lab.label) continue;
+        if (lab.label === "unclear") { unclear++; continue; }
+        const it = S.data.items[i];
+        n++; if (positiveOf(it, lab.label) === positiveOf(it, answers[i].label)) agree++;
+      }
+      return el("td", {class: "num", title: `${agree} of ${n} agree${unclear ? `, ${unclear} unclear excluded` : ""}`},
+        n ? `${pct(agree, n)} (n=${n})` : "–");
+    })));
+
+  // Inter-annotator agreement: exact label match on items both labeled
+  const pairRows = [];
+  for (let a = 0; a < uids.length; a++) for (let b = a + 1; b < uids.length; b++) {
+    pairRows.push(el("tr", {},
+      el("th", {scope: "row"}, `${name(uids[a])} & ${name(uids[b])}`),
+      ...cats.map(q => {
+        let n = 0, agree = 0;
+        for (const i of q.item_ids) {
+          const x = all[uids[a]][i], y = all[uids[b]][i];
+          if (!x || !y || !x.label || !y.label) continue;
+          n++; if (x.label === y.label) agree++;
+        }
+        return el("td", {class: "num"}, n ? `${pct(agree, n)} (n=${n})` : "–");
+      })));
+  }
+
+  const head = () => el("thead", {}, el("tr", {}, el("th", {scope: "col"}, ""),
+    ...cats.map(q => el("th", {scope: "col", title: `${q.title} · ${q.env_name}`}, shortCat(q)))));
+  const table = (rows, empty) => rows.length
+    ? el("div", {class: "table-wrap"}, el("table", {}, head(), el("tbody", {}, ...rows)))
+    : el("p", {class: "small muted"}, empty);
+
+  app.replaceChildren(
+    el("div", {class: "notice"}, "Looking at agreement numbers while you are still labeling can shift how you label. If you are mid-way through, consider coming back to this page when you're done."),
+    el("h2", {}, "Labeled items"),
+    table(progressRows, "Nobody has saved a label yet."),
+    el("h2", {}, "Agreement with the AI judge"),
+    el("p", {class: "small muted"}, "Share of an annotator's labels that fall on the same side as the judge's answer (hack verbalized or not; hacking or not). Items the annotator marked unclear are left out. Unweighted; the paper's estimates reweight to the full population."),
+    table(judgeRows, "No labels to compare yet."),
+    el("h2", {}, "Agreement between annotators"),
+    el("p", {class: "small muted"}, "Exact label match on items both people labeled."),
+    table(pairRows, "Appears once two people have labeled the same items."),
+  );
+}
+
+function shortCat(q) {
+  const env = {"Hinted MMLU": "MMLU", "Targeted Sycophancy": "Syco", "Word Chain": "Chain"}[q.env_name] || q.env_name;
+  const kind = q.judge === "verbalization_gepa" ? "GEPA verb." : q.judge === "verbalization_rl_cot" ? "RL verb." : "Hacking";
+  return `${kind} · ${env}`;
+}
+
+boot();
+</script>
