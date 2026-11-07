@@ -780,6 +780,9 @@ def make_configs(experiments: dict) -> dict:
                         width=5,
                         height=5,
                         equal_weight_by="env_name",
+                        # Skip a bin unless every setting has models in it;
+                        # filling with 0 or averaging the rest misleads
+                        drop_incomplete_bins=True,
                         hue="verbalization_label",
                         n_bins=5,
                     ),

@@ -1431,6 +1431,9 @@ class BinnedLinePlot(LayoutNode):
         fill_missing_groups: When equal_weight_by is set, whether a group with no
             data in a bin contributes 0 to that bin's average (default True).
             Set to False to average only over groups that have data.
+        drop_incomplete_bins: When equal_weight_by is set, skip any bin in which
+            some group has no data, instead of filling or averaging around it
+            (default False). Takes precedence over fill_missing_groups.
         show_error_bars: Whether to show ± SEM as error bars at each point.
             Only supported when equal_weight_by is None. Points with count=1
             won't have error bars (can't compute SEM from a single sample).
@@ -1476,6 +1479,7 @@ class BinnedLinePlot(LayoutNode):
     title: str = None
     equal_weight_by: str = None
     fill_missing_groups: bool = True
+    drop_incomplete_bins: bool = False
     show_error_bars: bool = False
     show_counts: bool = False
 
@@ -1519,7 +1523,8 @@ class BinnedLinePlot(LayoutNode):
         ax = fig.add_subplot(gs[row_slice, col_slice])
         legend_entries = _draw_binned_line_plot(
             ax, df, self.x, y_col, self.hue, self.linestyle, self.n_bins, title, scale, show_chrome,
-            self.equal_weight_by, self.fill_missing_groups, self.show_error_bars, self.show_counts,
+            self.equal_weight_by, self.fill_missing_groups, self.drop_incomplete_bins,
+            self.show_error_bars, self.show_counts,
             is_leftmost=is_leftmost, is_bottommost=is_bottommost
         )
         # No aggregation warnings for binned plots (binning is the point)
@@ -2721,6 +2726,7 @@ def _draw_binned_line_plot(
     show_chrome: bool = True,
     equal_weight_by: str = None,
     fill_missing_groups: bool = True,
+    drop_incomplete_bins: bool = False,
     show_error_bars: bool = False,
     show_counts: bool = False,
     is_leftmost: bool = True,
@@ -2745,6 +2751,9 @@ def _draw_binned_line_plot(
             data in a bin contributes 0 to that bin's average. Set to False to
             average only over the groups that actually have data, which is what
             you want when some series legitimately have no data for some groups.
+        drop_incomplete_bins: When equal_weight_by is set, skip any bin in which
+            some group (among those the series has data for) has no data. Takes
+            precedence over fill_missing_groups.
         show_error_bars: Whether to show ± SEM as error bars at each point
             (only supported when equal_weight_by is None).
         show_counts: Whether to show sample counts as text labels at each point.
@@ -2822,7 +2831,13 @@ def _draw_binned_line_plot(
                 # Macro average: first compute per-group means, then average those
                 per_group = series_df.groupby(["_bin", equal_weight_by], observed=True)[y].mean()
 
-                if fill_missing_groups:
+                if drop_incomplete_bins:
+                    # Keep only bins where every group in this series has data
+                    n_groups = series_df[equal_weight_by].nunique()
+                    groups_per_bin = per_group.groupby("_bin", observed=True).size()
+                    complete_bins = groups_per_bin[groups_per_bin == n_groups].index
+                    per_group = per_group[per_group.index.get_level_values("_bin").isin(complete_bins)]
+                elif fill_missing_groups:
                     # Reindex to include all (bin, group) combinations, filling missing with 0
                     all_bins = series_df["_bin"].cat.categories
                     all_groups = series_df[equal_weight_by].unique()
